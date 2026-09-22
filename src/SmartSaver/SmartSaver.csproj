@@ -11,9 +11,9 @@
     <Title>DASMO CYBER CAFE TOOLS</Title>
     <AssemblyName>DASMO CYBER CAFE TOOLS</AssemblyName>
     <RootNamespace>SmartSaver</RootNamespace>
-    <Version>1.5.2.0</Version>
-    <AssemblyVersion>1.5.2.0</AssemblyVersion>
-    <FileVersion>1.5.2.0</FileVersion>
+    <Version>1.5.3.0</Version>
+    <AssemblyVersion>1.5.3.0</AssemblyVersion>
+    <FileVersion>1.5.3.0</FileVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Company>DASMO Cyber Cafe</Company>
     <Product>DASMO CYBER CAFE TOOLS</Product>

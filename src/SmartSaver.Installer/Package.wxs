@@ -5,7 +5,7 @@
 
   <Package Name="DASMO CYBER CAFE TOOLS"
            Manufacturer="DASMO Cyber Cafe"
-           Version="1.5.2.0"
+           Version="1.5.3.0"
            UpgradeCode="E7A3C1D2-4B5F-6789-0ABC-DEF123456789"
            Scope="perMachine"
            Language="1033"
@@ -56,6 +56,23 @@
       <ComponentRef Id="ContextMenu_PdfEdit" />
       <ComponentRef Id="DisablePreviewHandlerWarnings" />
     </Feature>
+
+    <!-- ===== AUTO-LAUNCH AFTER INSTALL ===== -->
+    <!-- Automatically opens the app when install or upgrade finishes.  -->
+    <!-- Does NOT run on uninstall (Condition="NOT REMOVE").            -->
+    <SetProperty Id="WixShellExecTarget"
+                 Value="[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe"
+                 Before="LaunchAppAfterInstall"
+                 Sequence="execute" />
+    <CustomAction Id="LaunchAppAfterInstall"
+                  BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixShellExec"
+                  Impersonate="yes"
+                  Return="asyncWait" />
+    <InstallExecuteSequence>
+      <Custom Action="LaunchAppAfterInstall" After="InstallFinalize" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+    <!-- ======================================= -->
 
   </Package>
 </Wix>
