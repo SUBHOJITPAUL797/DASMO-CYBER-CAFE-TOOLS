@@ -1,0 +1,194 @@
+<Window x:Class="SmartSaver.Views.MergePdfDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SmartSaver.Converters"
+        Title="DASMO CYBER COMPRESSOR — Merge PDF Files" Height="680" Width="640"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver">
+    <Window.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Photo Background Layer -->
+            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.30" IsHitTestVisible="False" Grid.RowSpan="3"/>
+
+            <!-- Title Bar -->
+            <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                    <TextBlock Text="⚡ " FontSize="14"/>
+                    <TextBlock Text="DASMO CYBER COMPRESSOR — Merge PDF Files" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="🗕" Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click" ToolTip="Minimize"/>
+                    <Button Content="✕" Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click" ToolTip="Close"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Main Content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="18,12">
+                <StackPanel>
+                    <!-- Section 1: PDF Files List -->
+                    <GroupBox Header="1. Selected PDF Documents (Drag &amp; drop to re-order)">
+                        <StackPanel Margin="0,4">
+                            <!-- Action Buttons Above List -->
+                            <Grid Margin="0,0,0,6">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                    <Button Content="➕ Add PDFs..." Style="{StaticResource ChipButton}" Command="{Binding AddFilesCommand}" ToolTip="Select more PDF files"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="⬆️ Move Up" Style="{StaticResource ChipButton}" Command="{Binding MoveUpCommand}" ToolTip="Move selected PDF up in order" Margin="0,0,4,0"/>
+                                    <Button Content="⬇️ Move Down" Style="{StaticResource ChipButton}" Command="{Binding MoveDownCommand}" ToolTip="Move selected PDF down in order" Margin="0,0,4,0"/>
+                                    <Button Content="❌ Remove" Style="{StaticResource ChipButton}" Command="{Binding RemoveFileCommand}" ToolTip="Remove selected PDF"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Files ListBox -->
+                            <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" MinHeight="160" MaxHeight="220">
+                                <ListBox ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,2" Padding="8,6" Background="#1E2030" CornerRadius="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="32"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Order Badge -->
+                                                    <Border Background="{StaticResource AccentBrush}" CornerRadius="12" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" Foreground="#12131C" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+
+                                                    <!-- File Info -->
+                                                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}"/>
+                                                        <TextBlock Text="{Binding FilePath}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+
+                                                    <!-- Pages & Size -->
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="8,0,4,0">
+                                                        <TextBlock Text="{Binding PageCount, StringFormat='{}{0} page(s)'}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Right"/>
+                                                        <TextBlock Text="{Binding FileSizeFormatted}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+
+                            <!-- List Summary Footer -->
+                            <TextBlock Text="{Binding TotalFilesInfo}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Right"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Section 2: Target File Size / Compression -->
+                    <GroupBox Header="2. Compression &amp; Target Size (Optional)" Margin="0,8,0,0">
+                        <StackPanel Margin="0,4">
+                            <!-- Toggle Checkbox -->
+                            <CheckBox Content="Compress merged output to a target file size" IsChecked="{Binding IsCompressEnabled}" Margin="0,0,0,8" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+
+                            <!-- Compression Inputs (Visible when enabled) -->
+                            <StackPanel Visibility="{Binding IsCompressEnabled, Converter={StaticResource BoolToVis}}">
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Label Content="Target File Size: " VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding TargetSize, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
+                                    <ComboBox Grid.Column="2" SelectedValue="{Binding TargetSizeUnit, Mode=TwoWay}" SelectedValuePath="Content">
+                                        <ComboBoxItem Content="KB"/>
+                                        <ComboBoxItem Content="MB"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <!-- Preset Chips -->
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <Button Content="100 KB" Style="{StaticResource ChipButton}" Command="{Binding PresetTargetCommand}" CommandParameter="100" ToolTip="Strict 100 KB limit"/>
+                                    <Button Content="200 KB" Style="{StaticResource ChipButton}" Command="{Binding PresetTargetCommand}" CommandParameter="200" ToolTip="Govt portal 200 KB limit"/>
+                                    <Button Content="500 KB" Style="{StaticResource ChipButton}" Command="{Binding PresetTargetCommand}" CommandParameter="500" ToolTip="500 KB limit"/>
+                                    <Button Content="1 MB" Style="{StaticResource ChipButton}" Command="{Binding PresetTargetCommand}" CommandParameter="1024" ToolTip="1 MB limit"/>
+                                    <Button Content="2 MB" Style="{StaticResource ChipButton}" Command="{Binding PresetTargetCommand}" CommandParameter="2048" ToolTip="2 MB limit"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Notice when uncompressed -->
+                            <TextBlock Text="Merged PDF will be saved at full original quality without downsampling." 
+                                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" 
+                                       Visibility="{Binding IsCompressEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Section 3: Output Save Options -->
+                    <GroupBox Header="3. Output Settings" Margin="0,8,0,0">
+                        <StackPanel Margin="0,4">
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="File Name:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding OutputFileName, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="Save Folder:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" VerticalContentAlignment="Center"/>
+                                <Button Grid.Column="2" Content="📁 Browse..." Style="{StaticResource ChipButton}" Command="{Binding BrowseDirectoryCommand}"/>
+                            </Grid>
+
+                            <CheckBox Content="Open merged document automatically when done" IsChecked="{Binding OpenOnComplete}" Margin="0,4,0,0" FontSize="11"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Result Text / Status Box -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10" Margin="0,8,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            Visibility="{Binding ResultText, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding ResultText}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="📂 Open PDF" Style="{StaticResource ChipButton}" Command="{Binding OpenResultCommand}" 
+                                    Visibility="{Binding IsSuccess, Converter={StaticResource BoolToVis}}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Bottom Action Bar -->
+            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="15,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+
+                    <Button Grid.Column="1" Content="Close" Width="80" Margin="0,0,10,0" Click="CloseButton_Click"/>
+                    <Button Grid.Column="2" Content="⚡ Merge PDFs Now" Style="{StaticResource PrimaryButton}" Command="{Binding MergeCommand}" Width="160"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

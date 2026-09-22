@@ -1,0 +1,563 @@
+<Window x:Class="SmartSaver.Views.PassportStudioDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:SmartSaver.Converters"
+        Title="📸 Professional Passport Photo Studio &amp; Multi-Size Sheet Suite — DASMO CYBER CAFE TOOLS"
+        Height="760" Width="1140" MinHeight="660" MinWidth="960"
+        WindowStartupLocation="CenterScreen"
+        Background="#12131C" Foreground="{StaticResource TextBrush}">
+
+    <Window.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis"/>
+        <converters:InverseBooleanConverter x:Key="InverseBool"/>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <!-- Top bar -->
+            <RowDefinition Height="Auto"/>
+            <!-- Main visual studio -->
+            <RowDefinition Height="*"/>
+            <!-- Bottom action bar -->
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- TOP BAR -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="📸" FontSize="22" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <StackPanel>
+                        <TextBlock Text="Professional Passport Photo Studio &amp; Multi-Size Sheet Suite" FontWeight="Bold" FontSize="14.5" Foreground="{StaticResource AccentBrush}"/>
+                        <TextBlock Text="Change background, enhance portrait lighting, and pack multi-size photos with zero paper waste" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="📂 Choose Photo" Command="{Binding BrowsePhotoCommand}" Style="{StaticResource PrimaryButton}" Height="32" Padding="12,0" Margin="0,0,6,0"/>
+                    <Button Content="📋 Paste Clipboard" Command="{Binding PasteClipboardCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="10,0" Margin="0,0,6,0"/>
+                    <Button Content="✂️ Crop Photo" Command="{Binding CropPhotoCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="10,0" Margin="0,0,6,0" IsEnabled="{Binding HasPhoto}" ToolTip="Crop portrait or adjust passport bounds"/>
+                    <Button Content="↺" Command="{Binding RotateLeftCommand}" Style="{StaticResource OutlineButton}" Height="32" Width="34" Margin="0,0,4,0" IsEnabled="{Binding HasPhoto}" ToolTip="Rotate 90° Left (Counter-Clockwise)"/>
+                    <Button Content="🌐 Single Photo (Govt)" Command="{Binding OpenSingleExportCommand}" Style="{StaticResource AccentButton}" Height="32" Padding="12,0" Margin="0,0,8,0" FontWeight="Bold" IsEnabled="{Binding HasPhoto}" ToolTip="Export 1 single passport photo for SSC, UPSC, PAN &amp; online exam portals (20–50 KB)"/>
+                    <Button Content="🖨️ Direct Print Sheet" Command="{Binding PrintSheetCommand}" Style="{StaticResource PrimaryButton}" Height="32" Padding="14,0" FontWeight="Bold" ToolTip="Send entire sheet directly to printer at 300 DPI"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MAIN 2-COLUMN STUDIO AREA -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <!-- Left: Studio Controls Panel -->
+                <ColumnDefinition Width="420"/>
+                <!-- Right: Live Sheet Canvas -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT CONTROLS -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0">
+                <StackPanel>
+                    <!-- Loaded Portrait Preview & Crop Tools -->
+                    <GroupBox Header="Loaded Portrait &amp; Crop" Margin="0,0,0,10" Visibility="{Binding HasPhoto, Converter={StaticResource BoolToVis}}">
+                        <Grid Margin="4,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="56"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="52" Height="64" Background="#0A0B10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" VerticalAlignment="Center" ClipToBounds="True">
+                                <Image Source="{Binding PhotoPreviewImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="✂️ Crop Photo" Command="{Binding CropPhotoCommand}" Style="{StaticResource OutlineButton}" Height="26" Padding="8,2" Margin="0,0,4,0" FontSize="11" ToolTip="Crop portrait or adjust passport bounds"/>
+                                    <Button Content="↺ Rotate" Command="{Binding RotateLeftCommand}" Style="{StaticResource OutlineButton}" Height="26" Padding="6,2" Margin="0,0,4,0" FontSize="11" ToolTip="Rotate 90° Left"/>
+                                    <Button Content="↻ Rotate" Command="{Binding RotateRightCommand}" Style="{StaticResource OutlineButton}" Height="26" Padding="6,2" FontSize="11" ToolTip="Rotate 90° Right"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+
+                    <!-- 1. Background Replacement & Color Palette -->
+                    <GroupBox Header="1. Studio Background Replacement &amp; Color Palette" Margin="0,0,0,10">
+                        <StackPanel Margin="4,6">
+                            <!-- Preset Swatches -->
+                            <WrapPanel Margin="0,0,0,6">
+                                <Button Content="⚪ White" Command="{Binding SelectBgCommand}" CommandParameter="white" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" FontWeight="SemiBold" ToolTip="Standard Passport / Visa / PAN White"/>
+                                <Button Content="🔷 Sky Blue" Command="{Binding SelectBgCommand}" CommandParameter="blue" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" FontWeight="SemiBold" ToolTip="Indian Govt SSC / UPSC / IBPS Exam Sky Blue (#4A90E2)"/>
+                                <Button Content="🔵 Royal Blue" Command="{Binding SelectBgCommand}" CommandParameter="royalblue" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" ToolTip="Deep Royal Blue for College / PSU Applications"/>
+                                <Button Content="🔘 Studio Gray" Command="{Binding SelectBgCommand}" CommandParameter="gray" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" ToolTip="Neutral Corporate Studio Gray"/>
+                                <Button Content="🔴 Crimson" Command="{Binding SelectBgCommand}" CommandParameter="red" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" ToolTip="Passport / Visa / Security Red"/>
+                                <Button Content="🟢 Soft Green" Command="{Binding SelectBgCommand}" CommandParameter="green" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" ToolTip="Pass / ID Soft Green"/>
+                                <Button Content="🍦 Cream" Command="{Binding SelectBgCommand}" CommandParameter="cream" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" ToolTip="Warm Off-White Studio Tone"/>
+                                <Button Content="🖼️ Original" Command="{Binding SelectBgCommand}" CommandParameter="original" Style="{StaticResource OutlineButton}" Padding="8,4" Margin="0,0,4,4" ToolTip="Keep original untouched background"/>
+                            </WrapPanel>
+
+                            <!-- Custom Color Picker & Active Swatch -->
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Content="🎨 Pick Any Color..." Command="{Binding PickCustomColorCommand}" Style="{StaticResource PrimaryButton}" Padding="10,4" Height="28" FontSize="11.5" FontWeight="SemiBold" ToolTip="Open full Windows color palette to select ANY custom color"/>
+                                <Border Grid.Column="1" Margin="8,0,0,0" CornerRadius="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Background="{StaticResource SurfaceBrush}" Padding="6,2" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="16" Height="16" CornerRadius="3" Background="{Binding SelectedColorBrush}" BorderBrush="#888888" BorderThickness="1" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Active: " FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding SelectedColorHex}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Removal Sensitivity / Tolerance Slider -->
+                            <Grid Margin="0,2,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="35"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Removal Sensitivity:" VerticalAlignment="Center" FontSize="11" ToolTip="Adjust background removal strength. Increase for wall shadows; decrease for fine hair detail."/>
+                                <Slider Grid.Column="1" Minimum="15" Maximum="120" Value="{Binding BackgroundTolerance}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BackgroundTolerance, StringFormat='{}{0:F0}'}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 2. Studio Lighting & Tone -->
+                    <GroupBox Header="2. Studio Lighting &amp; Face Tone Fix" Margin="0,0,0,10">
+                        <StackPanel Margin="4,6">
+                            <CheckBox Content="✨ Auto Portrait Lighting (Brighten shadows on face)" IsChecked="{Binding AutoEnhance}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            
+                            <!-- Brightness -->
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="35"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Brightness:" VerticalAlignment="Center" FontSize="11.5"/>
+                                <Slider Grid.Column="1" Minimum="-50" Maximum="50" Value="{Binding Brightness}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Brightness, StringFormat='{}{0:F0}'}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+
+                            <!-- Contrast -->
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="35"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Contrast:" VerticalAlignment="Center" FontSize="11.5"/>
+                                <Slider Grid.Column="1" Minimum="-50" Maximum="50" Value="{Binding Contrast}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Contrast, StringFormat='{}{0:F0}'}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+
+                            <!-- Skin Warmth -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="35"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Skin Warmth:" VerticalAlignment="Center" FontSize="11.5" ToolTip="Adds healthy natural skin warmth, removing pale or fluorescent tube tints"/>
+                                <Slider Grid.Column="1" Minimum="-30" Maximum="30" Value="{Binding SkinWarmth}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding SkinWarmth, StringFormat='{}{0:F0}'}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+
+                            <Button Content="↺ Reset Lighting" Command="{Binding ResetLightingCommand}" Style="{StaticResource OutlineButton}" Height="26" HorizontalAlignment="Right" Padding="8,2" FontSize="11"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 3. Paper Size & Margins -->
+                    <GroupBox Header="3. Sheet Paper &amp; Cutting Margins" Margin="0,0,0,10">
+                        <StackPanel Margin="4,6">
+                            <!-- Paper Size Selector -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Paper Size: " VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                <RadioButton GroupName="PaperSizeGroup" Content="📄 A4 Paper (21.0 × 29.7 cm)" IsChecked="{Binding IsA4}" Command="{Binding SetPaperSizeCommand}" CommandParameter="A4" FontWeight="Bold" Margin="0,0,12,0"/>
+                                <RadioButton GroupName="PaperSizeGroup" Content="📸 4 × 6 Inch Photo Paper" IsChecked="{Binding Is4x6}" Command="{Binding SetPaperSizeCommand}" CommandParameter="4x6" FontWeight="Bold"/>
+                            </StackPanel>
+
+                            <!-- Paper Orientation -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Orientation: " VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                <RadioButton GroupName="PaperOrientationGroup" Content="📱 Portrait (Vertical)" IsChecked="{Binding IsPortrait}" Command="{Binding SetOrientationCommand}" CommandParameter="Portrait" FontWeight="SemiBold" Margin="0,0,12,0"/>
+                                <RadioButton GroupName="PaperOrientationGroup" Content="🖥️ Landscape (Horizontal)" IsChecked="{Binding IsLandscape}" Command="{Binding SetOrientationCommand}" CommandParameter="Landscape" FontWeight="SemiBold"/>
+                            </StackPanel>
+
+                            <!-- Top Start Gap / Margin (Where photos start from) -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Top Start Gap (Y):" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" ToolTip="Decide where from the top edge of paper the photos will start printing"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="{Binding MaxTopMarginMm}" Value="{Binding TopMarginMm}" SmallChange="1" LargeChange="5" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <TextBox Text="{Binding TopMarginMm, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Width="44" Height="26" ToolTip="Top gap in millimeters (mm)"/>
+                                    <TextBlock Text=" mm" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Quick Preset Chips for Top Gap -->
+                            <StackPanel Orientation="Horizontal" Margin="130,0,0,8">
+                                <Button Content="− 5mm" Command="{Binding NudgeTopMarginCommand}" CommandParameter="-5" Style="{StaticResource OutlineButton}" Padding="4,2" Margin="0,0,3,0" FontSize="10" ToolTip="Nudge photos UP by 5 mm"/>
+                                <Button Content="+ 5mm" Command="{Binding NudgeTopMarginCommand}" CommandParameter="5" Style="{StaticResource OutlineButton}" Padding="4,2" Margin="0,0,5,0" FontSize="10" ToolTip="Nudge photos DOWN by 5 mm"/>
+                                <Button Content="0 mm" Command="{Binding SetTopMarginCommand}" CommandParameter="0" Style="{StaticResource OutlineButton}" Padding="4,2" Margin="0,0,3,0" FontSize="10" ToolTip="Start flush at the top edge"/>
+                                <Button Content="6 mm (Std)" Command="{Binding SetTopMarginCommand}" CommandParameter="6" Style="{StaticResource OutlineButton}" Padding="4,2" Margin="0,0,3,0" FontSize="10" ToolTip="Standard 6mm top margin"/>
+                                <Button Content="20 mm" Command="{Binding SetTopMarginCommand}" CommandParameter="20" Style="{StaticResource OutlineButton}" Padding="4,2" Margin="0,0,3,0" FontSize="10" ToolTip="Start 2 cm down"/>
+                                <Button Content="50 mm" Command="{Binding SetTopMarginCommand}" CommandParameter="50" Style="{StaticResource OutlineButton}" Padding="4,2" Margin="0,0,3,0" FontSize="10" ToolTip="Start 5 cm down (for used/cut sheets)"/>
+                                <Button Content="100 mm" Command="{Binding SetTopMarginCommand}" CommandParameter="100" Style="{StaticResource OutlineButton}" Padding="4,2" FontSize="10" ToolTip="Start 10 cm down"/>
+                            </StackPanel>
+
+                            <!-- Scissor Cutting Gap -->
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="45"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Scissor Cutting Gap:" VerticalAlignment="Center" FontSize="11.5" ToolTip="Space between photos for easy cutting with scissors/guillotine"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="10" Value="{Binding GapMm}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding GapMm, StringFormat='{}{0:F1} mm'}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+
+                            <!-- Photo Border Thickness -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="45"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Photo Border Line:" VerticalAlignment="Center" FontSize="11.5" ToolTip="Thin border line around each photo for straight scissor guidance"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="3" Value="{Binding BorderThickness}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BorderThickness, StringFormat='{}{0} px'}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 4. Photo Sizing & Multi-Size Combo Pack -->
+                    <GroupBox Header="4. Photo Sizing &amp; Smart Zero-Waste Packing" Margin="0,0,0,10">
+                        <StackPanel Margin="4,6">
+                            <!-- Sizing Mode Radio -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <RadioButton GroupName="SizingModeGroup" Content="Single Size Grid" IsChecked="{Binding IsComboMode, Converter={StaticResource InverseBool}}" Margin="0,0,16,0" FontWeight="SemiBold"/>
+                                <RadioButton GroupName="SizingModeGroup" Content="🔀 Multi-Size Combo (Same Sheet)" IsChecked="{Binding IsComboMode}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" ToolTip="Pack Passport + Stamp + PAN sizes onto the SAME sheet"/>
+                            </StackPanel>
+
+                            <!-- SINGLE SIZE CONTROLS -->
+                            <StackPanel Visibility="{Binding IsComboMode, Converter={StaticResource InverseBoolToVis}}">
+                                <ComboBox ItemsSource="{Binding SizePresets}" SelectedItem="{Binding SelectedSizePreset}" Height="30" Margin="0,0,0,8"/>
+                                
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Width: " VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBox Grid.Column="1" Text="{Binding PhotoWidthCm, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text=" cm  ×  Height: " VerticalAlignment="Center" Margin="4,0"/>
+                                    <TextBox Grid.Column="3" Text="{Binding PhotoHeightCm, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                    <TextBlock Grid.Column="4" Text=" cm" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Copies to Print: " VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                                    <TextBox Grid.Column="1" Text="{Binding CopiesCount, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontWeight="Bold" FontSize="13"/>
+                                    <Button Grid.Column="2" Content="⚡ Fill Max Copies" Command="{Binding FillMaxCopiesCommand}" Style="{StaticResource OutlineButton}" Height="30" Margin="8,0,0,0" ToolTip="Fill entire sheet to maximum capacity with 0 paper waste"/>
+                                </Grid>
+
+                                <!-- Quick Preset Copies Chips -->
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,8">
+                                    <TextBlock Text="Quick:" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,6,0"/>
+                                    <Button Content="4" Command="{Binding SetCopiesCommand}" CommandParameter="4" Style="{StaticResource OutlineButton}" Padding="6,2" Margin="0,0,4,0" FontSize="11"/>
+                                    <Button Content="6" Command="{Binding SetCopiesCommand}" CommandParameter="6" Style="{StaticResource OutlineButton}" Padding="6,2" Margin="0,0,4,0" FontSize="11"/>
+                                    <Button Content="8" Command="{Binding SetCopiesCommand}" CommandParameter="8" Style="{StaticResource OutlineButton}" Padding="6,2" Margin="0,0,4,0" FontSize="11"/>
+                                    <Button Content="10" Command="{Binding SetCopiesCommand}" CommandParameter="10" Style="{StaticResource OutlineButton}" Padding="6,2" Margin="0,0,4,0" FontSize="11" ToolTip="2 complete rows of 5"/>
+                                    <Button Content="12" Command="{Binding SetCopiesCommand}" CommandParameter="12" Style="{StaticResource OutlineButton}" Padding="6,2" Margin="0,0,4,0" FontSize="11"/>
+                                    <Button Content="15" Command="{Binding SetCopiesCommand}" CommandParameter="15" Style="{StaticResource OutlineButton}" Padding="6,2" Margin="0,0,4,0" FontSize="11" ToolTip="3 complete rows of 5"/>
+                                    <Button Content="20" Command="{Binding SetCopiesCommand}" CommandParameter="20" Style="{StaticResource OutlineButton}" Padding="6,2" Margin="0,0,4,0" FontSize="11" ToolTip="4 complete rows of 5"/>
+                                    <Button Content="⚡ Full Sheet" Command="{Binding FillMaxCopiesCommand}" Style="{StaticResource OutlineButton}" Padding="8,2" FontSize="11" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" ToolTip="Fill maximum photos with 0 paper waste"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- MULTI-SIZE COMBO CONTROLS -->
+                            <StackPanel Visibility="{Binding IsComboMode, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Pack multiple photo sizes on this SAME sheet without paper wastage:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+
+                                <!-- Batch 1: Passport -->
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="80"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Batch 1: Standard Passport (3.5 × 4.5 cm)" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    <TextBox Grid.Column="1" Text="{Binding ComboBatch1Count, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+
+                                <!-- Batch 2: Stamp -->
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="80"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Batch 2: Stamp Size (2.5 × 3.0 cm)" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    <TextBox Grid.Column="1" Text="{Binding ComboBatch2Count, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+
+                                <!-- Batch 3: PAN -->
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="80"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Batch 3: PAN / Small (2.5 × 3.5 cm)" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    <TextBox Grid.Column="1" Text="{Binding ComboBatch3Count, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- RIGHT: LIVE SHEET CANVAS -->
+            <Border Grid.Column="1" Background="#090A10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Preview View Mode Bar -->
+                    <Border Background="#161824" Padding="12,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="👁️ Sheet Preview" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="4,0,10,0"/>
+                                <TextBlock Text="• Auto Zero-Waste Space Fit" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <RadioButton GroupName="ViewModeGroup" Content="🔍 Fit Full Page" IsChecked="{Binding IsFitPageMode}" Command="{Binding SetViewModeCommand}" CommandParameter="FitPage" FontSize="11" FontWeight="SemiBold" Margin="0,0,12,0"/>
+                                <RadioButton GroupName="ViewModeGroup" Content="🔍 1:1 Actual Size" IsChecked="{Binding IsActualSizeMode}" Command="{Binding SetViewModeCommand}" CommandParameter="ActualSize" FontSize="11"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Fit Page Mode (Scales neatly to fit window so whole page is visible at once!) -->
+                    <Grid Grid.Row="1" Visibility="{Binding IsFitPageMode, Converter={StaticResource BoolToVis}}" Margin="14">
+                        <Border Background="White" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="2">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="#000000"/>
+                            </Border.Effect>
+                            <Image Source="{Binding SheetPreviewImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Actual Size Mode (Scrollable 1:1 pixel inspection) -->
+                    <ScrollViewer Grid.Row="1" Visibility="{Binding IsActualSizeMode, Converter={StaticResource BoolToVis}}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#090A10" Padding="14">
+                        <Border Background="White" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="2">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="#000000"/>
+                            </Border.Effect>
+                            <!-- Realtime high-res sheet canvas -->
+                            <Image Source="{Binding SheetPreviewImage}" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Border>
+                    </ScrollViewer>
+
+                    <!-- Placeholder if no photo loaded yet -->
+                    <Grid Visibility="{Binding HasPhoto, Converter={StaticResource InverseBoolToVis}}" Background="#12131CEE">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="📸" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <TextBlock Text="No Photo Loaded" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                            <TextBlock Text="Click 'Choose Photo' or 'Paste Clipboard' to start creating studio sheets." FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Content="📂 Choose Photo" Command="{Binding BrowsePhotoCommand}" Style="{StaticResource PrimaryButton}" Padding="16,8" Margin="0,0,8,0"/>
+                                <Button Content="📋 Paste Clipboard" Command="{Binding PasteClipboardCommand}" Style="{StaticResource OutlineButton}" Padding="14,8"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Loading Indicator -->
+                    <ProgressBar IsIndeterminate="True" Height="4" VerticalAlignment="Top" 
+                                 Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVis}}" 
+                                 Foreground="{StaticResource AccentBrush}" Background="Transparent" BorderThickness="0"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- BOTTOM STATUS & EXPORT BAR -->
+        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⚡ Status: " FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="{Binding SheetSummary}" FontSize="11.5" Foreground="{StaticResource TextBrush}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="🌐 Export Single Photo (Govt Upload)" Command="{Binding OpenSingleExportCommand}" Style="{StaticResource AccentButton}" Height="34" Padding="14,0" Margin="0,0,8,0" FontWeight="Bold" IsEnabled="{Binding HasPhoto}" ToolTip="Export 1 single photo (20–50 KB) for SSC, UPSC, PAN &amp; Govt exam portals"/>
+                    <Button Content="💾 Save as PDF" Command="{Binding SaveSheetPdfCommand}" Style="{StaticResource OutlineButton}" Height="34" Padding="12,0" Margin="0,0,8,0" ToolTip="Export print-ready PDF document"/>
+                    <Button Content="🖼️ Save High-Res JPG" Command="{Binding SaveSheetJpgCommand}" Style="{StaticResource OutlineButton}" Height="34" Padding="12,0" Margin="0,0,8,0" ToolTip="Export 300 DPI high-resolution JPEG"/>
+                    <Button Content="🖨️ Direct Print Sheet" Command="{Binding PrintSheetCommand}" Style="{StaticResource PrimaryButton}" Height="34" Padding="16,0" FontWeight="Bold" ToolTip="Send directly to native printer dialog at 300 DPI"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MODAL OVERLAY: EXPORT SINGLE PASSPORT PHOTO FOR GOVT / ONLINE UPLOADS -->
+        <Grid Grid.RowSpan="3" Visibility="{Binding IsSingleExportDialogOpen, Converter={StaticResource BoolToVis}}" Background="#CC090A12" Panel.ZIndex="100">
+            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5" CornerRadius="12" 
+                    Width="640" MaxHeight="600" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0" ClipToBounds="True">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="30" ShadowDepth="6" Opacity="0.75" Color="#000000"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="46"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="56"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Title Bar -->
+                    <Border Grid.Row="0" Background="#141724" Padding="16,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="🌐 " FontSize="16"/>
+                                <TextBlock Text="Export Single Passport Photo (Govt Form &amp; Online Upload)" FontWeight="Bold" FontSize="13.5" Foreground="{StaticResource AccentBrush}"/>
+                            </StackPanel>
+                            <Button Content="✕" Command="{Binding CloseSingleExportCommand}" Style="{StaticResource TitleBarCloseButton}" HorizontalAlignment="Right" VerticalAlignment="Center" Width="28" Height="28"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Modal Body (2 Columns: Preview vs Settings) -->
+                    <Grid Grid.Row="1" Margin="16,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="220"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Live Single Photo Preview & File Size Meter -->
+                        <Border Grid.Column="0" Background="#0C0D16" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,14,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Single Photo Preview -->
+                                <Border Grid.Row="0" Background="#FFFFFF" CornerRadius="3" BorderBrush="#888888" BorderThickness="1" 
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Padding="2">
+                                    <Image Source="{Binding SingleExportPreviewImage}" MaxWidth="190" MaxHeight="240" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                </Border>
+
+                                <!-- File Size Status Pill -->
+                                <Border Grid.Row="1" Margin="0,10,0,0" Background="#181A2A" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6">
+                                    <TextBlock Text="{Binding SingleExportStatusText}" FontSize="11" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Right: Govt Presets, Size Clamping, and Name/Date Stamp -->
+                        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- Presets Selector -->
+                                <TextBlock Text="Select Government / Portal Preset:" FontWeight="Bold" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6"/>
+                                <ComboBox ItemsSource="{Binding SinglePresets}" SelectedIndex="{Binding SingleExportPresetIndex}" Height="32" Margin="0,0,0,12" FontSize="11.5"/>
+
+                                <!-- Dimensions & KB Limits -->
+                                <GroupBox Header="Dimensions &amp; File Size (KB) Limits" Margin="0,0,0,10">
+                                    <Grid Margin="4,6">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Width & Height -->
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                                            <TextBlock Text="Width (cm):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBox Text="{Binding SingleWidthCm, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
+                                            <TextBlock Text="Height (cm):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBox Text="{Binding SingleHeightCm, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- Min KB & Max KB -->
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Min File Size (KB):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBox Text="{Binding SingleMinKb, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1">
+                                            <TextBlock Text="Max File Size (KB):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBox Text="{Binding SingleMaxKb, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </GroupBox>
+
+                                <!-- Candidate Name & Date of Photo (DOP) Stamp -->
+                                <GroupBox Header="Candidate Name &amp; Date Stamp (Optional)" Margin="0,0,0,6">
+                                    <StackPanel Margin="4,6">
+                                        <CheckBox Content="Add Name &amp; Date of Photo (DOP) Banner" IsChecked="{Binding SingleAddStamp}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        
+                                        <Grid Visibility="{Binding SingleAddStamp, Converter={StaticResource BoolToVis}}">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,6">
+                                                <TextBlock Text="Candidate Full Name (in CAPITAL):" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                <TextBox Text="{Binding SingleCandidateName, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+                                                <TextBlock Text="Date of Photo (e.g. 21-09-2026):" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                <TextBox Text="{Binding SingleDateOfPhoto, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- Modal Action Footer -->
+                    <Border Grid.Row="2" Background="#141724" Padding="16,10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                        <Grid>
+                            <Button Content="✕ Cancel" Command="{Binding CloseSingleExportCommand}" Style="{StaticResource OutlineButton}" Height="34" Padding="16,0" HorizontalAlignment="Left"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="📋 Copy Image" Command="{Binding CopySinglePhotoCommand}" Style="{StaticResource OutlineButton}" Height="34" Padding="14,0" Margin="0,0,8,0" ToolTip="Copy single photo to clipboard for quick pasting"/>
+                                <Button Content="💾 Save Single Photo (JPG)" Command="{Binding SaveSinglePhotoCommand}" Style="{StaticResource AccentButton}" Height="34" Padding="18,0" FontWeight="Bold" ToolTip="Save ready-to-upload JPEG file"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

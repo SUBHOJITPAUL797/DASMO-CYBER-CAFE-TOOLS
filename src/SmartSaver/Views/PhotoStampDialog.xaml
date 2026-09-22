@@ -1,0 +1,176 @@
+<Window x:Class="SmartSaver.Views.PhotoStampDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SmartSaver.Converters"
+        Title="DASMO CYBER COMPRESSOR — Candidate Name &amp; Date Stamp" Height="620" Width="520"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True">
+    <Window.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="64"/>
+            </Grid.RowDefinitions>
+
+            <!-- Background Texture -->
+            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.30" IsHitTestVisible="False" Grid.RowSpan="3"/>
+
+            <!-- Title Bar -->
+            <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                    <TextBlock Text="⚡ " FontSize="14"/>
+                    <TextBlock Text="DASMO CYBER COMPRESSOR — Name &amp; Date Stamp" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="🗕" Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click" ToolTip="Minimize"/>
+                    <Button Content="✕" Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click" ToolTip="Close"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Main Content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="20,10">
+                <StackPanel>
+                    <!-- File Info Card -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="📸" FontSize="26" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" ToolTip="{Binding FileName}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="Original Size: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                                    <TextBlock Text="{Binding FileSizeFormatted}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Stamp Details -->
+                    <GroupBox Header="1. Candidate Name &amp; Date Details">
+                        <StackPanel Margin="0,4">
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="Candidate Name:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding CandidateName, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+                                         ToolTip="Enter candidate full name (e.g. RAHUL SHARMA)"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="Date Stamp:" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding DatePrefixes}" SelectedItem="{Binding SelectedDatePrefix}" Margin="0,0,6,0"/>
+                                <TextBox Grid.Column="2" Text="{Binding DateText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+                                         ToolTip="Date of Photo (e.g. 15-08-2026)"/>
+                            </Grid>
+
+                            <CheckBox Content="Standardize to Official Passport Size (3.5 × 4.5 cm / 413×531 px)" 
+                                      IsChecked="{Binding StandardPassportDimensions}" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Compression & Presets -->
+                    <GroupBox Header="2. File Size Clamp (SSC / Exam Portals)" Margin="0,8,0,0">
+                        <StackPanel Margin="0,4">
+                            <CheckBox Content="Compress output to target size (20 KB - 50 KB JPG)" IsChecked="{Binding IsCompressEnabled}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+
+                            <StackPanel Visibility="{Binding IsCompressEnabled, Converter={StaticResource BoolToVis}}">
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Label Content="Target Size:" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding TargetSizeKB, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
+                                    <ComboBox Grid.Column="2" SelectedValue="{Binding TargetSizeUnit, Mode=TwoWay}" SelectedValuePath="Content">
+                                        <ComboBoxItem Content="KB"/>
+                                        <ComboBoxItem Content="MB"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <Button Content="20 KB" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="20"/>
+                                    <Button Content="50 KB (SSC)" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="50"/>
+                                    <Button Content="100 KB" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="100"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Destination -->
+                    <GroupBox Header="3. Output Destination" Margin="0,8,0,0">
+                        <StackPanel Margin="0,4">
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="File Name:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding OutputFileName, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="Save Folder:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" VerticalContentAlignment="Center"/>
+                                <Button Grid.Column="2" Content="📁 Browse..." Style="{StaticResource ChipButton}" Command="{Binding BrowseDirectoryCommand}"/>
+                            </Grid>
+
+                            <CheckBox Content="Open stamped photo automatically when done" IsChecked="{Binding OpenOnComplete}" FontSize="11" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Result Box -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10" Margin="0,8,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            Visibility="{Binding ResultText, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding ResultText}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="📂 Open Photo" Style="{StaticResource ChipButton}" Command="{Binding OpenResultCommand}" 
+                                    Visibility="{Binding IsSuccess, Converter={StaticResource BoolToVis}}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Bottom Action Bar -->
+            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="15,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+
+                    <Button Grid.Column="1" Content="Cancel" Width="80" Margin="0,0,10,0" Command="{Binding CancelCommand}"/>
+                    <Button Grid.Column="2" Content="🏷️ Create Stamped Photo" Style="{StaticResource PrimaryButton}" Command="{Binding StampCommand}" Width="180"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

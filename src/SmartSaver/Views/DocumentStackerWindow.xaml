@@ -1,0 +1,300 @@
+<Window x:Class="SmartSaver.Views.DocumentStackerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SmartSaver.Converters"
+        Title="DASMO CYBER COMPRESSOR — A4 Document Stacker &amp; Direct ID Printer" Height="740" Width="620"
+        MinHeight="660" MinWidth="540"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="CanResizeWithGrip">
+    <Window.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:StringEqualsConverter x:Key="StringEquals"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="68"/>
+            </Grid.RowDefinitions>
+
+            <!-- Background Texture Layer -->
+            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.25" IsHitTestVisible="False" Grid.RowSpan="3"/>
+
+            <!-- Custom Title Bar -->
+            <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                    <TextBlock Text="🖨️ " FontSize="14"/>
+                    <TextBlock Text="DASMO CYBER COMPRESSOR — A4 ID Card Stacker &amp; Direct Printer" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="🗕" Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click" ToolTip="Minimize"/>
+                    <Button Content="🗖" Style="{StaticResource TitleBarButton}" Click="MaximizeButton_Click" ToolTip="Maximize"/>
+                    <Button Content="✕" Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click" ToolTip="Close"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Main Content Area (Scrollable) -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="18,12">
+                    
+                    <!-- Shortcut to Multi-Card Ration/Aadhaar Print -->
+                    <Border Background="#162032" BorderBrush="#00BCD4" BorderThickness="1.5" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="💳 " FontSize="14"/>
+                                    <TextBlock Text="Batch Printing e-Ration, Aadhaar, PAN or Voter PDFs? (5 Cards/A4)" FontWeight="Bold" FontSize="13" Foreground="#00BCD4"/>
+                                </StackPanel>
+                                <TextBlock Text="Auto-crops 1-20+ Indian Govt PDFs and arranges them on A4 with scissor cut lines into Word/PDF." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="20,3,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="🚀 Open Ration / Aadhaar Print ➔" Click="OpenGovtCardPrint_Click" Style="{StaticResource PrimaryButton}" Padding="14,8" FontWeight="Bold"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Top WhatsApp Quick Paste Bar -->
+                    <Border Background="#1E2333" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="⚡ 1-Click WhatsApp ID Card Stacker" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextBrush}"/>
+                                <TextBlock Text="Copy photo in WhatsApp (Ctrl+C) and paste below without needing MS Word!" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="📋 Auto-Paste Next" Command="{Binding PasteAutoClipboardCommand}" Style="{StaticResource AccentButton}" Padding="12,6" FontWeight="Bold" ToolTip="Paste image from clipboard directly into Front or Back"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- A4 Visual Sheet Layout Container -->
+                    <Border Width="240" Height="340" Background="#FFFFFF" CornerRadius="4" 
+                            BorderBrush="#94A3B8" BorderThickness="2" HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.4"/>
+                        </Border.Effect>
+                        <Grid>
+                            <!-- Mode 1 & 2: Two Slots (ID Card or Half-A4) -->
+                            <Grid Visibility="{Binding IsBackSlotVisible, Converter={StaticResource BoolToVis}}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Top Slot (Front Side) -->
+                                <Grid Grid.Row="0" Margin="10,10,10,6" Background="#F8FAFC">
+                                    <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="3"/>
+                                    <!-- Image Preview -->
+                                    <Image Source="{Binding FrontImageSource}" Stretch="Uniform" Margin="2"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Visibility="{Binding FrontPreviewVisibility}">
+                                        <Image.LayoutTransform>
+                                            <ScaleTransform ScaleX="{Binding FrontScaleFactor}" ScaleY="{Binding FrontScaleFactor}"/>
+                                        </Image.LayoutTransform>
+                                    </Image>
+                                    <!-- Placeholder Text -->
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                Visibility="{Binding FrontPlaceholderVisibility}">
+                                        <TextBlock Text="FRONT SIDE (TOP)" FontSize="10" FontWeight="Bold" Foreground="#334155" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding FrontFileName}" FontSize="9" Foreground="#64748B" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="170"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Mid divider dashed fold / cut line -->
+                                <Line Grid.Row="1" X1="15" Y1="0" X2="225" Y2="0" Stroke="#94A3B8" StrokeThickness="1" StrokeDashArray="4 2" SnapsToDevicePixels="True"/>
+
+                                <!-- Bottom Slot (Back Side) -->
+                                <Grid Grid.Row="2" Margin="10,6,10,10" Background="#F8FAFC">
+                                    <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="3"/>
+                                    <!-- Image Preview -->
+                                    <Image Source="{Binding BackImageSource}" Stretch="Uniform" Margin="2"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Visibility="{Binding BackPreviewVisibility}">
+                                        <Image.LayoutTransform>
+                                            <ScaleTransform ScaleX="{Binding BackScaleFactor}" ScaleY="{Binding BackScaleFactor}"/>
+                                        </Image.LayoutTransform>
+                                    </Image>
+                                    <!-- Placeholder Text -->
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                Visibility="{Binding BackPlaceholderVisibility}">
+                                        <TextBlock Text="BACK SIDE (BOTTOM)" FontSize="10" FontWeight="Bold" Foreground="#334155" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding BackFileName}" FontSize="9" Foreground="#64748B" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="170"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Mode 3: Single Document (Full A4 Entire Page) -->
+                            <Grid Margin="10" Background="#F8FAFC"
+                                  Visibility="{Binding IsFullA4Sheet, Converter={StaticResource BoolToVis}}">
+                                <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="3"/>
+                                <Image Source="{Binding FrontImageSource}" Stretch="Uniform" Margin="4"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Visibility="{Binding FrontPreviewVisibility}">
+                                    <Image.LayoutTransform>
+                                        <ScaleTransform ScaleX="{Binding FrontScaleFactor}" ScaleY="{Binding FrontScaleFactor}"/>
+                                    </Image.LayoutTransform>
+                                </Image>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                            Visibility="{Binding FrontPlaceholderVisibility}">
+                                    <TextBlock Text="📄 FULL A4 ENTIRE PAGE DOCUMENT" FontSize="11" FontWeight="Bold" Foreground="#334155" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FrontFileName}" FontSize="9.5" Foreground="#64748B" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="200" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <!-- Card Sizing Presets & Auto-Whiten -->
+                    <GroupBox Header="1. Print Layout &amp; Card Size Sizing" Margin="0,0,0,10">
+                        <StackPanel Margin="0,4">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <RadioButton Content="🪪 Standard ID Card (8.5 × 5.5 cm Up &amp; Down)" IsChecked="{Binding IsStandardIdCard}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Exact 8.5cm length x 5.5cm width Indian standard ID card, both front and back same size aligned top and bottom"/>
+                                <RadioButton Content="📜 Half-A4 (Passbook/Certificates)" IsChecked="{Binding IsHalfA4}" Margin="0,0,14,0" ToolTip="Splits A4 into two equal horizontal halves"/>
+                                <RadioButton Content="📄 Full A4 Entire Page" IsChecked="{Binding IsFullA4Sheet}" ToolTip="Fits a single document or scanned sheet across the entire A4 paper"/>
+                            </StackPanel>
+
+                            <WrapPanel Margin="0,2,0,0">
+                                <CheckBox Content="✨ Auto-Whiten Paper &amp; Remove Shadows" 
+                                          IsChecked="{Binding AutoWhiten}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,16,4"/>
+                                <CheckBox Content="🖤 Pitch Black Text Boost (Faded Docs &amp; Xerox)" 
+                                          IsChecked="{Binding PitchBlackText}" FontWeight="Bold" Foreground="#00E5FF" Margin="0,0,16,4"
+                                          ToolTip="Transforms faded, gray, low-contrast text into rich deep pitch black while making paper pure white"/>
+                                <CheckBox Content="🔒 Same Size for Both Cards" 
+                                          IsChecked="{Binding SameSizeBothCards}" Visibility="{Binding IsStandardIdCard, Converter={StaticResource BoolToVis}}"
+                                          FontWeight="SemiBold" Margin="0,0,16,4" ToolTip="Locks front and back cards to identical physical dimensions"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Add Documents Section -->
+                    <GroupBox Header="2. Select / Paste Document or Card Images" Margin="0,0,0,10">
+                        <StackPanel Margin="0,4">
+                            <!-- Auto-Crop On Import Option -->
+                            <CheckBox Content="🤖 Auto-Crop ID Card from Smartphone Photos (on Paste / Select)" 
+                                      IsChecked="{Binding AutoCropOnImport}" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,8" 
+                                      ToolTip="Automatically detects card boundaries in camera photos and crops/rotates them to standard ID card on-device."/>
+
+                            <!-- Quick Batch Selection & Swap Action Bar (hidden in Full A4 mode) -->
+                            <Grid Margin="0,0,0,8" Visibility="{Binding IsBackSlotVisible, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="📁 Select 2 Files from Folder..." Command="{Binding SelectBothFilesCommand}" 
+                                        Style="{StaticResource SecondaryButton}" Margin="0,0,6,0"/>
+                                <Button Grid.Column="1" Content="⇅ Swap Top/Bottom" Command="{Binding SwapFilesCommand}" 
+                                        Width="130" Margin="0,0,6,0"/>
+                                <Button Grid.Column="2" Content="📄 2-Page PDF" Command="{Binding ImportPdfCommand}" 
+                                        Width="100"/>
+                            </Grid>
+
+                            <!-- Front slot label -->
+                            <TextBlock Text="{Binding Slot1Label}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,2,0,4"/>
+
+                            <!-- Front slot row -->
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding FrontPath, Mode=OneWay}" IsReadOnly="True" VerticalContentAlignment="Center" Margin="0,0,6,0" Tag="Front side image or PDF"/>
+                                <Button Grid.Column="1" Content="📋 Paste File" Command="{Binding PasteFrontClipboardCommand}" Style="{StaticResource PrimaryButton}" Margin="0,0,4,0" Padding="8,4"/>
+                                <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseFrontCommand}" Width="65" Margin="0,0,4,0"/>
+                                <Button Grid.Column="3" Content="✂️ Auto" Command="{Binding AutoCropFrontCommand}" IsEnabled="{Binding HasFront}" Style="{StaticResource SecondaryButton}" Margin="0,0,4,0" Padding="6,4" ToolTip="Automatically detect and crop card edges from this photo"/>
+                                <Button Grid.Column="4" Content="↷ Rotate" Command="{Binding RotateFrontCommand}" IsEnabled="{Binding HasFront}" Style="{StaticResource SecondaryButton}" Margin="0,0,4,0" Padding="6,4" ToolTip="Rotate front image 90° clockwise"/>
+                                <Button Grid.Column="5" Content="✏️ Crop" Command="{Binding OpenCropFrontCommand}" IsEnabled="{Binding HasFront}" Margin="0,0,4,0" Padding="6,4" ToolTip="Open interactive visual cropper &amp; rotation editor"/>
+                                <Button Grid.Column="6" Content="📱 WhatsApp Fix" Command="{Binding WhatsAppFixerFrontCommand}" IsEnabled="{Binding HasFront}" Style="{StaticResource AccentButton}" Margin="0,0,4,0" Padding="6,4" ToolTip="Straighten angled phone photos taken on bedsheets/tables &amp; remove shadows"/>
+                                <Button Grid.Column="7" Content="✕" Command="{Binding ClearFrontCommand}" Width="28"/>
+                            </Grid>
+
+                            <!-- Back slot row (hidden in Full A4 mode) -->
+                            <Grid Margin="0,2,0,4" Visibility="{Binding IsBackSlotVisible, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding BackPath, Mode=OneWay}" IsReadOnly="True" VerticalContentAlignment="Center" Margin="0,0,6,0" Tag="Back side image or PDF"/>
+                                <Button Grid.Column="1" Content="📋 Paste Back" Command="{Binding PasteBackClipboardCommand}" Style="{StaticResource PrimaryButton}" Margin="0,0,4,0" Padding="8,4"/>
+                                <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseBackCommand}" Width="65" Margin="0,0,4,0"/>
+                                <Button Grid.Column="3" Content="✂️ Auto" Command="{Binding AutoCropBackCommand}" IsEnabled="{Binding HasBack}" Style="{StaticResource SecondaryButton}" Margin="0,0,4,0" Padding="6,4" ToolTip="Automatically detect and crop card edges from this photo"/>
+                                <Button Grid.Column="4" Content="↷ Rotate" Command="{Binding RotateBackCommand}" IsEnabled="{Binding HasBack}" Style="{StaticResource SecondaryButton}" Margin="0,0,4,0" Padding="6,4" ToolTip="Rotate back image 90° clockwise"/>
+                                <Button Grid.Column="5" Content="✏️ Crop" Command="{Binding OpenCropBackCommand}" IsEnabled="{Binding HasBack}" Margin="0,0,4,0" Padding="6,4" ToolTip="Open interactive visual cropper &amp; rotation editor"/>
+                                <Button Grid.Column="6" Content="📱 WhatsApp Fix" Command="{Binding WhatsAppFixerBackCommand}" IsEnabled="{Binding HasBack}" Style="{StaticResource AccentButton}" Margin="0,0,4,0" Padding="6,4" ToolTip="Straighten angled phone photos taken on bedsheets/tables &amp; remove shadows"/>
+                                <Button Grid.Column="7" Content="✕" Command="{Binding ClearBackCommand}" Width="28"/>
+                            </Grid>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Save / Output Options (Optional) -->
+                    <GroupBox Header="3. File Export &amp; Compression (Optional for Portal Upload)" Margin="0,0,0,4">
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="65"/>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="65"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Content="Format:" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1" SelectedValue="{Binding SelectedOutputFormat}" SelectedValuePath="Content" Margin="0,0,8,0">
+                                <ComboBoxItem Content="PDF"/>
+                                <ComboBoxItem Content=".jpg"/>
+                                <ComboBoxItem Content=".png"/>
+                            </ComboBox>
+
+                            <Label Grid.Column="2" Content="Target Size:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="3" Text="{Binding TargetSize, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox Grid.Column="4" SelectedValue="{Binding TargetSizeUnit}" SelectedValuePath="Content">
+                                <ComboBoxItem Content="KB"/>
+                                <ComboBoxItem Content="MB"/>
+                            </ComboBox>
+                        </Grid>
+                    </GroupBox>
+
+                    <!-- Result Text Box -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10" Margin="0,6,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            Visibility="{Binding ResultText, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding ResultText}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Bottom Action Bar with 1-Click Print & Save -->
+            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="15,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+
+                    <Button Grid.Column="1" Content="Close" Width="70" Margin="0,0,8,0" Command="{Binding CloseCommand}"/>
+                    <Button Grid.Column="2" Content="💾 Save A4 File" Style="{StaticResource SecondaryButton}" Command="{Binding StackCommand}" Padding="16,8" Margin="0,0,8,0"/>
+                    <Button Grid.Column="3" Content="🖨️ Print A4 Document" Style="{StaticResource AccentButton}" Command="{Binding PrintNowCommand}" Padding="20,8" FontWeight="Bold"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

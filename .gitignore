@@ -1,0 +1,26 @@
+# Build outputs across all projects
+**/bin/
+**/obj/
+**/publish/
+*wpftmp*
+__pycache__/
+*.pyc
+
+# Release installer binaries (uploaded to GitHub Releases, not git repo)
+releases/*.msi
+*.msi
+*.wixpdb
+
+# Firebase debug
+firebase-debug.log
+
+# .NET local tools
+.dotnet/
+
+# Test archive folder
+tests_archive/
+
+# Nested separate projects/repos
+DASMO-CYBER-CAPTURE/
+SMS-FORWARDER/
+DASMO-DOC-SCANNER+PHOTO PRINT/

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Fragment>
+    <!-- Main application files -->
+    <ComponentGroup Id="AppComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="ExtraComponents">
+    </ComponentGroup>
+
+    <!-- Shortcut components -->
+    <ComponentGroup Id="ShortcutComponents">
+
+      <!-- Start Menu shortcut -->
+      <Component Id="StartMenuShortcut" Directory="SmartSaverProgramMenu" Guid="*">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="DASMO CYBER CAFE TOOLS"
+                  Description="DASMO CYBER CAFE TOOLS - All-in-One Cyber Cafe Management &amp; Document Processing Suite"
+                  Target="[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="SmartSaverIcon" />
+        <RemoveFolder Id="RemoveStartMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\DASMO CYBER CAFE TOOLS" Name="StartMenuShortcut"
+                       Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+      <!-- Desktop shortcut -->
+      <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="*">
+        <Shortcut Id="DesktopShortcut"
+                  Name="DASMO CYBER CAFE TOOLS"
+                  Description="DASMO CYBER CAFE TOOLS - All-in-One Cyber Cafe Management &amp; Document Processing Suite"
+                  Target="[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="SmartSaverIcon" />
+        <RegistryValue Root="HKCU" Key="Software\DASMO CYBER CAFE TOOLS" Name="DesktopShortcut"
+                       Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- Application icon definition -->
+    <Icon Id="SmartSaverIcon" SourceFile="$(var.PublishDir)\DASMO CYBER CAFE TOOLS.exe" />
+
+  </Fragment>
+
+</Wix>

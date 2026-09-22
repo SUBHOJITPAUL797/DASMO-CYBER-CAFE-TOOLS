@@ -1,0 +1,183 @@
+<Window x:Class="SmartSaver.Views.QuickPeekDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SmartSaver.Converters"
+        Title="DASMO CYBER COMPRESSOR — Quick Peek Preview" Height="680" Width="920"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="12" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5" ClipToBounds="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="45"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="60"/>
+            </Grid.RowDefinitions>
+
+            <!-- Photo Background Layer -->
+            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.35" IsHitTestVisible="False" Grid.RowSpan="3"/>
+
+            <!-- Custom Header -->
+            <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                    <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding ExtensionUpper}" FontWeight="Bold" Foreground="#101018" FontSize="11"/>
+                    </Border>
+                    <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="14" Foreground="#FFFFFF"/>
+                    <TextBlock Text=" (" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <TextBlock Text="{Binding FileSizeFormatted}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <TextBlock Text=")" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="🗕" Width="40" Height="45" Background="Transparent" BorderThickness="0" Click="MinimizeButton_Click" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <Button Content="✕" Width="45" Height="45" Background="Transparent" BorderThickness="0" Click="CloseButton_Click" FontSize="14" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Main Preview Area -->
+            <Grid Grid.Row="1" Margin="15">
+                <!-- Loading Indicator -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+                    <ProgressBar IsIndeterminate="True" Width="200" Height="4" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Rendering High-Def Preview..." Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+
+                <!-- PDF Previewer -->
+                <Grid Visibility="{Binding IsPdf, Converter={StaticResource BoolToVis}}">
+                    <!-- Normal Page View -->
+                    <Grid Visibility="{Binding IsPasswordProtected, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                        <ScrollViewer x:Name="PdfScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                      PreviewMouseWheel="ScrollViewer_PreviewMouseWheel"
+                                      PreviewMouseLeftButtonDown="PanScrollViewer_MouseLeftButtonDown"
+                                      PreviewMouseMove="PanScrollViewer_MouseMove"
+                                      PreviewMouseLeftButtonUp="PanScrollViewer_MouseLeftButtonUp">
+                            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Image Source="{Binding SelectedPdfPage}" Stretch="Uniform" MaxHeight="540" Margin="10">
+                                    <Image.LayoutTransform>
+                                        <TransformGroup>
+                                            <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                            <RotateTransform Angle="{Binding PageRotation}"/>
+                                        </TransformGroup>
+                                    </Image.LayoutTransform>
+                                </Image>
+                            </Grid>
+                        </ScrollViewer>
+
+                        <!-- PDF Page, Rotation & Zoom Controls Overlay -->
+                        <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,15" Background="#EE1E1E2E" CornerRadius="20" Padding="14,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding CurrentPageDisplay}" VerticalAlignment="Center" FontWeight="SemiBold" Margin="5,0,15,0"/>
+                                <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,15,0"/>
+
+                                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,15,2"/>
+
+                                <Button Content="↺" Command="{Binding RotateCcwCommand}" Style="{StaticResource ChipButton}" Width="28" Margin="0,0,6,0" ToolTip="Rotate 90° CCW"/>
+                                <Button Content="↻" Command="{Binding RotateCwCommand}" Style="{StaticResource ChipButton}" Width="28" Margin="0,0,15,0" ToolTip="Rotate 90° CW"/>
+
+                                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,15,2"/>
+
+                                <Button Content="➖" Command="{Binding ZoomOutCommand}" Style="{StaticResource ChipButton}" Width="28" ToolTip="Zoom Out (Ctrl + -)"/>
+                                <TextBlock Text="{Binding ZoomPercentageDisplay}" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="8,0" Width="42" TextAlignment="Center" FontSize="11"/>
+                                <Button Content="➕" Command="{Binding ZoomInCommand}" Style="{StaticResource ChipButton}" Width="28" Margin="0,0,8,0" ToolTip="Zoom In (Ctrl + +)"/>
+                                <Button Content="Fit" Command="{Binding ResetZoomCommand}" Style="{StaticResource ChipButton}" ToolTip="Reset Zoom (Ctrl + 0)"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Password Protected Overlay Card -->
+                    <Border Visibility="{Binding IsPasswordProtected, Converter={StaticResource BoolToVis}}"
+                            VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Background="#1E1F2E" CornerRadius="12" Padding="25,22" Width="420"
+                            BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="🔒 Password Protected PDF" FontWeight="Bold" FontSize="16" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Text="This document is locked with a password. Enter password below to unlock and view preview." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,15"/>
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding PdfPassword, UpdateSourceTrigger=PropertyChanged}" Width="240" Margin="0,0,10,0" Padding="8,6" FontSize="13">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Return" Command="{Binding UnlockPdfCommand}"/>
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                                <Button Grid.Column="1" Content="🔓 Unlock" Command="{Binding UnlockPdfCommand}" Style="{StaticResource PrimaryButton}" Padding="15,6"/>
+                            </Grid>
+
+                            <TextBlock Text="{Binding PasswordErrorMessage}" Foreground="#EF4444" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,4,0,0" Visibility="{Binding HasPasswordError, Converter={StaticResource BoolToVis}}"/>
+
+                            <!-- Password Helper note for e-Aadhaar / e-Ration cards -->
+                            <TextBlock Text="Tip: For e-Aadhaar use First 4 Name letters in CAPS + Birth Year (e.g. SUBH1995)." Foreground="#64748B" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Image Previewer -->
+                <Grid Visibility="{Binding IsImage, Converter={StaticResource BoolToVis}}">
+                    <ScrollViewer x:Name="ImageScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                  PreviewMouseWheel="ScrollViewer_PreviewMouseWheel"
+                                  PreviewMouseLeftButtonDown="PanScrollViewer_MouseLeftButtonDown"
+                                  PreviewMouseMove="PanScrollViewer_MouseMove"
+                                  PreviewMouseLeftButtonUp="PanScrollViewer_MouseLeftButtonUp">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="540" Margin="10">
+                                <Image.LayoutTransform>
+                                    <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                </Image.LayoutTransform>
+                            </Image>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- Image Zoom Controls Overlay -->
+                    <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,15" Background="#EE1E1E2E" CornerRadius="20" Padding="12,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="➖" Command="{Binding ZoomOutCommand}" Style="{StaticResource ChipButton}" Width="28" ToolTip="Zoom Out (Ctrl + -)"/>
+                            <TextBlock Text="{Binding ZoomPercentageDisplay}" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="8,0" Width="42" TextAlignment="Center" FontSize="11"/>
+                            <Button Content="➕" Command="{Binding ZoomInCommand}" Style="{StaticResource ChipButton}" Width="28" Margin="0,0,8,0" ToolTip="Zoom In (Ctrl + +)"/>
+                            <Button Content="Fit" Command="{Binding ResetZoomCommand}" Style="{StaticResource ChipButton}" ToolTip="Reset Zoom (Ctrl + 0)"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Text Previewer -->
+                <ScrollViewer Visibility="{Binding IsText, Converter={StaticResource BoolToVis}}" VerticalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding TextContent}" IsReadOnly="True" Background="#14141E" Foreground="#E0E0F0" FontFamily="Consolas" FontSize="12" Padding="15" BorderThickness="0"/>
+                </ScrollViewer>
+
+                <!-- Soft Background Owner Portrait Watermark -->
+                <Grid HorizontalAlignment="Right" VerticalAlignment="Bottom" Opacity="0.05" IsHitTestVisible="False" Margin="0,0,10,10">
+                    <Image Source="pack://application:,,,/Resources/owner_portrait.png" Width="220" Height="220" Stretch="UniformToFill">
+                        <Image.Clip>
+                            <EllipseGeometry Center="110,110" RadiusX="105" RadiusY="105"/>
+                        </Image.Clip>
+                    </Image>
+                </Grid>
+            </Grid>
+
+            <!-- Bottom Action Toolbar -->
+            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,12,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                <Grid Margin="20,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <Button Content="⚡ Compress File..." Command="{Binding CompressCommand}" Style="{StaticResource PrimaryButton}" Width="140" Margin="0,0,8,0"/>
+                        <Button Content="💳 Ration/Aadhaar Print" Command="{Binding GovtCardPrintCommand}" Style="{StaticResource AccentButton}" Width="170" Margin="0,0,8,0" ToolTip="Batch crop and print 5 cards per A4 sheet"/>
+                        <Button Content="🖨️ A4 Stacker" Command="{Binding StackCommand}" Width="120" Margin="0,0,8,0" ToolTip="2-in-1 front/back ID stacker"/>
+                        <Button Content="📁 Folder" Command="{Binding OpenFolderCommand}" Width="85"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="Press Space or Esc to Close" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,15,0" FontSize="11"/>
+                        <Button Content="Close (Esc)" Command="{Binding CloseCommand}" Width="100"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

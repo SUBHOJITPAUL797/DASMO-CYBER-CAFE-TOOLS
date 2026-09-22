@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Fragment>
+    <ComponentGroup Id="RegistryComponents" Directory="INSTALLFOLDER">
+
+      <!-- Windows Startup Registry Entry (per-user) -->
+      <Component Id="StartupRegistryEntry" Guid="B1C2D3E4-F5A6-7890-1234-567890ABCDEF">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Microsoft\Windows\CurrentVersion\Run">
+          <RegistryValue Type="string"
+                         Name="DASMO CYBER CAFE TOOLS"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --background"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .jpg -->
+      <Component Id="ContextMenu_jpg" Guid="C2D3E4F5-A6B7-8901-2345-67890ABCDEF1">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.jpg\shell\SmartSaver">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Resize / Compress Image" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.jpg\shell\SmartSaver\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --resize &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .jpeg -->
+      <Component Id="ContextMenu_jpeg" Guid="D3E4F5A6-B7C8-9012-3456-7890ABCDEF12">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.jpeg\shell\SmartSaver">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Resize / Compress Image" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.jpeg\shell\SmartSaver\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --resize &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .png -->
+      <Component Id="ContextMenu_png" Guid="E4F5A6B7-C8D9-0123-4567-890ABCDEF123">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.png\shell\SmartSaver">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Resize / Compress Image" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.png\shell\SmartSaver\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --resize &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .bmp -->
+      <Component Id="ContextMenu_bmp" Guid="F5A6B7C8-D9E0-1234-5678-90ABCDEF1234">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.bmp\shell\SmartSaver">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Resize / Compress Image" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.bmp\shell\SmartSaver\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --resize &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .webp -->
+      <Component Id="ContextMenu_webp" Guid="A6B7C8D9-E0F1-2345-6789-0ABCDEF12345">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.webp\shell\SmartSaver">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Resize / Compress Image" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.webp\shell\SmartSaver\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --resize &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .tiff -->
+      <Component Id="ContextMenu_tiff" Guid="B7C8D9E0-F1A2-3456-7890-ABCDEF123456">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.tiff\shell\SmartSaver">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Resize / Compress Image" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.tiff\shell\SmartSaver\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --resize &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .tif -->
+      <Component Id="ContextMenu_tif" Guid="C8D9E0F1-A2B3-4567-8901-BCDEF1234567">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.tif\shell\SmartSaver">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Resize / Compress Image" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.tif\shell\SmartSaver\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --resize &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: ALL files (*) — SmartSaver Compress to Size -->
+      <Component Id="ContextMenu_AllFiles" Guid="D9E0F1A2-B3C4-5678-9012-CDEF12345678">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\*\shell\SmartSaverCompress">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Compress to Size..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="NeverDefault" Type="integer" Value="1" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\*\shell\SmartSaverCompress\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --compress &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: Quick Peek Preview -->
+      <Component Id="ContextMenu_Peek" Guid="E0F1A2B3-C4D5-6789-0123-DEF123456789">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\*\shell\SmartSaverPeek">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Quick Peek Preview" />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="NeverDefault" Type="integer" Value="1" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\*\shell\SmartSaverPeek\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --peek &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .pdf Merge PDFs -->
+      <Component Id="ContextMenu_PdfMerge" Guid="A1B2C3D4-E5F6-7890-1234-567890ABCDEF">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverMerge">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Merge PDFs..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverMerge\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --merge &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .pdf Split / Extract Pages -->
+      <Component Id="ContextMenu_PdfSplit" Guid="B2C3D4E5-F6A7-8901-2345-67890ABCDEF0">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverSplit">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Extract / Split Pages..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverSplit\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --split &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .pdf Convert to Images -->
+      <Component Id="ContextMenu_PdfToImg" Guid="C3D4E5F6-A7B8-9012-3456-7890ABCDEF01">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdf2Img">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Convert PDF to Images..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdf2Img\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --pdf2img &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .pdf Edit PDF In-Place -->
+      <Component Id="ContextMenu_PdfEdit" Guid="D4E5F6A7-B8C9-0123-4567-890ABCDEF012">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdfEdit">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Edit PDF (In-Place)..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdfEdit\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --edit-pdf &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Disable Explorer Preview Handler Warning -->
+      <Component Id="DisablePreviewHandlerWarnings" Guid="F0A1B2C3-D4E5-6789-0123-EF1234567890">
+        <RegistryKey Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced">
+          <RegistryValue Type="integer" Name="DisablePreviewHandlerWarnings" Value="1" KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+    </ComponentGroup>
+  </Fragment>
+
+</Wix>

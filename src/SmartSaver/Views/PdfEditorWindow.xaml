@@ -1,0 +1,533 @@
+<Window x:Class="SmartSaver.Views.PdfEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:SmartSaver.Converters"
+        xmlns:models="clr-namespace:SmartSaver.Models"
+        Title="DASMO CYBER CAFE — PDF Editor Studio"
+        Width="1100" Height="720" MinWidth="800" MinHeight="550"
+        WindowStartupLocation="CenterScreen"
+        Background="#0E0F14" Foreground="#E0E0EE"
+        WindowStyle="None" AllowsTransparency="False"
+        AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop"
+        KeyDown="Window_KeyDown">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0"/>
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:InverseBooleanConverter x:Key="InverseBool"/>
+        <conv:NullToVisibilityConverter x:Key="NullToVis"/>
+        <conv:HexToBrushConverter x:Key="HexToBrush"/>
+
+        <Style x:Key="ToolRadioButton" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#B0B0C0"/>
+            <Setter Property="BorderBrush" Value="#333344"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="#00BCD4"/>
+                    <Setter Property="Foreground" Value="#000000"/>
+                    <Setter Property="BorderBrush" Value="#00BCD4"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#00BCD4"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ColorChipButton" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="#555566" BorderThickness="1.5" CornerRadius="11"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="38"/> <!-- Title Bar -->
+            <RowDefinition Height="Auto"/> <!-- Main Studio Toolbar -->
+            <RowDefinition Height="*"/> <!-- Workspace: Sidebar Thumbnails + Center Canvas -->
+            <RowDefinition Height="28"/> <!-- Bottom Status Bar -->
+        </Grid.RowDefinitions>
+
+        <!-- 1. CUSTOM TITLE BAR -->
+        <Border Grid.Row="0" Background="#161722" BorderBrush="#252736" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <TextBlock Text="📝" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="DASMO CYBER CAFE" FontWeight="Bold" Foreground="#00BCD4" FontSize="12.5" VerticalAlignment="Center"/>
+                    <TextBlock Text=" • PDF Editor Studio (In-Place Vector Modification)" Foreground="#A0A0B0" FontSize="12.5" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Current file pill -->
+                <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#202230" CornerRadius="4" Padding="10,3" BorderBrush="#303244" BorderThickness="1">
+                    <TextBlock Text="{Binding FileName}" Foreground="#FFFFFF" FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="450"/>
+                </Border>
+
+                <!-- Window buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Content="🗕" Width="42" Height="38" Background="Transparent" Foreground="#A0A0B0" BorderThickness="0" Click="Minimize_Click" FontSize="13" Cursor="Hand"/>
+                    <Button Content="🗖" Width="42" Height="38" Background="Transparent" Foreground="#A0A0B0" BorderThickness="0" Click="Maximize_Click" FontSize="13" Cursor="Hand"/>
+                    <Button Content="✕" Width="42" Height="38" Background="Transparent" Foreground="#FF5252" BorderThickness="0" Click="Close_Click" FontSize="13" Cursor="Hand"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 2. STUDIO TOOLBAR -->
+        <Border Grid.Row="1" Background="#1A1B28" BorderBrush="#26283A" BorderThickness="0,0,0,1" Padding="8,6">
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- File Actions -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                    <Button Content="📂 Open PDF" Command="{Binding OpenPdfCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,4,0" ToolTip="Open any PDF file (Ctrl+O)"/>
+                    <Button Content="💾 Save" Command="{Binding SavePdfCommand}" Style="{StaticResource PrimaryButton}" Height="32" Padding="12,0" Margin="0,0,4,0" ToolTip="Save changes directly to PDF (Ctrl+S)"/>
+                    <Button Content="💾 Save As..." Command="{Binding SaveAsPdfCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,4,0" ToolTip="Save as a new PDF file"/>
+                    <Button Content="🖨️ Print" Command="{Binding PrintPdfCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,4,0" Foreground="#00BCD4" ToolTip="Direct 1:1 Scale Print (Ctrl+P)"/>
+                </StackPanel>
+
+                <Rectangle Width="1" Height="24" Fill="#333346" Margin="4,0,10,0" VerticalAlignment="Center"/>
+
+                <!-- Interactive Tools -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                    <RadioButton GroupName="PdfEditorTools" Content="👆 Select" IsChecked="{Binding IsSelectTool, Mode=TwoWay}" Style="{StaticResource ToolRadioButton}" Height="32" Margin="0,0,4,0" ToolTip="Select, move or resize elements (F1)"/>
+                    <RadioButton GroupName="PdfEditorTools" Content="⬜ Whiteout Eraser" IsChecked="{Binding IsWhiteoutTool, Mode=TwoWay}" Style="{StaticResource ToolRadioButton}" Height="32" Margin="0,0,4,0" Foreground="#FFFFFF" FontWeight="Bold" ToolTip="Drag to cleanly erase text, dates, or photos (F2)"/>
+                    <RadioButton GroupName="PdfEditorTools" Content="✏️ Edit Text" IsChecked="{Binding IsEditTextTool, Mode=TwoWay}" Style="{StaticResource ToolRadioButton}" Height="32" Margin="0,0,4,0" Foreground="#FFD700" FontWeight="Bold" ToolTip="Click any existing text in the PDF to edit it in-place (F4)"/>
+                    <RadioButton GroupName="PdfEditorTools" Content="✍️ Add / Type Text" IsChecked="{Binding IsTextTool, Mode=TwoWay}" Style="{StaticResource ToolRadioButton}" Height="32" Margin="0,0,4,0" FontWeight="Bold" ToolTip="Click anywhere to type matching vector text (F3)"/>
+                    <RadioButton GroupName="PdfEditorTools" Content="✒️ Draw / Sign" IsChecked="{Binding IsPenTool, Mode=TwoWay}" Style="{StaticResource ToolRadioButton}" Height="32" Margin="0,0,4,0" ToolTip="Freehand pen or signature (F5)"/>
+                    <Button Content="🖼️ Insert Photo" Command="{Binding InsertImageCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,4,0" ToolTip="Insert applicant photo, stamp, or signature from PC"/>
+                    <Button Content="📋 Paste (Ctrl+V)" Command="{Binding PasteClipboardImageCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,4,0" ToolTip="Paste image or signature directly from clipboard"/>
+                </StackPanel>
+
+                <Rectangle Width="1" Height="24" Fill="#333346" Margin="4,0,10,0" VerticalAlignment="Center"/>
+
+                <!-- Text Properties Strip -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                    <!-- Font Family -->
+                    <ComboBox ItemsSource="{Binding FontFamilies}" SelectedItem="{Binding SelectedFontFamily}" Width="130" Height="32" Margin="0,0,4,0" ToolTip="Document font matching"/>
+
+                    <!-- Font Size Steppers -->
+                    <Button Content="−" Command="{Binding DecreaseFontSizeCommand}" Style="{StaticResource OutlineButton}" Width="26" Height="32" Margin="0,0,2,0" ToolTip="Decrease font size"/>
+                    <TextBox Text="{Binding FontSizePt, UpdateSourceTrigger=PropertyChanged}" Width="36" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontWeight="Bold" ToolTip="Font size in points (pt)"/>
+                    <Button Content="+" Command="{Binding IncreaseFontSizeCommand}" Style="{StaticResource OutlineButton}" Width="26" Height="32" Margin="2,0,6,0" ToolTip="Increase font size"/>
+
+                    <!-- Bold & Italic Toggles -->
+                    <ToggleButton Content="B" IsChecked="{Binding IsBold}" Width="28" Height="32" FontWeight="Bold" Margin="0,0,3,0" ToolTip="Bold text"/>
+                    <ToggleButton Content="I" IsChecked="{Binding IsItalic}" Width="28" Height="32" FontStyle="Italic" FontWeight="Bold" Margin="0,0,6,0" ToolTip="Italic text"/>
+
+                    <!-- Color Chips -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <Button Style="{StaticResource ColorChipButton}" Background="#000000" Command="{Binding SetTextColorCommand}" CommandParameter="#000000" ToolTip="Black"/>
+                        <Button Style="{StaticResource ColorChipButton}" Background="#333333" Command="{Binding SetTextColorCommand}" CommandParameter="#333333" ToolTip="Dark Gray"/>
+                        <Button Style="{StaticResource ColorChipButton}" Background="#0D47A1" Command="{Binding SetTextColorCommand}" CommandParameter="#0D47A1" ToolTip="Official Blue"/>
+                        <Button Style="{StaticResource ColorChipButton}" Background="#B71C1C" Command="{Binding SetTextColorCommand}" CommandParameter="#B71C1C" ToolTip="Official Red"/>
+                    </StackPanel>
+
+                    <!-- Auto-Whiteout Background Checkbox -->
+                    <CheckBox Content="🛡️ Auto-Whiteout" IsChecked="{Binding HasOpaqueBackground}" VerticalAlignment="Center" FontWeight="SemiBold" ToolTip="Auto-conceals old text underneath in 1 step!"/>
+                </StackPanel>
+
+                <Rectangle Width="1" Height="24" Fill="#333346" Margin="4,0,10,0" VerticalAlignment="Center"/>
+
+                <!-- Undo / Redo / Delete -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,0">
+                    <Button Content="↩️ Undo" Command="{Binding UndoCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,3,0" ToolTip="Undo last edit (Ctrl+Z)"/>
+                    <Button Content="↪️ Redo" Command="{Binding RedoCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,4,0" ToolTip="Redo (Ctrl+Y)"/>
+                    <Button Content="🗑️ Delete" Command="{Binding DeleteSelectedCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,4,0" Foreground="#FF5252" ToolTip="Delete selected element (Delete key)"/>
+                </StackPanel>
+
+                <!-- Zoom Controls -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,4,0">
+                    <Button Content="🔍−" Command="{Binding ZoomOutCommand}" Style="{StaticResource OutlineButton}" Width="30" Height="32" Margin="0,0,2,0" ToolTip="Zoom Out"/>
+                    <TextBlock Text="{Binding ZoomPercentText}" VerticalAlignment="Center" FontWeight="Bold" Width="45" TextAlignment="Center" Foreground="#00BCD4"/>
+                    <Button Content="🔍+" Command="{Binding ZoomInCommand}" Style="{StaticResource OutlineButton}" Width="30" Height="32" Margin="2,0,4,0" ToolTip="Zoom In"/>
+                    <Button Content="100%" Command="{Binding ZoomResetCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="6,0" Margin="0,0,2,0" ToolTip="Actual Size (100%)"/>
+                </StackPanel>
+            </WrapPanel>
+        </Border>
+
+        <!-- 3. MAIN WORKSPACE -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="170"/> <!-- Left: Page Thumbnails Strip -->
+                <ColumnDefinition Width="*"/>   <!-- Center: Interactive Document Canvas -->
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT: PAGE THUMBNAILS NAVIGATOR -->
+            <Border Grid.Column="0" Background="#14151E" BorderBrush="#252736" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Background="#1A1B28" Padding="8,6" BorderBrush="#252736" BorderThickness="0,0,0,1">
+                        <TextBlock Text="📄 Pages" FontWeight="Bold" FontSize="11.5" Foreground="#A0A0B8"/>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding PageThumbnails}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="10,8" Background="#0C0D12" BorderBrush="#353748" BorderThickness="1" CornerRadius="4" Padding="4" Cursor="Hand" MouseLeftButtonDown="Thumbnail_MouseLeftButtonDown">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Image Source="{Binding Thumbnail}" Stretch="Uniform" MaxHeight="180"/>
+                                            <Border Grid.Row="1" Background="#1D1E2C" CornerRadius="3" Margin="0,4,0,0" Padding="6,2" HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding PageNumber, StringFormat='Page {0}'}" FontSize="10.5" Foreground="#B0B0C0" FontWeight="SemiBold"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- CENTER: INTERACTIVE CANVAS WORKSPACE -->
+            <Border Grid.Column="1" Background="#0B0C10" ClipToBounds="True">
+                <Grid>
+                    <!-- Page Navigation Floating Top Bar -->
+                    <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,12,0,0" Panel.ZIndex="10" Background="#1D1E2C" CornerRadius="20" Padding="12,4" BorderBrush="#3A3C50" BorderThickness="1"
+                            Visibility="{Binding IsNormalDocumentReady, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource OutlineButton}" Height="26" Padding="8,0" Margin="0,0,6,0" FontSize="11"/>
+                            <TextBlock Text="{Binding PageInfoText}" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="6,0"/>
+                            <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource OutlineButton}" Height="26" Padding="8,0" Margin="6,0,0,0" FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Scrollable & Zoomable Canvas -->
+                    <ScrollViewer x:Name="PageScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PreviewMouseWheel="PageScrollViewer_PreviewMouseWheel"
+                                  Visibility="{Binding IsNormalDocumentReady, Converter={StaticResource BoolToVis}}">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40">
+                            <!-- Paper Sheet Shadow & Border -->
+                            <Border Background="#FFFFFF" BorderBrush="#222230" BorderThickness="1">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="25" ShadowDepth="4" Opacity="0.6" Color="#000000"/>
+                                </Border.Effect>
+
+                                <!-- Page Grid containing Background Render + Interactive Overlay (Scaled smoothly with Zoom) -->
+                                <Grid x:Name="SheetContainer" Width="{Binding PageNativeWidth}" Height="{Binding PageNativeHeight}"
+                                      TextOptions.TextFormattingMode="Display"
+                                      TextOptions.TextRenderingMode="ClearType"
+                                      RenderOptions.ClearTypeHint="Enabled">
+                                    <Grid.LayoutTransform>
+                                        <ScaleTransform ScaleX="{Binding ZoomFactor}" ScaleY="{Binding ZoomFactor}"/>
+                                    </Grid.LayoutTransform>
+
+                                    <!-- 1. Background Rendered PDF Page -->
+                                    <Image Source="{Binding CurrentPagePreview}" Stretch="Fill" IsHitTestVisible="False"/>
+
+                                    <!-- 2. Interactive Editing Canvas -->
+                                    <Canvas x:Name="EditCanvas" Width="{Binding PageNativeWidth}" Height="{Binding PageNativeHeight}"
+                                            Background="Transparent"
+                                            TextOptions.TextFormattingMode="Display"
+                                            TextOptions.TextRenderingMode="ClearType"
+                                            RenderOptions.ClearTypeHint="Enabled"
+                                            MouseLeftButtonDown="EditCanvas_MouseLeftButtonDown"
+                                            MouseMove="EditCanvas_MouseMove"
+                                            MouseLeftButtonUp="EditCanvas_MouseLeftButtonUp">
+
+                                        <!-- Rubberband Selection / Drag preview rectangle -->
+                                        <Rectangle x:Name="RubberBand" Visibility="Collapsed" Fill="#4000BCD4" Stroke="#00BCD4" StrokeThickness="1.5" StrokeDashArray="3 2"/>
+
+                                        <!-- Extracted Text Blocks Overlay (Click to Edit In-Place) -->
+                                        <ItemsControl ItemsSource="{Binding ExtractedTextBlocks}"
+                                                      Visibility="{Binding IsEditTextTool, Converter={StaticResource BoolToVis}}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="{Binding CanvasX}"/>
+                                                    <Setter Property="Canvas.Top" Value="{Binding CanvasY}"/>
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Width="{Binding PdfWidth}" Height="{Binding PdfHeight}"
+                                                            Background="Transparent"
+                                                            BorderBrush="Transparent"
+                                                            BorderThickness="1"
+                                                            CornerRadius="1"
+                                                            Cursor="IBeam"
+                                                            MouseEnter="ExtractedBlock_MouseEnter"
+                                                            MouseLeave="ExtractedBlock_MouseLeave"
+                                                            MouseLeftButtonDown="ExtractedBlock_MouseLeftButtonDown">
+                                                        <Border.ToolTip>
+                                                            <ToolTip Background="#1F2030" Foreground="#FFFFFF" BorderBrush="#00BCD4">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding OriginalText, StringFormat='&quot;{0}&quot;'}" FontWeight="Bold" Foreground="#00BCD4"/>
+                                                                    <TextBlock Text="{Binding FontFamily, StringFormat='Font: {0}'}" FontSize="11" Foreground="#B0B0C0"/>
+                                                                    <TextBlock Text="{Binding FontSizePt, StringFormat='Size: {0:F1} pt'}" FontSize="11" Foreground="#B0B0C0"/>
+                                                                    <TextBlock Text="💡 Click to edit this text in-place" FontSize="10.5" Foreground="#FFD700" Margin="0,2,0,0"/>
+                                                                </StackPanel>
+                                                            </ToolTip>
+                                                        </Border.ToolTip>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Live Items Overlay -->
+                                        <ItemsControl ItemsSource="{Binding CurrentPageEdits}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                                    <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <ContentControl Content="{Binding}">
+                                                        <ContentControl.Resources>
+                                                            <!-- Whiteout DataTemplate (Dynamic fill color matching cell background, ZERO red or hover border) -->
+                                                            <DataTemplate DataType="{x:Type models:PdfWhiteoutItem}">
+                                                                <Border Background="{Binding FillColorHex, Converter={StaticResource HexToBrush}, ConverterParameter=White}"
+                                                                        Width="{Binding Width}" Height="{Binding Height}"
+                                                                        IsHitTestVisible="{Binding IsHitTestVisible}"
+                                                                        Cursor="SizeAll" MouseLeftButtonDown="EditItem_MouseLeftButtonDown"
+                                                                        ToolTip="Whiteout Box (Drag to move, Del to remove)">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                                                            <Setter Property="BorderThickness" Value="0"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="#00BCD4"/>
+                                                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                </Border>
+                                                            </DataTemplate>
+
+                                                            <!-- Text DataTemplate (Zero displacement, exact baseline alignment) -->
+                                                            <DataTemplate DataType="{x:Type models:PdfTextItem}">
+                                                                <Grid Width="{Binding Width}" Height="{Binding Height}"
+                                                                      Cursor="IBeam" MouseLeftButtonDown="EditItem_MouseLeftButtonDown">
+                                                                    <!-- Selection and background indicator: Sits behind the text WITHOUT shifting it -->
+                                                                    <Border CornerRadius="2" IsHitTestVisible="False">
+                                                                        <Border.Style>
+                                                                            <Style TargetType="Border">
+                                                                                <Setter Property="Background" Value="Transparent"/>
+                                                                                <Setter Property="BorderBrush" Value="Transparent"/>
+                                                                                <Setter Property="BorderThickness" Value="1"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding HasOpaqueBackground}" Value="True">
+                                                                                        <Setter Property="Background" Value="{Binding BackgroundColorHex, Converter={StaticResource HexToBrush}, ConverterParameter=White}"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                                        <Setter Property="BorderBrush" Value="#00BCD4"/>
+                                                                                        <Setter Property="Background" Value="#0D00BCD4"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Border.Style>
+                                                                    </Border>
+
+                                                                    <!-- The actual text box: Margin="-2,0,0,0" eliminates WPF TextBox internal caret padding -->
+                                                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                                                             FontFamily="{Binding FontFamily}"
+                                                                             FontSize="{Binding FontSizePt}"
+                                                                             FontWeight="{Binding FontWeightValue}"
+                                                                             FontStyle="{Binding FontStyleValue}"
+                                                                             Foreground="{Binding TextColorHex, Converter={StaticResource HexToBrush}}"
+                                                                             Background="Transparent"
+                                                                             BorderThickness="0"
+                                                                             Padding="0"
+                                                                             Margin="-2,0,0,0"
+                                                                             FocusVisualStyle="{x:Null}"
+                                                                             VerticalContentAlignment="Top"
+                                                                             TextOptions.TextFormattingMode="Display"
+                                                                             TextOptions.TextRenderingMode="ClearType"
+                                                                             RenderOptions.ClearTypeHint="Enabled"
+                                                                             GotFocus="TextItem_GotFocus"
+                                                                             LostFocus="TextItem_LostFocus"
+                                                                             PreviewKeyDown="TextItem_PreviewKeyDown">
+                                                                        <TextBox.Style>
+                                                                            <Style TargetType="TextBox">
+                                                                                <Setter Property="Background" Value="Transparent"/>
+                                                                                <Setter Property="BorderThickness" Value="0"/>
+                                                                                <Setter Property="Padding" Value="0"/>
+                                                                            </Style>
+                                                                        </TextBox.Style>
+                                                                    </TextBox>
+                                                                </Grid>
+                                                            </DataTemplate>
+
+                                                            <!-- Image DataTemplate -->
+                                                            <DataTemplate DataType="{x:Type models:PdfImageItem}">
+                                                                <Border Width="{Binding Width}" Height="{Binding Height}"
+                                                                        Cursor="SizeAll" MouseLeftButtonDown="EditItem_MouseLeftButtonDown"
+                                                                        ToolTip="Inserted Image / Photo (Drag to move, corner handle to resize)">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="BorderBrush" Value="#5500BCD4"/>
+                                                                            <Setter Property="BorderThickness" Value="1.5"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="#00BCD4"/>
+                                                                                    <Setter Property="BorderThickness" Value="2.5"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <Grid>
+                                                                        <Image Source="{Binding DisplaySource}" Stretch="Fill"/>
+                                                                        <!-- Corner resize grip handle -->
+                                                                        <Border Width="14" Height="14" Background="#00BCD4" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown"/>
+                                                                    </Grid>
+                                                                </Border>
+                                                            </DataTemplate>
+
+                                                            <!-- Ink / Signature DataTemplate -->
+                                                            <DataTemplate DataType="{x:Type models:PdfInkItem}">
+                                                                <Polyline Points="{Binding WpfPoints}"
+                                                                          Stroke="{Binding StrokeColorHex, Converter={StaticResource HexToBrush}}"
+                                                                          StrokeThickness="{Binding StrokeThickness}"
+                                                                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                                          Cursor="SizeAll" MouseLeftButtonDown="EditItem_MouseLeftButtonDown"
+                                                                          ToolTip="Signature / Pen Drawing (Click to select, Del to remove)"/>
+                                                            </DataTemplate>
+                                                        </ContentControl.Resources>
+                                                    </ContentControl>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Canvas>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- Empty State Placeholder (Visible when no PDF is loaded) -->
+                    <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="#161724" BorderBrush="#282A3E" BorderThickness="1.5"
+                            CornerRadius="12" Padding="40,32" MaxWidth="520"
+                            Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}}">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="📝" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                            <TextBlock Text="PDF Editor Studio" FontSize="18" FontWeight="Bold" Foreground="#00BCD4" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                            <TextBlock Text="Edit text, whiteout/erase, replace photos &amp; add signatures on any PDF with 100% vector quality."
+                                       FontSize="12" Foreground="#A0A0B0" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,20"/>
+                            <Button Content="📂 Open PDF Document..." Command="{Binding OpenPdfCommand}"
+                                    Style="{StaticResource PrimaryButton}" Height="38" Padding="24,0" FontSize="13" FontWeight="SemiBold"
+                                    HorizontalAlignment="Center" Margin="0,0,0,12" Cursor="Hand"/>
+                            <TextBlock Text="— or drag &amp; drop any PDF file anywhere onto this window —"
+                                       FontSize="11" Foreground="#66667A" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Password Protected Document Card (Visible when locked PDF is loaded) -->
+                    <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="#181926" BorderBrush="#FFB74D" BorderThickness="1.5"
+                            CornerRadius="14" Padding="36,30" MaxWidth="540"
+                            Visibility="{Binding IsPasswordProtected, Converter={StaticResource BoolToVis}}"
+                            Panel.ZIndex="20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="30" ShadowDepth="6" Opacity="0.5" Color="#000000"/>
+                        </Border.Effect>
+                        <StackPanel Width="460">
+                            <!-- Lock Icon & Header -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,14">
+                                <TextBlock Text="🔒" FontSize="36" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Password Protected PDF" FontSize="18" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    <TextBlock Text="{Binding FileName}" FontSize="12" Foreground="#FFB74D" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="380"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Description -->
+                            <TextBlock Text="This document is protected with an encryption password (such as an e-Aadhaar card, e-Ration card, or bank statement). Enter the password below to unlock and edit."
+                                       FontSize="12.5" Foreground="#C0C0D4" TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,14"/>
+
+                            <!-- Cyber Cafe Aadhaar Cheat-sheet Box -->
+                            <Border Background="#12131D" BorderBrush="#3A3C52" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <TextBlock Text="💡 Aadhaar Card Password Guide:" FontWeight="Bold" FontSize="11.5" Foreground="#00BCD4" Margin="0,0,0,4"/>
+                                    <TextBlock Text="First 4 letters of applicant's Name in CAPITAL letters + 4-digit Year of Birth." FontSize="11.5" Foreground="#E0E0EC"/>
+                                    <TextBlock Text="Example: SURESH KUMAR born in 1990  ➜  Password: SURE1990" FontSize="11" Foreground="#FFCA28" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Password Input -->
+                            <TextBlock Text="Document Password:" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <TextBox x:Name="PdfPasswordTextBox"
+                                         Text="{Binding PdfPassword, UpdateSourceTrigger=PropertyChanged}"
+                                         Height="38" FontSize="14" FontWeight="SemiBold"
+                                         Padding="10,0" VerticalContentAlignment="Center"
+                                         Background="#25273A" Foreground="#FFFFFF" BorderBrush="#454762" BorderThickness="1"
+                                         KeyDown="PdfPasswordTextBox_KeyDown"
+                                         IsVisibleChanged="PdfPasswordTextBox_IsVisibleChanged"/>
+                            </Grid>
+
+                            <!-- Error Message (if any) -->
+                            <TextBlock Text="{Binding PasswordErrorMessage}" Foreground="#FF5252" FontSize="12" FontWeight="SemiBold"
+                                       Visibility="{Binding HasPasswordError, Converter={StaticResource BoolToVis}}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+
+                            <!-- Action Buttons -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                <Button Content="Cancel" Command="{Binding CancelUnlockCommand}" Style="{StaticResource OutlineButton}" Height="36" Padding="18,0" Margin="0,0,10,0"/>
+                                <Button Content="🔓 Unlock &amp; Edit PDF" Command="{Binding UnlockPdfCommand}" Style="{StaticResource PrimaryButton}" Height="36" Padding="20,0" FontWeight="Bold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 4. BOTTOM STATUS BAR -->
+        <Border Grid.Row="3" Background="#12131C" BorderBrush="#202230" BorderThickness="0,1,0,0" Padding="12,0">
+            <Grid VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#00BCD4" FontSize="11.5" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="⌨️ Shortcuts: F1 (Select) • F2 (Whiteout) • F3 (Add Text) • F4 (Edit Text) • F5 (Draw) • Ctrl+Z (Undo) • Del (Remove) • Ctrl+S (Save)" Foreground="#777788" FontSize="11"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

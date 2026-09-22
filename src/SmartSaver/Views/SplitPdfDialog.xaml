@@ -1,0 +1,273 @@
+<Window x:Class="SmartSaver.Views.SplitPdfDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SmartSaver.Converters"
+        Title="DASMO CYBER COMPRESSOR — PDF Page Organizer &amp; Splitter" Height="720" Width="880"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True">
+    <Window.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:InverseBooleanConverter x:Key="InverseBool"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="64"/>
+            </Grid.RowDefinitions>
+
+            <!-- Photo Background Layer -->
+            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.30" IsHitTestVisible="False" Grid.RowSpan="3"/>
+
+            <!-- Title Bar -->
+            <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                    <TextBlock Text="⚡ " FontSize="14"/>
+                    <TextBlock Text="DASMO CYBER COMPRESSOR — PDF Page Organizer &amp; Splitter" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="🗕" Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click" ToolTip="Minimize"/>
+                    <Button Content="✕" Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click" ToolTip="Close"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Main Content Area -->
+            <Grid Grid.Row="1" Margin="16,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Header Bar & Batch Controls -->
+                    <RowDefinition Height="Auto"/> <!-- Dedicated Drag to Delete Zone -->
+                    <RowDefinition Height="*"/>    <!-- Page Grid -->
+                    <RowDefinition Height="Auto"/> <!-- Settings & Compression -->
+                </Grid.RowDefinitions>
+
+                <!-- Top Header: File Info & Batch Actions -->
+                <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📑 PDF Page Organizer" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                <Border Background="#2A2D45" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center" Visibility="{Binding HasPages, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="{Binding PagesSummaryText}" FontSize="11" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding MultiPdfNames, StringFormat='Files: {0}'}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" MaxWidth="460" Visibility="{Binding HasMultiplePdfs, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Text="{Binding FileName, StringFormat='File: {0}'}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" MaxWidth="460" Visibility="{Binding HasMultiplePdfs, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}"/>
+                        </StackPanel>
+
+                        <!-- Batch Action Buttons -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="➕ Add PDF File" Style="{StaticResource AccentButton}" Command="{Binding AddPdfCommand}" ToolTip="Insert pages from another PDF" Margin="0,0,8,0" Padding="12,5"/>
+                            <Button Content="☑️ Select All" Style="{StaticResource ChipButton}" Command="{Binding SelectAllCommand}" ToolTip="Select all pages" Margin="0,0,4,0"/>
+                            <Button Content="⬜ Clear All" Style="{StaticResource ChipButton}" Command="{Binding DeselectAllCommand}" ToolTip="Deselect all pages" Margin="0,0,4,0"/>
+                            <Button Content="🔄 Reset Order" Style="{StaticResource ChipButton}" Command="{Binding ResetPagesCommand}" ToolTip="Restore original sequence" Margin="0,0,4,0"/>
+                            <Button Content="↻ Rotate 90°" Style="{StaticResource ChipButton}" Command="{Binding RotateAllSelectedCommand}" ToolTip="Rotate selected pages 90° CW" Margin="0,0,4,0"/>
+                            <Button Content="🗑️ Delete Selected" Style="{StaticResource ChipButton}" Command="{Binding DeleteSelectedCommand}" ToolTip="Remove selected pages" Foreground="#FF6B81"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Dedicated Drag to Delete Zone Banner -->
+                <Border x:Name="SplitDeleteZone" Grid.Row="1" Background="#261822" BorderBrush="#772033" BorderThickness="1.5" CornerRadius="8" Padding="12,8" Margin="0,0,0,10" AllowDrop="True" DragOver="SplitDeleteZone_DragOver" DragLeave="SplitDeleteZone_DragLeave" Drop="SplitDeleteZone_Drop" Cursor="Hand" Visibility="{Binding HasPages, Converter={StaticResource BoolToVis}}">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="🗑️" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="DRAG PAGE HERE TO DELETE / REMOVE" FontWeight="Bold" FontSize="11" Foreground="#FF6B81" VerticalAlignment="Center"/>
+                            <TextBlock Text="  —  Drop any page card here to remove it" FontSize="10.5" Foreground="#AA8899" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Visual Grid of Pages (with Drag/Drop Reordering) -->
+                <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="6" AllowDrop="True" DragOver="SplitPageContainer_DragOver" Drop="SplitPageContainer_Drop">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="4">
+                        <ItemsControl ItemsSource="{Binding Pages}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- Page Card -->
+                                    <Border Width="150" Margin="5" CornerRadius="8" BorderThickness="2" Cursor="Hand"
+                                            AllowDrop="True"
+                                            PreviewMouseLeftButtonDown="SplitPageCard_PreviewMouseLeftButtonDown"
+                                            MouseMove="SplitPageCard_MouseMove"
+                                            DragOver="SplitPageCard_DragOver"
+                                            DragLeave="SplitPageCard_DragLeave"
+                                            Drop="SplitPageCard_Drop">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#25273C"/>
+                                                <Setter Property="BorderBrush" Value="#383A59"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsDraggingOver}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter Property="Background" Value="#2D3252"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+
+                                        <Grid Margin="5">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="130"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Card Header -->
+                                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" ToolTip="Include this page"/>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="5,0,0,0" VerticalAlignment="Center">
+                                                    <Border Background="{StaticResource AccentBrush}" CornerRadius="3" Padding="4,1">
+                                                        <TextBlock Text="{Binding PageTitle}" FontWeight="Bold" FontSize="10" Foreground="#0F172A"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <Border Grid.Column="2" Background="#3A3D58" CornerRadius="3" Padding="3,1" Visibility="{Binding HasRotation, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="{Binding RotationLabel}" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                                </Border>
+                                            </Grid>
+
+                                            <!-- Thumbnail Box with Click-to-Preview -->
+                                            <Border Grid.Row="1" Background="#181926" CornerRadius="5" BorderBrush="#303248" BorderThickness="1" ClipToBounds="True">
+                                                <Button Command="{Binding PreviewCommand}" ToolTip="Click to preview &amp; inspect full page content"
+                                                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0" Cursor="Hand"
+                                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Grid Background="Transparent">
+                                                                <TextBlock Text="Loading..." FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                <Image Source="{Binding Thumbnail}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <Image.LayoutTransform>
+                                                                        <RotateTransform Angle="{Binding Rotation}"/>
+                                                                    </Image.LayoutTransform>
+                                                                </Image>
+
+                                                                <!-- Hover Preview Badge -->
+                                                                <Border x:Name="PreviewBadge" Background="#E6161726" CornerRadius="12" Padding="7,2"
+                                                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,5"
+                                                                        BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" Opacity="0">
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <TextBlock Text="🔍" FontSize="9.5" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                                                                        <TextBlock Text="Preview" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </Grid>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="PreviewBadge" Property="Opacity" Value="1"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                            </Border>
+
+                                            <!-- Source Info -->
+                                            <TextBlock Grid.Row="2" Text="{Binding SourceInfo}" FontSize="9" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,3" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="136" ToolTip="{Binding SourceInfo}"/>
+
+                                            <!-- Action Buttons -->
+                                            <Border Grid.Row="3" Background="#1E2032" CornerRadius="4" Padding="1">
+                                                <UniformGrid Columns="6">
+                                                    <Button Content="◀" ToolTip="Move Left" Command="{Binding MoveLeftCommand}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontSize="10" Height="22" Padding="0"/>
+                                                    <Button Content="▶" ToolTip="Move Right" Command="{Binding MoveRightCommand}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontSize="10" Height="22" Padding="0"/>
+                                                    <Button Content="↺" ToolTip="Rotate CCW" Command="{Binding RotateCcwCommand}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource AccentBrush}" FontSize="10" Height="22" Padding="0"/>
+                                                    <Button Content="↻" ToolTip="Rotate CW" Command="{Binding RotateCwCommand}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource AccentBrush}" FontSize="10" Height="22" Padding="0"/>
+                                                    <Button Content="🔍" ToolTip="Preview &amp; Inspect Page Content" Command="{Binding PreviewCommand}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource AccentBrush}" FontSize="10.5" Height="22" Padding="0"/>
+                                                    <Button Content="🗑️" ToolTip="Delete Page" Command="{Binding DeleteCommand}" Background="Transparent" BorderThickness="0" Foreground="#FF6B81" FontSize="10" Height="22" Padding="0"/>
+                                                </UniformGrid>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Settings & Compression Bar -->
+                <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Compression & Portal Preset -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <CheckBox Content="Compress to size:" IsChecked="{Binding IsCompressEnabled}" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold" FontSize="11"/>
+                            <TextBox Text="{Binding TargetSizeKB, UpdateSourceTrigger=PropertyChanged}" Width="65" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Padding="4,0" IsEnabled="{Binding IsCompressEnabled}" Margin="0,0,4,0"/>
+                            <ComboBox SelectedValue="{Binding TargetSizeUnit, Mode=TwoWay}" SelectedValuePath="Content" Width="55" Height="28" IsEnabled="{Binding IsCompressEnabled}" Margin="0,0,12,0">
+                                <ComboBoxItem Content="KB"/>
+                                <ComboBoxItem Content="MB"/>
+                            </ComboBox>
+                            <TextBlock Text="Preset:" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,4,0"/>
+                            <ComboBox ItemsSource="{Binding PortalPresets}" SelectedItem="{Binding SelectedPortalPreset}" DisplayMemberPath="Name" Height="28" Width="180"/>
+                        </StackPanel>
+
+                        <!-- Right: Output Folder & Auto-Open -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Save to:" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,4,0"/>
+                            <TextBox Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}" Width="180" Height="28" VerticalContentAlignment="Center" Padding="6,0" Margin="0,0,4,0" ToolTip="{Binding OutputDirectory}"/>
+                            <Button Content="📁 Browse" Style="{StaticResource ChipButton}" Command="{Binding BrowseDirectoryCommand}" Height="28" Padding="8,0" VerticalAlignment="Center"/>
+                            <CheckBox Content="Auto-Open" IsChecked="{Binding OpenOnComplete}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Bottom Action Bar -->
+            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="11.5" Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVis}}"/>
+                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsSuccess, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{Binding ResultText}" Foreground="#4CAF50" FontWeight="SemiBold" FontSize="11.5" VerticalAlignment="Center"/>
+                            <Button Content="{Binding OpenResultButtonText}" Style="{StaticResource ChipButton}" Command="{Binding OpenResultCommand}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ResultText}" Foreground="#FF6B81" FontWeight="SemiBold" FontSize="11.5" VerticalAlignment="Center" Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+
+                    <!-- Export Mode Switcher -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Mode:" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,6,0"/>
+                        <RadioButton Content="📑 Combined PDF" IsChecked="{Binding IsRangeMode}" GroupName="SplitExportModeDlg" VerticalAlignment="Center" Margin="0,0,10,0" FontSize="11" FontWeight="SemiBold"/>
+                        <RadioButton Content="📄 Separate Files" IsChecked="{Binding IsRangeMode, Converter={StaticResource InverseBool}}" GroupName="SplitExportModeDlg" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Content="Close" Width="75" Margin="0,0,10,0" Command="{Binding CancelCommand}"/>
+                    <Button Grid.Column="3" Style="{StaticResource AccentButton}" Command="{Binding ExecuteCommand}" Padding="20,8" FontWeight="Bold" FontSize="13" IsEnabled="{Binding HasPages}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding ExportButtonText}" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding SelectedPagesCount, StringFormat='({0} pgs)'}" Opacity="0.85"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

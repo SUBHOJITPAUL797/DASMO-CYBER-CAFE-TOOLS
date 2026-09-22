@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="DASMO CYBER CAFE TOOLS"
+           Manufacturer="DASMO Cyber Cafe"
+           Version="1.5.1.0"
+           UpgradeCode="E7A3C1D2-4B5F-6789-0ABC-DEF123456789"
+           Scope="perMachine"
+           Language="1033"
+           Codepage="1252"
+           InstallerVersion="500">
+
+    <SummaryInformation Description="DASMO CYBER CAFE TOOLS - All-in-One Cyber Cafe Management &amp; Document Processing Suite"
+                        Manufacturer="DASMO Cyber Cafe" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of DASMO CYBER CAFE TOOLS is already installed."
+                  Schedule="afterInstallInitialize"
+                  AllowSameVersionUpgrades="yes" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Close running instances before upgrade/installation to prevent file lock hanging -->
+    <util:CloseApplication Id="CloseSmartSaverApp"
+                           Target="SmartSaver.exe"
+                           CloseMessage="yes"
+                           RebootPrompt="no"
+                           TerminateProcess="1"
+                           Description="Closing old SmartSaver instance..." />
+
+    <util:CloseApplication Id="CloseDasmoApp"
+                           Target="DASMO CYBER CAFE TOOLS.exe"
+                           CloseMessage="yes"
+                           RebootPrompt="no"
+                           TerminateProcess="1"
+                           Description="Closing running instance of DASMO CYBER CAFE TOOLS..." />
+
+    <!-- Use the WiX standard UI -->
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+
+    <!-- License agreement (optional — set to a simple text) -->
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <!-- Features -->
+    <Feature Id="MainApplication" Title="DASMO CYBER CAFE TOOLS" Level="1"
+             Description="The main DASMO CYBER CAFE TOOLS application suite."
+             ConfigurableDirectory="INSTALLFOLDER"
+             AllowAbsent="no">
+      <ComponentGroupRef Id="AppComponents" />
+      <ComponentGroupRef Id="ExtraComponents" />
+      <ComponentGroupRef Id="RegistryComponents" />
+      <ComponentGroupRef Id="ShortcutComponents" />
+      <ComponentRef Id="ContextMenu_AllFiles" />
+      <ComponentRef Id="ContextMenu_Peek" />
+      <ComponentRef Id="ContextMenu_PdfEdit" />
+      <ComponentRef Id="DisablePreviewHandlerWarnings" />
+    </Feature>
+
+  </Package>
+</Wix>

@@ -1,0 +1,156 @@
+<Window x:Class="SmartSaver.Views.FileCompressDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SmartSaver.Converters"
+        Title="DASMO CYBER COMPRESSOR — Compress File" Height="460" Width="490"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True">
+    <Window.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:StringEqualsConverter x:Key="StringEquals"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="64"/>
+            </Grid.RowDefinitions>
+
+            <!-- Photo Background Layer -->
+            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.35" IsHitTestVisible="False" Grid.RowSpan="3"/>
+
+            <!-- Title Bar -->
+            <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                    <TextBlock Text="⚡ " FontSize="14"/>
+                    <TextBlock Text="DASMO CYBER COMPRESSOR — Compress File" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="🗕" Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click" ToolTip="Minimize"/>
+                    <Button Content="✕" Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click" ToolTip="Close"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Main Content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="20,15">
+                <StackPanel>
+                    <!-- File Info Card -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="📄" FontSize="26" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip="{Binding FileName}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="Original Size: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                                    <TextBlock Text="{Binding CurrentFileSize}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Target Size Card -->
+                    <GroupBox Header="1. Target File Size &amp; Portal Presets">
+                        <StackPanel Margin="0,4">
+                            <!-- Govt & Exam Portal Preset Selector -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="Portal Preset: " VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding PortalPresets}" SelectedItem="{Binding SelectedPortalPreset}" DisplayMemberPath="Name"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="Compress to: " VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding TargetSize, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
+                                <ComboBox Grid.Column="2" ItemsSource="{Binding SizeUnits}" SelectedItem="{Binding TargetSizeUnit}"/>
+                            </Grid>
+
+                            <!-- Quick Preset Chips -->
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <Button Content="50 KB" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="50" ToolTip="Photo Limit"/>
+                                <Button Content="100 KB" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="100" ToolTip="Signature Limit"/>
+                                <Button Content="200 KB" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="200" ToolTip="Standard Portal Limit"/>
+                                <Button Content="500 KB" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="500" ToolTip="Document Limit"/>
+                                <Button Content="1 MB" Style="{StaticResource ChipButton}" Command="{Binding SetPresetSizeCommand}" CommandParameter="1024" ToolTip="1 MB Limit"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Output Format Card -->
+                    <GroupBox Header="2. Output Format &amp; Save Mode">
+                        <StackPanel Margin="0,4">
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Content="Save Format: " VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding OutputFormats}" SelectedItem="{Binding SelectedOutputFormat}"/>
+                            </Grid>
+                            
+                            <TextBlock Text="{Binding FormatNote}" Foreground="{StaticResource TextSecondaryBrush}" 
+                                       FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <RadioButton Content="Save as new file" 
+                                             IsChecked="{Binding OutputMode, Converter={StaticResource StringEquals}, ConverterParameter=newFile}" 
+                                             Margin="0,0,20,0"/>
+                                <RadioButton Content="Replace original file" 
+                                             IsChecked="{Binding OutputMode, Converter={StaticResource StringEquals}, ConverterParameter=replace}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Progress Section -->
+                    <StackPanel Margin="0,12,0,0" Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVis}}">
+                        <ProgressBar IsIndeterminate="True" Height="4" Margin="0,0,0,6" 
+                                     Foreground="{StaticResource AccentBrush}" 
+                                     Background="{StaticResource SurfaceBrush}" BorderThickness="0"/>
+                        <TextBlock Text="{Binding ProgressText}" HorizontalAlignment="Center" 
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Result Status -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10" Margin="0,12,0,0"
+                            Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
+                        <TextBlock Text="{Binding ResultText}" HorizontalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Soft Background Owner Portrait Watermark -->
+            <Grid Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Opacity="0.06" IsHitTestVisible="False" Margin="0,0,15,15">
+                <Image Source="pack://application:,,,/Resources/owner_portrait.png" Width="180" Height="180" Stretch="UniformToFill">
+                    <Image.Clip>
+                        <EllipseGeometry Center="90,90" RadiusX="85" RadiusY="85"/>
+                    </Image.Clip>
+                </Image>
+            </Grid>
+
+            <!-- Bottom Buttons -->
+            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,10,10" 
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                <Grid Margin="20,0">
+                    <Button Content="Close" Command="{Binding CancelCommand}" Width="100" HorizontalAlignment="Left"/>
+                    <Button Content="⚡ Compress Now" Command="{Binding CompressCommand}" 
+                            Style="{StaticResource PrimaryButton}" Width="150" HorizontalAlignment="Right"
+                            IsEnabled="{Binding CanCompress}"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

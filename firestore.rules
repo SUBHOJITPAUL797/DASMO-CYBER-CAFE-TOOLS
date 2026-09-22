@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return (isAuthenticated() && request.auth.token.email.lower() == 'subhojitpaul26042004@gmail.com') ||
+             (request.resource != null && request.resource.data.get('adminKey', '') == 'DASMO_ADMIN_SEC_26042004_SUBHOJIT_CYBER_KEY');
+    }
+
+    function isOwner(email) {
+      return (isAuthenticated() && request.auth.token.email.lower() == email.lower()) ||
+             (request.auth == null);
+    }
+
+    function isRegistrationOpen() {
+      return exists(/databases/$(database)/documents/system_config/licensing) &&
+             get(/databases/$(database)/documents/system_config/licensing).data.get('requireApprovalForPc', true) == false;
+    }
+
+    // 0. SYSTEM CONFIGURATION (Licensing Modes, Registration Gate)
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 1. DASMO PHOTO PRINT USERS (Isolated Mobile)
+    match /dasmo_photo_print_users/{email} {
+      allow read: if isOwner(email) || isAdmin();
+
+      allow create: if (isOwner(email) && 
+                        (email.lower() == 'subhojitpaul26042004@gmail.com' ||
+                         (request.resource.data.get('isApproved', false) == false &&
+                          request.resource.data.get('role', 'user') == 'user' &&
+                          request.resource.data.get('status', 'pending') == 'pending'))) || isAdmin();
+
+      allow update: if isAdmin() || 
+                       (isOwner(email) && 
+                        request.resource.data.get('isApproved', false) == resource.data.get('isApproved', false) &&
+                        request.resource.data.get('status', 'pending') == resource.data.get('status', 'pending') &&
+                        request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+                        request.resource.data.get('isAdmin', false) == resource.data.get('isAdmin', false) &&
+                        request.resource.data.get('expiryTimestamp', 0) == resource.data.get('expiryTimestamp', 0));
+
+      allow delete: if isAdmin() || (resource != null && resource.data.get('status', '') == 'deleted');
+    }
+
+    // 2. DASMO SCANNER USERS (Isolated Mobile)
+    match /dasmo_scanner_users/{email} {
+      allow read: if isOwner(email) || isAdmin();
+
+      allow create: if (isOwner(email) && 
+                        (email.lower() == 'subhojitpaul26042004@gmail.com' ||
+                         (request.resource.data.get('isApproved', false) == false &&
+                          request.resource.data.get('role', 'user') == 'user' &&
+                          request.resource.data.get('status', 'pending') == 'pending'))) || isAdmin();
+
+      allow update: if isAdmin() || 
+                       (isOwner(email) && 
+                        request.resource.data.get('isApproved', false) == resource.data.get('isApproved', false) &&
+                        request.resource.data.get('status', 'pending') == resource.data.get('status', 'pending') &&
+                        request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+                        request.resource.data.get('isAdmin', false) == resource.data.get('isAdmin', false) &&
+                        request.resource.data.get('expiryTimestamp', 0) == resource.data.get('expiryTimestamp', 0));
+
+      allow delete: if isAdmin() || (resource != null && resource.data.get('status', '') == 'deleted');
+    }
+
+    // 3. DASMO PC USERS (Isolated Windows Desktop Suite)
+    match /dasmo_pc_users/{email} {
+      allow read: if isOwner(email) || isAdmin();
+
+      allow create: if isAdmin() ||
+                       (isOwner(email) && 
+                        ((isRegistrationOpen() && 
+                          request.resource.data.get('role', 'user') == 'user' &&
+                          request.resource.data.get('isAdmin', false) == false) ||
+                         (request.resource.data.get('isApproved', false) == false &&
+                          request.resource.data.get('role', 'user') == 'user' &&
+                          request.resource.data.get('isAdmin', false) == false &&
+                          request.resource.data.get('status', 'pending') == 'pending')));
+
+      allow update: if isAdmin() || 
+                       (isOwner(email) && 
+                        request.resource.data.get('isApproved', false) == resource.data.get('isApproved', false) &&
+                        request.resource.data.get('status', 'pending') == resource.data.get('status', 'pending') &&
+                        request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+                        request.resource.data.get('isAdmin', false) == resource.data.get('isAdmin', false) &&
+                        request.resource.data.get('expiryTimestamp', 0) == resource.data.get('expiryTimestamp', 0) &&
+                        (resource.data.get('deviceId', '') == '' || request.resource.data.get('deviceId', '') == resource.data.get('deviceId', '')));
+
+      allow delete: if isAdmin() || (resource != null && resource.data.get('status', '') == 'deleted');
+    }
+
+    // 4. DASMO CYBER CAPTURE USERS (Isolated Mobile)
+    match /dasmo_cyber_capture_users/{email} {
+      allow read: if isOwner(email) || isAdmin();
+
+      allow create: if (isOwner(email) && 
+                        (email.lower() == 'subhojitpaul26042004@gmail.com' ||
+                         (request.resource.data.get('isApproved', false) == false &&
+                          request.resource.data.get('role', 'user') == 'user' &&
+                          request.resource.data.get('status', 'pending') == 'pending'))) || isAdmin();
+
+      allow update: if isAdmin() || 
+                       (isOwner(email) && 
+                        request.resource.data.get('isApproved', false) == resource.data.get('isApproved', false) &&
+                        request.resource.data.get('status', 'pending') == resource.data.get('status', 'pending') &&
+                        request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+                        request.resource.data.get('isAdmin', false) == resource.data.get('isAdmin', false) &&
+                        request.resource.data.get('expiryTimestamp', 0) == resource.data.get('expiryTimestamp', 0));
+
+      allow delete: if isAdmin() || (resource != null && resource.data.get('status', '') == 'deleted');
+    }
+
+    // 5. Fallback users collection / SMS Bridge user profiles
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // 6. Scanner document metadata
+    match /dasmo_doc_scanner_documents/{documentId} {
+      allow read, write: if true;
+    }
+
+    // 7. SMS Forwarder (Dedicated & Isolated Collections)
+    match /sms_forwarder_users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /sms_forwarder_pairings/{pairingCode} {
+      allow read, write: if true;
+    }
+
+    match /sms_forwarder_links/{linkId} {
+      allow read, write: if true;
+    }
+
+    match /sms_forwarder_messages/{hostUid} {
+      allow read, write: if true;
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+
+    // 8. Legacy / Fallback SMS Bridge Collections
+    match /pairings/{pairingCode} {
+      allow read, write: if true;
+    }
+
+    match /links/{linkId} {
+      allow read, write: if true;
+    }
+
+    match /sms/{hostUid} {
+      allow read, write: if true;
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}
