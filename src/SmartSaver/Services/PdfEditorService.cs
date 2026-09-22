@@ -413,11 +413,12 @@ public class PdfEditorService
         else if (item.IsItalic) style = XFontStyle.Italic;
 
         string family = string.IsNullOrWhiteSpace(item.FontFamily) ? "Arial" : item.FontFamily;
-        if (BengaliTextHelper.ContainsBengali(item.Text) && (family == "Arial" || family == "Times New Roman"))
+        if ((BengaliTextHelper.ContainsBengali(item.Text) || BengaliTextHelper.ContainsIndic(item.Text)) && (family == "Arial" || family == "Times New Roman"))
         {
             family = BengaliTextHelper.PreferredBengaliFont;
         }
-        var font = new XFont(family, size, style);
+        var fontOptions = new XPdfFontOptions(PdfFontEncoding.Unicode);
+        var font = new XFont(family, size, style, fontOptions);
 
         var textColor = ParseColor(item.TextColorHex, XColor.FromArgb(0, 0, 0));
         var textBrush = new XSolidBrush(textColor);
@@ -838,7 +839,7 @@ public class PdfEditorService
             isItalic = fn.Contains("ITALIC") || fn.Contains("OBLIQUE") || fn.Contains("SLANT");
         }
 
-        if (BengaliTextHelper.ContainsBengali(text))
+        if (BengaliTextHelper.ContainsBengali(text) || BengaliTextHelper.ContainsIndic(text))
         {
             return BengaliTextHelper.PreferredBengaliFont;
         }

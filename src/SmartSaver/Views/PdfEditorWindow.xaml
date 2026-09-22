@@ -6,6 +6,7 @@
         Title="DASMO CYBER CAFE — PDF Editor Studio"
         Width="1100" Height="720" MinWidth="800" MinHeight="550"
         WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
         Background="#0E0F14" Foreground="#E0E0EE"
         WindowStyle="None" AllowsTransparency="False"
         AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop"
@@ -96,7 +97,7 @@
                 <!-- Window buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Content="🗕" Width="42" Height="38" Background="Transparent" Foreground="#A0A0B0" BorderThickness="0" Click="Minimize_Click" FontSize="13" Cursor="Hand"/>
-                    <Button Content="🗖" Width="42" Height="38" Background="Transparent" Foreground="#A0A0B0" BorderThickness="0" Click="Maximize_Click" FontSize="13" Cursor="Hand"/>
+                    <Button x:Name="MaximizeBtn" Content="🗖" Width="42" Height="38" Background="Transparent" Foreground="#A0A0B0" BorderThickness="0" Click="Maximize_Click" FontSize="13" Cursor="Hand"/>
                     <Button Content="✕" Width="42" Height="38" Background="Transparent" Foreground="#FF5252" BorderThickness="0" Click="Close_Click" FontSize="13" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
@@ -114,6 +115,17 @@
                 </StackPanel>
 
                 <Rectangle Width="1" Height="24" Fill="#333346" Margin="4,0,10,0" VerticalAlignment="Center"/>
+
+                <!-- Page Navigation (Docked in Toolbar — NEVER obscures document canvas!) -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,10,0" Visibility="{Binding IsNormalDocumentReady, Converter={StaticResource BoolToVis}}">
+                    <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" Margin="0,0,3,0" ToolTip="Previous Page (PageUp)"/>
+                    <Border Background="#202232" CornerRadius="4" Padding="10,0" Margin="0,0,3,0" BorderBrush="#35374C" BorderThickness="1" VerticalAlignment="Center" Height="32">
+                        <TextBlock Text="{Binding PageNumberText}" Foreground="#00BCD4" FontWeight="SemiBold" FontSize="11.5" VerticalAlignment="Center"/>
+                    </Border>
+                    <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="8,0" ToolTip="Next Page (PageDown)"/>
+                </StackPanel>
+
+                <Rectangle Width="1" Height="24" Fill="#333346" Margin="4,0,10,0" VerticalAlignment="Center" Visibility="{Binding IsNormalDocumentReady, Converter={StaticResource BoolToVis}}"/>
 
                 <!-- Interactive Tools -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
@@ -218,15 +230,6 @@
             <!-- CENTER: INTERACTIVE CANVAS WORKSPACE -->
             <Border Grid.Column="1" Background="#0B0C10" ClipToBounds="True">
                 <Grid>
-                    <!-- Page Navigation Floating Top Bar -->
-                    <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,12,0,0" Panel.ZIndex="10" Background="#1D1E2C" CornerRadius="20" Padding="12,4" BorderBrush="#3A3C50" BorderThickness="1"
-                            Visibility="{Binding IsNormalDocumentReady, Converter={StaticResource BoolToVis}}">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource OutlineButton}" Height="26" Padding="8,0" Margin="0,0,6,0" FontSize="11"/>
-                            <TextBlock Text="{Binding PageInfoText}" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="6,0"/>
-                            <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource OutlineButton}" Height="26" Padding="8,0" Margin="6,0,0,0" FontSize="11"/>
-                        </StackPanel>
-                    </Border>
 
                     <!-- Scrollable & Zoomable Canvas -->
                     <ScrollViewer x:Name="PageScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PreviewMouseWheel="PageScrollViewer_PreviewMouseWheel"
@@ -377,6 +380,8 @@
                                                                              BorderThickness="0"
                                                                              Padding="0"
                                                                              Margin="-2,0,0,0"
+                                                                             AcceptsReturn="True"
+                                                                             TextWrapping="Wrap"
                                                                              FocusVisualStyle="{x:Null}"
                                                                              VerticalContentAlignment="Top"
                                                                              TextOptions.TextFormattingMode="Display"
@@ -524,9 +529,13 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding StatusMessage}" Foreground="#00BCD4" FontSize="11.5" FontWeight="SemiBold"/>
-                <TextBlock Grid.Column="1" Text="⌨️ Shortcuts: F1 (Select) • F2 (Whiteout) • F3 (Add Text) • F4 (Edit Text) • F5 (Draw) • Ctrl+Z (Undo) • Del (Remove) • Ctrl+S (Save)" Foreground="#777788" FontSize="11"/>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#00BCD4" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Border Grid.Column="1" Margin="16,0" Background="#1A1C28" CornerRadius="3" Padding="8,2" Visibility="{Binding IsNormalDocumentReady, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding PageInfoText}" Foreground="#A0A0C0" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Grid.Column="2" Text="⌨️ Shortcuts: F1 (Select) • F2 (Whiteout) • F3 (Add Text) • F4 (Edit Text) • F5 (Draw) • Ctrl+Z (Undo) • Del (Remove) • Ctrl+S (Save)" Foreground="#777788" FontSize="11" VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>

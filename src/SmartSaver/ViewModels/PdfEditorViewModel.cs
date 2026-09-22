@@ -173,6 +173,8 @@ public class PdfEditorViewModel : ViewModelBase
         set => SetProperty(ref _pageInfoText, value);
     }
 
+    public string PageNumberText => TotalPages > 0 ? $"Page {CurrentPageNumber} of {TotalPages}" : "Page 0 of 0";
+
     private BitmapSource? _currentPagePreview;
     public BitmapSource? CurrentPagePreview
     {
@@ -295,7 +297,7 @@ public class PdfEditorViewModel : ViewModelBase
     // Collections
     public ObservableCollection<string> FontFamilies { get; } = new()
     {
-        "Arial", "Times New Roman", "Calibri", "Segoe UI", "Courier New", "Georgia", "Verdana", "Trebuchet MS", "Impact", "Nirmala UI", "Vrinda"
+        "Arial", "Times New Roman", "Calibri", "Segoe UI", "Courier New", "Georgia", "Verdana", "Trebuchet MS", "Impact", "Nirmala UI", "Mangal", "Vrinda"
     };
 
     private string _selectedFontFamily = "Arial";
@@ -999,6 +1001,8 @@ public class PdfEditorViewModel : ViewModelBase
         {
             PageInfoText = $"Page {CurrentPageNumber} of {TotalPages}";
         }
+        OnPropertyChanged(nameof(PageNumberText));
+        OnPropertyChanged(nameof(CurrentPageNumber));
     }
 
     public void AddEditItem(PdfEditItem item)
@@ -1781,7 +1785,7 @@ public class PdfEditorViewModel : ViewModelBase
 
         // 3. New matching text item placed at the exact baseline coordinates
         string fontFam = block.FontFamily;
-        if (BengaliTextHelper.ContainsBengali(block.OriginalText))
+        if (BengaliTextHelper.ContainsBengali(block.OriginalText) || BengaliTextHelper.ContainsIndic(block.OriginalText))
         {
             if (fontFam == "Arial" || fontFam == "Times New Roman" || string.IsNullOrWhiteSpace(fontFam))
                 fontFam = BengaliTextHelper.PreferredBengaliFont;

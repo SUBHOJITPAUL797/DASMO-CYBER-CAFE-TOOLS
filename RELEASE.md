@@ -60,7 +60,7 @@ cd "c:\CODING\coading\DASMO CYBER CAFE"
 dotnet publish "src\SmartSaver\SmartSaver.csproj" `
     -c Release `
     -r win-x64 `
-    --self-contained false `
+    --self-contained true `
     -o "src\SmartSaver\bin\Release\net8.0-windows10.0.17763.0\win-x64\publish"
 ```
 
@@ -187,7 +187,8 @@ Update the version policy so existing users get notified:
 
 | File in `releases/` | Version | Date | Status |
 |---------------------|---------|------|--------|
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.1.msi` | 1.5.1.0 | 2026-09-22 | ✅ Current |
+| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.2.msi` | 1.5.2.0 | 2026-09-22 | ✅ Current |
+| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.1.msi` | 1.5.1.0 | 2026-09-22 | 📦 Previous |
 
 > Old MSI files in the root folder (`DASMO_CYBER_CAFE_TOOLS_Setup_v1.4.x.msi` etc.) are kept for reference only. Do not install or share them.
 

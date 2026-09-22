@@ -58,6 +58,32 @@ public static class BengaliTextHelper
     }
 
     /// <summary>
+    /// Checks if text contains Devanagari (Hindi, Marathi, Nepali) Unicode characters (\u0900-\u097F).
+    /// </summary>
+    public static bool ContainsDevanagari(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        foreach (char c in text)
+        {
+            if (c >= '\u0900' && c <= '\u097F') return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if text contains any Indic script characters (Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu, Kannada, Malayalam).
+    /// </summary>
+    public static bool ContainsIndic(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        foreach (char c in text)
+        {
+            if (c >= '\u0900' && c <= '\u0D7F') return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Normalizes extracted Bengali text by translating legacy government glyphs,
     /// reordering post-base reph and pre-base vowels (ি, ে, ৈ) into proper Unicode logical order,
     /// and fixing known government portal ligature artefacts.

@@ -34,8 +34,24 @@ public partial class PdfEditorWindow : Window
         var vm = new PdfEditorViewModel(initialPdfPath);
         vm.RequestClose = () => Close();
         DataContext = vm;
-        Loaded += (_, _) => EnsureOnScreen();
+        Loaded += (_, _) =>
+        {
+            if (WindowState != WindowState.Maximized)
+            {
+                EnsureOnScreen();
+            }
+            UpdateMaximizeButtonIcon();
+        };
+        StateChanged += (_, _) => UpdateMaximizeButtonIcon();
         Closing += Window_Closing;
+    }
+
+    private void UpdateMaximizeButtonIcon()
+    {
+        if (MaximizeBtn != null)
+        {
+            MaximizeBtn.Content = WindowState == WindowState.Maximized ? "🗗" : "🗖";
+        }
     }
 
     private bool _isClosingConfirmed;
@@ -556,8 +572,8 @@ public partial class PdfEditorWindow : Window
 
     private void TextItem_PreviewKeyDown(object sender, WpfKeyEventArgs e)
     {
-        // Enter (without Shift) or Escape commits edit and clears the selection border
-        if ((e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Shift) == 0) || e.Key == Key.Escape)
+        // Escape or Ctrl+Enter commits edit and clears the selection border
+        if (e.Key == Key.Escape || (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Control) != 0))
         {
             if (sender is System.Windows.Controls.TextBox tb)
             {
