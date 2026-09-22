@@ -132,7 +132,7 @@ public class BatchCompressViewModel : ViewModelBase
     public bool CanMerge => !IsProcessing && !IsMerging && IsPdfOnlyBatch;
 
     public ObservableCollection<string> SizeUnits { get; } = new() { "KB", "MB" };
-    public ObservableCollection<string> OutputFormats { get; } = new() { "Same as input", ".jpg", ".png", ".pdf" };
+    public ObservableCollection<string> OutputFormats { get; } = new() { "Same as input", ".jpg", ".jpeg", ".png", ".pdf" };
 
     public ICommand CompressAllCommand { get; }
     public ICommand CancelCommand { get; }

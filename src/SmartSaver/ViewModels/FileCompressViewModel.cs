@@ -53,7 +53,27 @@ public class FileCompressViewModel : ViewModelBase
     public string ResultText { get => _resultText; set { SetProperty(ref _resultText, value); OnPropertyChanged(nameof(HasResult)); } }
 
     public bool HasResult => !string.IsNullOrEmpty(_resultText);
-    public bool CanCompress => !IsProcessing && TargetSize > 0;
+    public bool CanCompress => !IsProcessing && (IsConvertOnlyMode || TargetSize > 0);
+
+    // When true, the user wants format conversion only — no compression applied
+    private bool _isConvertOnlyMode;
+    public bool IsConvertOnlyMode
+    {
+        get => _isConvertOnlyMode;
+        set
+        {
+            if (SetProperty(ref _isConvertOnlyMode, value))
+            {
+                OnPropertyChanged(nameof(CanCompress));
+                OnPropertyChanged(nameof(ActionButtonLabel));
+                OnPropertyChanged(nameof(SectionOneVisible));
+                UpdateFormatNote();
+            }
+        }
+    }
+
+    public string ActionButtonLabel => IsConvertOnlyMode ? "🔄 Convert Format" : "⚡ Compress Now";
+    public bool SectionOneVisible => !IsConvertOnlyMode;
 
     public ObservableCollection<string> SizeUnits { get; } = new() { "KB", "MB" };
     public ObservableCollection<string> OutputFormats { get; } = new();
@@ -100,13 +120,13 @@ public class FileCompressViewModel : ViewModelBase
     // Output format options by input type
     private static readonly Dictionary<string, List<string>> FormatOptions = new(StringComparer.OrdinalIgnoreCase)
     {
-        [".jpg"]  = new() { "Same as input", ".jpg", ".png", ".webp", ".pdf" },
-        [".jpeg"] = new() { "Same as input", ".jpg", ".png", ".webp", ".pdf" },
-        [".png"]  = new() { "Same as input", ".jpg", ".png", ".webp", ".pdf" },
-        [".bmp"]  = new() { "Same as input", ".jpg", ".png", ".webp", ".pdf" },
-        [".webp"] = new() { "Same as input", ".jpg", ".png", ".webp", ".pdf" },
-        [".tiff"] = new() { "Same as input", ".jpg", ".png", ".pdf" },
-        [".tif"]  = new() { "Same as input", ".jpg", ".png", ".pdf" },
+        [".jpg"]  = new() { "Same as input", ".jpg", ".jpeg", ".png", ".webp", ".pdf" },
+        [".jpeg"] = new() { "Same as input", ".jpg", ".jpeg", ".png", ".webp", ".pdf" },
+        [".png"]  = new() { "Same as input", ".jpg", ".jpeg", ".png", ".webp", ".pdf" },
+        [".bmp"]  = new() { "Same as input", ".jpg", ".jpeg", ".png", ".webp", ".pdf" },
+        [".webp"] = new() { "Same as input", ".jpg", ".jpeg", ".png", ".webp", ".pdf" },
+        [".tiff"] = new() { "Same as input", ".jpg", ".jpeg", ".png", ".pdf" },
+        [".tif"]  = new() { "Same as input", ".jpg", ".jpeg", ".png", ".pdf" },
         [".pdf"]  = new() { "Same as input" },
         [".docx"] = new() { "Same as input" },
         [".xlsx"] = new() { "Same as input" },
@@ -160,6 +180,16 @@ public class FileCompressViewModel : ViewModelBase
             return;
         }
 
+        if (IsConvertOnlyMode)
+        {
+            string outputExt = SelectedOutputFormat == "Same as input" ? _originalExtension : SelectedOutputFormat;
+            if (outputExt == _originalExtension)
+                FormatNote = "⚠️ Select a different format to convert to.";
+            else
+                FormatNote = $"🔄 Will convert {_originalExtension} → {outputExt} without changing quality or size.";
+            return;
+        }
+
         if (SelectedOutputFormat != "Same as input" && SelectedOutputFormat != _originalExtension)
         {
             FormatNote = $"File will be converted from {_originalExtension} to {SelectedOutputFormat} during compression.";
@@ -180,56 +210,82 @@ public class FileCompressViewModel : ViewModelBase
 
         IsProcessing = true;
         ResultText = string.Empty;
-        ProgressText = "Compressing...";
+
+        // Determine actual output extension
+        string outputExt = SelectedOutputFormat == "Same as input" ? _originalExtension : SelectedOutputFormat;
+
+        // Determine output path
+        string outputPath;
+        if (OutputMode == "replace" && outputExt == _originalExtension)
+        {
+            outputPath = _filePath;
+        }
+        else
+        {
+            string? dir = Path.GetDirectoryName(_filePath);
+            if (string.IsNullOrEmpty(dir)) dir = Environment.CurrentDirectory;
+            string nameNoExt = Path.GetFileNameWithoutExtension(_filePath);
+            string suffix = !IsConvertOnlyMode && outputExt == _originalExtension ? "_compressed" : string.Empty;
+            outputPath = Path.Combine(dir, $"{nameNoExt}{suffix}{outputExt}");
+
+            int counter = 1;
+            while (File.Exists(outputPath))
+            {
+                outputPath = Path.Combine(dir, $"{nameNoExt}{suffix}_{counter++}{outputExt}");
+            }
+        }
 
         try
         {
+            // ── CONVERT FORMAT ONLY (no compression) ───────────────────────────
+            if (IsConvertOnlyMode)
+            {
+                if (outputExt == _originalExtension)
+                {
+                    ResultText = "⚠️ Please select a different output format to convert to.";
+                    return;
+                }
+
+                ProgressText = $"Converting {_originalExtension} → {outputExt}...";
+                FileWatcherService.IgnoreOutputFile(outputPath);
+
+                var result = await _engine.ConvertFormatAsync(_filePath, outputPath, outputExt);
+                FileWatcherService.IgnoreOutputFile(outputPath);
+
+                if (result.Success)
+                {
+                    OutputHistoryService.Instance.Record(result.FilePath, "Converted", result.OriginalSizeBytes, result.NewSizeBytes);
+                    ResultText = $"✅ Converted! {result.OriginalSizeFormatted} → {result.CompressedSizeFormatted}\n→ {Path.GetFileName(outputPath)}";
+                }
+                else
+                {
+                    ResultText = $"❌ {result.Message ?? "Format conversion failed."}";
+                }
+                return;
+            }
+
+            // ── COMPRESS (with optional format change) ──────────────────────────
             long targetBytes = TargetSizeUnit == "MB"
                 ? (long)TargetSize * 1024 * 1024
                 : (long)TargetSize * 1024;
 
-            // Determine actual output extension
-            string outputExt = SelectedOutputFormat == "Same as input" ? _originalExtension : SelectedOutputFormat;
-
-            // Determine output path
-            string outputPath;
-            if (OutputMode == "replace" && outputExt == _originalExtension)
-            {
-                outputPath = _filePath; // will replace in-place via engine
-            }
-            else
-            {
-                string? dir = Path.GetDirectoryName(_filePath);
-                if (string.IsNullOrEmpty(dir)) dir = Environment.CurrentDirectory;
-                string nameNoExt = Path.GetFileNameWithoutExtension(_filePath);
-                string suffix = outputExt == _originalExtension ? "_compressed" : string.Empty;
-                outputPath = Path.Combine(dir, $"{nameNoExt}{suffix}{outputExt}");
-
-                // Avoid clobbering existing files
-                int counter = 1;
-                while (File.Exists(outputPath))
-                {
-                    outputPath = Path.Combine(dir, $"{nameNoExt}{suffix}_{counter++}{outputExt}");
-                }
-            }
-
-            FileWatcherService.IgnoreOutputFile(outputPath);
             ProgressText = $"Compressing to {TargetSize} {TargetSizeUnit}...";
-            var result = await _engine.CompressFileAsync(_filePath, outputPath, targetBytes, outputExt, keepBackup: OutputMode == "replace");
+            FileWatcherService.IgnoreOutputFile(outputPath);
+            var compResult = await _engine.CompressFileAsync(_filePath, outputPath, targetBytes, outputExt, keepBackup: OutputMode == "replace");
             FileWatcherService.IgnoreOutputFile(outputPath);
 
-            if (result.Success)
+            if (compResult.Success)
             {
-                OutputHistoryService.Instance.Record(result.FilePath, "Compressed", result.OriginalSizeBytes, result.NewSizeBytes);
-                double pct = result.OriginalSizeBytes > 0
-                    ? 100.0 * (1.0 - (double)result.NewSizeBytes / result.OriginalSizeBytes)
+                OutputHistoryService.Instance.Record(compResult.FilePath, "Compressed", compResult.OriginalSizeBytes, compResult.NewSizeBytes);
+                double pct = compResult.OriginalSizeBytes > 0
+                    ? 100.0 * (1.0 - (double)compResult.NewSizeBytes / compResult.OriginalSizeBytes)
                     : 0;
-                string note = !string.IsNullOrEmpty(result.Message) ? $"{result.Message}\n" : string.Empty;
-                ResultText = $"✅ Done! {result.OriginalSizeFormatted} → {result.CompressedSizeFormatted} ({pct:F1}% saved)\n{note}→ {Path.GetFileName(outputPath)}";
+                string note = !string.IsNullOrEmpty(compResult.Message) ? $"{compResult.Message}\n" : string.Empty;
+                ResultText = $"✅ Done! {compResult.OriginalSizeFormatted} → {compResult.CompressedSizeFormatted} ({pct:F1}% saved)\n{note}→ {Path.GetFileName(outputPath)}";
             }
             else
             {
-                ResultText = $"❌ {result.Message ?? "Compression failed."}";
+                ResultText = $"❌ {compResult.Message ?? "Compression failed."}";
             }
         }
         catch (Exception ex)

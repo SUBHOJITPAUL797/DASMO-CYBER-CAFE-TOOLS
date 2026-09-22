@@ -84,6 +84,55 @@ public sealed class CompressionEngine
     }
 
     /// <summary>
+    /// Converts an image to a different format WITHOUT any compression or quality reduction.
+    /// The output file will be the same visual quality — only the container/encoding changes.
+    /// </summary>
+    public async Task<CompressionResult> ConvertFormatAsync(
+        string sourcePath, string outputPath, string outputExtension)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+
+        return await Task.Run(() =>
+        {
+            if (!File.Exists(sourcePath))
+                return new CompressionResult { FilePath = sourcePath, Success = false, Message = "Source file not found." };
+
+            long origSize = new FileInfo(sourcePath).Length;
+            string srcExt = Path.GetExtension(sourcePath).ToLowerInvariant();
+            string outExt = outputExtension.ToLowerInvariant();
+
+            try
+            {
+                bool ok = _imageCompressor.ConvertFormat(sourcePath, outputPath, outExt);
+                if (!ok || !File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
+                {
+                    CleanupTemp(outputPath);
+                    return new CompressionResult { FilePath = sourcePath, Success = false,
+                        Message = $"Could not convert {srcExt} to {outExt}." };
+                }
+
+                long newSize = new FileInfo(outputPath).Length;
+                Log.Information("Converted {Src} → {Out} ({SrcExt} to {OutExt})", sourcePath, outputPath, srcExt, outExt);
+
+                return new CompressionResult
+                {
+                    FilePath = outputPath,
+                    OriginalSizeBytes = origSize,
+                    NewSizeBytes = newSize,
+                    Success = true
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "ConvertFormatAsync failed for {Path}", sourcePath);
+                CleanupTemp(outputPath);
+                return new CompressionResult { FilePath = sourcePath, Success = false, Message = ex.Message };
+            }
+        });
+    }
+
+    /// <summary>
     /// Merges multiple PDF files into one output file, with optional target size compression.
     /// </summary>
     public async Task<CompressionResult> MergePdfsAsync(

@@ -1,8 +1,10 @@
 using System.IO;
 using Serilog;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 using Image = SixLabors.ImageSharp.Image;
 using Size = SixLabors.ImageSharp.Size;
@@ -78,6 +80,56 @@ public sealed class ImageCompressor
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to compress image {SourcePath} to format {Ext}", sourcePath, outputExtension);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Converts an image to a different format at high quality (95) — no lossy compression applied.
+    /// Supports .jpg/.jpeg/.png/.webp/.pdf output.
+    /// </summary>
+    public bool ConvertFormat(string sourcePath, string outputPath, string outputExtension)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+
+        try
+        {
+            string outExt = outputExtension.ToLowerInvariant();
+            using var image = Image.Load(sourcePath);
+            image.Mutate(ctx => ctx.AutoOrient()); // fix EXIF rotation
+
+            switch (outExt)
+            {
+                case ".jpg":
+                case ".jpeg":
+                    image.SaveAsJpeg(outputPath, new JpegEncoder { Quality = 95 });
+                    break;
+                case ".png":
+                    image.SaveAsPng(outputPath, new PngEncoder
+                    {
+                        CompressionLevel = PngCompressionLevel.DefaultCompression,
+                        FilterMethod = PngFilterMethod.Adaptive
+                    });
+                    break;
+                case ".webp":
+                    image.SaveAsWebp(outputPath, new WebpEncoder { Quality = 95, Method = WebpEncodingMethod.BestQuality });
+                    break;
+                case ".bmp":
+                    image.SaveAsBmp(outputPath);
+                    break;
+                default:
+                    // Fallback: high-quality JPEG
+                    image.SaveAsJpeg(outputPath, new JpegEncoder { Quality = 95 });
+                    break;
+            }
+
+            Log.Information("ConvertFormat: {Src} → {Out} ({Ext})", sourcePath, outputPath, outExt);
+            return File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "ConvertFormat failed: {Src} → {Ext}", sourcePath, outputExtension);
             return false;
         }
     }
