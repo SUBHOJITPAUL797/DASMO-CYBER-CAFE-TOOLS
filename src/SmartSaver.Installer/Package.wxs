@@ -27,7 +27,7 @@
                            CloseMessage="yes"
                            RebootPrompt="no"
                            TerminateProcess="1"
-                           Description="Closing old SmartSaver instance..." />
+                           Description="Closing previous instance of DASMO CYBER CAFE TOOLS..." />
 
     <util:CloseApplication Id="CloseDasmoApp"
                            Target="DASMO CYBER CAFE TOOLS.exe"

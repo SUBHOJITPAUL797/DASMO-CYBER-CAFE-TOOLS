@@ -173,7 +173,7 @@ public class GovtCardExtractorService
 
     public GovtCardExtractorService()
     {
-        _cacheDir = Path.Combine(Path.GetTempPath(), "SmartSaver", "ExtractedCards");
+        _cacheDir = Path.Combine(Path.GetTempPath(), "DASMO CYBER CAFE TOOLS", "ExtractedCards");
         Directory.CreateDirectory(_cacheDir);
 
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;

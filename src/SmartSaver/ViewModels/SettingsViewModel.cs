@@ -269,7 +269,7 @@ public class SettingsViewModel : ViewModelBase
 
     private void OpenLogFolder()
     {
-        string logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DASMO CYBER COMPRESSOR", "logs");
+        string logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DASMO CYBER CAFE TOOLS", "logs");
         Directory.CreateDirectory(logDir);
         try
         {

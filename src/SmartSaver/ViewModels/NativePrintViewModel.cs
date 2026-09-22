@@ -434,7 +434,7 @@ public class NativePrintViewModel : ViewModelBase
         {
             try
             {
-                string tempPath = Path.Combine(Path.GetTempPath(), $"smartsaver_print_{Guid.NewGuid():N}.png");
+                string tempPath = Path.Combine(Path.GetTempPath(), $"dasmo_print_{Guid.NewGuid():N}.png");
                 using var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bmp));

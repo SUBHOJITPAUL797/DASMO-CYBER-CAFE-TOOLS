@@ -96,7 +96,7 @@ public sealed class PdfCompressor
         var validFiles = sourceFiles.Where(File.Exists).ToList();
         if (validFiles.Count == 0) return false;
 
-        string tempMergedPath = Path.Combine(Path.GetTempPath(), $"smartsaver_merge_{Guid.NewGuid():N}.pdf");
+        string tempMergedPath = Path.Combine(Path.GetTempPath(), $"dasmo_merge_{Guid.NewGuid():N}.pdf");
 
         try
         {
@@ -170,7 +170,7 @@ public sealed class PdfCompressor
         var pagesToExtract = pageNumbers.Distinct().OrderBy(p => p).ToList();
         if (pagesToExtract.Count == 0) return false;
 
-        string tempPath = Path.Combine(Path.GetTempPath(), $"smartsaver_extract_{Guid.NewGuid():N}.pdf");
+        string tempPath = Path.Combine(Path.GetTempPath(), $"dasmo_extract_{Guid.NewGuid():N}.pdf");
         try
         {
             using (var inDoc = PdfReader.Open(sourcePath, PdfDocumentOpenMode.Import))
@@ -230,7 +230,7 @@ public sealed class PdfCompressor
         var items = pageItems.ToList();
         if (items.Count == 0) return false;
 
-        string tempPath = Path.Combine(Path.GetTempPath(), $"smartsaver_ordered_{Guid.NewGuid():N}.pdf");
+        string tempPath = Path.Combine(Path.GetTempPath(), $"dasmo_ordered_{Guid.NewGuid():N}.pdf");
         var openDocs = new Dictionary<string, PdfDocument>(StringComparer.OrdinalIgnoreCase);
 
         try
@@ -308,7 +308,7 @@ public sealed class PdfCompressor
         var validImages = imagePaths.Where(File.Exists).ToList();
         if (validImages.Count == 0) return false;
 
-        string tempPdf = Path.Combine(Path.GetTempPath(), $"smartsaver_img2pdf_{Guid.NewGuid():N}.pdf");
+        string tempPdf = Path.Combine(Path.GetTempPath(), $"dasmo_img2pdf_{Guid.NewGuid():N}.pdf");
 
         try
         {
@@ -553,7 +553,7 @@ public sealed class PdfCompressor
     private bool CompressBuiltInCore(string sourcePath, string outputPath, long targetBytes, long originalSize)
     {
         // ── Pass 1: Quick in-place re-encode (no rasterisation, preserves vector text) ──
-        string inplacePath = Path.Combine(Path.GetTempPath(), $"smartsaver_inplace_{Guid.NewGuid():N}.pdf");
+        string inplacePath = Path.Combine(Path.GetTempPath(), $"dasmo_inplace_{Guid.NewGuid():N}.pdf");
         try
         {
             if (TryInPlaceReencode(sourcePath, inplacePath))

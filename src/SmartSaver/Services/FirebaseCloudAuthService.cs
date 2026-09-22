@@ -101,12 +101,28 @@ public class FirebaseCloudAuthService
     private FirebaseCloudAuthService()
     {
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-        _sessionFilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SmartSaver", "pc_auth_session.json");
-        _gateFilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SmartSaver", "licensing_gate.json");
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string newDir = Path.Combine(appData, "DASMO CYBER CAFE TOOLS");
+        Directory.CreateDirectory(newDir);
+
+        _sessionFilePath = Path.Combine(newDir, "pc_auth_session.json");
+        _gateFilePath = Path.Combine(newDir, "licensing_gate.json");
+
+        // Backward compatibility: migrate from old SmartSaver directory if present
+        try
+        {
+            string oldSession = Path.Combine(appData, "SmartSaver", "pc_auth_session.json");
+            string oldGate = Path.Combine(appData, "SmartSaver", "licensing_gate.json");
+            if (!File.Exists(_sessionFilePath) && File.Exists(oldSession))
+            {
+                File.Copy(oldSession, _sessionFilePath, overwrite: true);
+            }
+            if (!File.Exists(_gateFilePath) && File.Exists(oldGate))
+            {
+                File.Copy(oldGate, _gateFilePath, overwrite: true);
+            }
+        }
+        catch { }
     }
 
     private const string IntegritySalt = "DASMO_CYBER_SECURE_TOKEN_2026_V1_F9B8C7D6";

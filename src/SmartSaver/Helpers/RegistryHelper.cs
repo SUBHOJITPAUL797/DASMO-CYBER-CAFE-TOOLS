@@ -80,7 +80,26 @@ public static class RegistryHelper
         try
         {
             string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
-                ?? Path.Combine(AppContext.BaseDirectory, "SmartSaver.exe");
+                ?? Path.Combine(AppContext.BaseDirectory, "DASMO CYBER CAFE TOOLS.exe");
+
+            // Clean up any legacy SmartSaver context menu keys from the user registry
+            try
+            {
+                foreach (string ext in ImageExtensions)
+                {
+                    Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{ext}\shell\SmartSaver", throwOnMissingSubKey: false);
+                    Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{ext}\shell\SmartSaverStamp", throwOnMissingSubKey: false);
+                    Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{ext}\shell\SmartSaverEnhance", throwOnMissingSubKey: false);
+                    Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{ext}\shell\SmartSaverImg2Pdf", throwOnMissingSubKey: false);
+                }
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverMerge", throwOnMissingSubKey: false);
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverSplit", throwOnMissingSubKey: false);
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdf2Img", throwOnMissingSubKey: false);
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdfEdit", throwOnMissingSubKey: false);
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\*\shell\SmartSaverCompress", throwOnMissingSubKey: false);
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\*\shell\SmartSaverPeek", throwOnMissingSubKey: false);
+            }
+            catch { }
 
             foreach (string ext in ImageExtensions)
             {
@@ -110,7 +129,7 @@ public static class RegistryHelper
     {
         try
         {
-            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaverStamp";
+            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoStamp";
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
             if (shellKey != null)
             {
@@ -135,7 +154,7 @@ public static class RegistryHelper
     {
         try
         {
-            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaverEnhance";
+            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoEnhance";
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
             if (shellKey != null)
             {
@@ -160,7 +179,7 @@ public static class RegistryHelper
     {
         try
         {
-            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaverImg2Pdf";
+            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoImg2Pdf";
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
             if (shellKey != null)
             {
@@ -188,7 +207,7 @@ public static class RegistryHelper
             string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
                 ?? Path.Combine(AppContext.BaseDirectory, "DASMO CYBER CAFE TOOLS.exe");
 
-            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdf2Img";
+            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoPdf2Img";
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
             if (shellKey != null)
             {
@@ -216,7 +235,7 @@ public static class RegistryHelper
             string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
                 ?? Path.Combine(AppContext.BaseDirectory, "DASMO CYBER CAFE TOOLS.exe");
 
-            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverMerge";
+            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoMerge";
 
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
             if (shellKey != null)
@@ -247,7 +266,7 @@ public static class RegistryHelper
             string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
                 ?? Path.Combine(AppContext.BaseDirectory, "DASMO CYBER CAFE TOOLS.exe");
 
-            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverSplit";
+            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoSplit";
 
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
             if (shellKey != null)
@@ -278,7 +297,7 @@ public static class RegistryHelper
             string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
                 ?? Path.Combine(AppContext.BaseDirectory, "DASMO CYBER CAFE TOOLS.exe");
 
-            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdfEdit";
+            string keyPath = @"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoPdfEdit";
 
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
             if (shellKey != null)
@@ -311,6 +330,13 @@ public static class RegistryHelper
                 UnregisterContextMenuForExtension(ext);
             }
 
+            // Remove current Dasmo keys
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoMerge", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoSplit", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoPdf2Img", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\DasmoPdfEdit", throwOnMissingSubKey: false);
+
+            // Remove legacy SmartSaver keys
             Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverMerge", throwOnMissingSubKey: false);
             Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverSplit", throwOnMissingSubKey: false);
             Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdf2Img", throwOnMissingSubKey: false);
@@ -328,7 +354,7 @@ public static class RegistryHelper
     {
         try
         {
-            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaver";
+            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoTools";
 
             // Create the main menu key
             using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
@@ -355,8 +381,16 @@ public static class RegistryHelper
     {
         try
         {
-            string keyPath = $@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaver";
-            Registry.CurrentUser.DeleteSubKeyTree(keyPath, throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoTools", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoStamp", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoEnhance", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\DasmoImg2Pdf", throwOnMissingSubKey: false);
+
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaver", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaverStamp", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaverEnhance", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{extension}\shell\SmartSaverImg2Pdf", throwOnMissingSubKey: false);
+
             Log.Debug("Context menu unregistered for {Extension}", extension);
         }
         catch (Exception ex)

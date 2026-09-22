@@ -11,7 +11,7 @@ namespace SmartSaver.Services;
 /// </summary>
 public sealed class NotificationService
 {
-    private const string AppName = "SmartSaver";
+    private const string AppName = "DASMO CYBER CAFE TOOLS";
 
     /// <summary>
     /// Notifies the user that a file was successfully compressed.

@@ -14,13 +14,13 @@
     <ComponentGroup Id="ShortcutComponents">
 
       <!-- Start Menu shortcut -->
-      <Component Id="StartMenuShortcut" Directory="SmartSaverProgramMenu" Guid="*">
+      <Component Id="StartMenuShortcut" Directory="DasmoProgramMenu" Guid="*">
         <Shortcut Id="StartMenuShortcut"
                   Name="DASMO CYBER CAFE TOOLS"
                   Description="DASMO CYBER CAFE TOOLS - All-in-One Cyber Cafe Management &amp; Document Processing Suite"
                   Target="[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe"
                   WorkingDirectory="INSTALLFOLDER"
-                  Icon="SmartSaverIcon" />
+                  Icon="DasmoIcon" />
         <RemoveFolder Id="RemoveStartMenuFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\DASMO CYBER CAFE TOOLS" Name="StartMenuShortcut"
                        Type="integer" Value="1" KeyPath="yes" />
@@ -33,7 +33,7 @@
                   Description="DASMO CYBER CAFE TOOLS - All-in-One Cyber Cafe Management &amp; Document Processing Suite"
                   Target="[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe"
                   WorkingDirectory="INSTALLFOLDER"
-                  Icon="SmartSaverIcon" />
+                  Icon="DasmoIcon" />
         <RegistryValue Root="HKCU" Key="Software\DASMO CYBER CAFE TOOLS" Name="DesktopShortcut"
                        Type="integer" Value="1" KeyPath="yes" />
       </Component>
@@ -41,7 +41,7 @@
     </ComponentGroup>
 
     <!-- Application icon definition -->
-    <Icon Id="SmartSaverIcon" SourceFile="$(var.PublishDir)\DASMO CYBER CAFE TOOLS.exe" />
+    <Icon Id="DasmoIcon" SourceFile="$(var.PublishDir)\DASMO CYBER CAFE TOOLS.exe" />
 
   </Fragment>
 

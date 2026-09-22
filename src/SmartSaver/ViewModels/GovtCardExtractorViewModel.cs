@@ -616,7 +616,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
 
         try
         {
-            string tempPreview = Path.Combine(Path.GetTempPath(), $"smartsaver_sheet_prev_{Guid.NewGuid():N}.png");
+            string tempPreview = Path.Combine(Path.GetTempPath(), $"dasmo_sheet_prev_{Guid.NewGuid():N}.png");
             int pageIdx = Math.Clamp(CurrentPreviewPage - 1, 0, TotalPages - 1);
 
             await _sheetService.GenerateImageAsync(selected, tempPreview, SelectedLayout, ScissorGapMm, SelectedAlignment, pageIdx, CardWidthCm, CardHeightCm);
@@ -789,7 +789,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
 
             for (int p = 0; p < TotalPages; p++)
             {
-                string tempPrintImg = Path.Combine(Path.GetTempPath(), $"smartsaver_print_p{p}_{Guid.NewGuid():N}.jpg");
+                string tempPrintImg = Path.Combine(Path.GetTempPath(), $"dasmo_print_p{p}_{Guid.NewGuid():N}.jpg");
                 await _sheetService.GenerateImageAsync(selected, tempPrintImg, SelectedLayout, ScissorGapMm, SelectedAlignment, p, CardWidthCm, CardHeightCm);
                 tempFiles.Add(tempPrintImg);
             }

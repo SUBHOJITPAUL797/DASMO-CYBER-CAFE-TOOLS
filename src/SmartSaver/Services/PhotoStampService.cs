@@ -33,7 +33,7 @@ public class PhotoStampService
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
         if (!File.Exists(sourcePath)) return false;
 
-        string tempPath = Path.Combine(Path.GetTempPath(), $"smartsaver_stamp_{Guid.NewGuid():N}.jpg");
+        string tempPath = Path.Combine(Path.GetTempPath(), $"dasmo_stamp_{Guid.NewGuid():N}.jpg");
 
         try
         {

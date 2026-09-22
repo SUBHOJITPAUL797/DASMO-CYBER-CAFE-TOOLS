@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Resources\tray_icon.ico</ApplicationIcon>
+    <Title>DASMO CYBER CAFE TOOLS</Title>
     <AssemblyName>DASMO CYBER CAFE TOOLS</AssemblyName>
     <RootNamespace>SmartSaver</RootNamespace>
     <Version>1.5.1.0</Version>

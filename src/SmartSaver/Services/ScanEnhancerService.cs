@@ -85,7 +85,7 @@ public class ScanEnhancerService
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
         if (!File.Exists(sourcePath)) return false;
 
-        string tempPath = Path.Combine(Path.GetTempPath(), $"smartsaver_enhance_{Guid.NewGuid():N}{Path.GetExtension(outputPath)}");
+        string tempPath = Path.Combine(Path.GetTempPath(), $"dasmo_enhance_{Guid.NewGuid():N}{Path.GetExtension(outputPath)}");
 
         try
         {

@@ -647,7 +647,7 @@ public partial class App : System.Windows.Application
             .MinimumLevel.Is(minLevel)
             .WriteTo.Console()
             .WriteTo.File(
-                Path.Combine(logDir, "smartsaver_.log"),
+                Path.Combine(logDir, "dasmo_cyber_cafe_tools_.log"),
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 30,
                 outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
@@ -944,7 +944,8 @@ public partial class App : System.Windows.Application
         Directory.CreateDirectory(logDir);
 
         // Find the most recent log file
-        var latestLog = Directory.GetFiles(logDir, "smartsaver_*.log")
+        var latestLog = Directory.GetFiles(logDir, "dasmo_cyber_cafe_tools_*.log")
+            .Concat(Directory.GetFiles(logDir, "smartsaver_*.log"))
             .OrderByDescending(f => f)
             .FirstOrDefault();
 

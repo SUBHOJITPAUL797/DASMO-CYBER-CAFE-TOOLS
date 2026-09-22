@@ -80,7 +80,7 @@ public static class SingleInstanceHelper
         }
         catch (TimeoutException)
         {
-            Log.Warning("Timeout connecting to existing SmartSaver instance via IPC pipe.");
+            Log.Warning("Timeout connecting to existing DASMO CYBER CAFE TOOLS instance via IPC pipe.");
         }
         catch (Exception ex)
         {
