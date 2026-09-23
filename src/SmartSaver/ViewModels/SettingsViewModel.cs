@@ -14,10 +14,54 @@ public class SettingsViewModel : ViewModelBase
 
     // Auto-Compress Settings
     private bool _autoCompressEnabled;
-    public bool AutoCompressEnabled { get => _autoCompressEnabled; set => SetProperty(ref _autoCompressEnabled, value); }
+    public bool AutoCompressEnabled
+    {
+        get => _autoCompressEnabled;
+        set
+        {
+            if (SetProperty(ref _autoCompressEnabled, value))
+            {
+                if (!value && _actionOnNewFile != "off")
+                {
+                    _actionOnNewFile = "off";
+                    OnPropertyChanged(nameof(ActionOnNewFile));
+                }
+                else if (value && _actionOnNewFile == "off")
+                {
+                    _actionOnNewFile = "prompt";
+                    OnPropertyChanged(nameof(ActionOnNewFile));
+                }
+            }
+        }
+    }
 
     private string _actionOnNewFile = "prompt";
-    public string ActionOnNewFile { get => _actionOnNewFile; set => SetProperty(ref _actionOnNewFile, value); }
+    public string ActionOnNewFile
+    {
+        get => _actionOnNewFile;
+        set
+        {
+            if (SetProperty(ref _actionOnNewFile, value))
+            {
+                if (value == "off")
+                {
+                    if (_autoCompressEnabled)
+                    {
+                        _autoCompressEnabled = false;
+                        OnPropertyChanged(nameof(AutoCompressEnabled));
+                    }
+                }
+                else
+                {
+                    if (!_autoCompressEnabled)
+                    {
+                        _autoCompressEnabled = true;
+                        OnPropertyChanged(nameof(AutoCompressEnabled));
+                    }
+                }
+            }
+        }
+    }
 
     public ObservableCollection<string> WatchFolders { get; } = new();
     
@@ -197,14 +241,14 @@ public class SettingsViewModel : ViewModelBase
     {
         _settingsManager.Update(settings =>
         {
-            if (ActionOnNewFile == "off")
+            if (ActionOnNewFile == "off" || !AutoCompressEnabled)
             {
                 settings.AutoCompress.Enabled = false;
                 settings.AutoCompress.ActionOnNewFile = "off";
             }
             else
             {
-                settings.AutoCompress.Enabled = AutoCompressEnabled;
+                settings.AutoCompress.Enabled = true;
                 settings.AutoCompress.ActionOnNewFile = ActionOnNewFile;
             }
             settings.AutoCompress.WatchFolders = WatchFolders.ToList();

@@ -86,6 +86,7 @@ public class FirebaseCloudAuthService
 
     private readonly HttpClient _http;
     private readonly string _sessionFilePath;
+    public string SessionFilePath => _sessionFilePath;
     private readonly string _gateFilePath;
     private CancellationTokenSource? _pollCts;
 
@@ -164,6 +165,7 @@ public class FirebaseCloudAuthService
         {
             if (!File.Exists(_sessionFilePath))
             {
+                CurrentUser = null;
                 CurrentStatus = CloudAuthStatus.NotLoggedIn;
                 return CurrentStatus;
             }
@@ -185,6 +187,7 @@ public class FirebaseCloudAuthService
                         {
                             Log.Warning("SECURITY ALERT: Session envelope hardware mismatch! Stored: {StoredHwid}, Current: {CurrentHwid}. Deleting session.", envelope.Hwid, currentHwid);
                             File.Delete(_sessionFilePath);
+                            CurrentUser = null;
                             CurrentStatus = CloudAuthStatus.NotLoggedIn;
                             return CurrentStatus;
                         }
@@ -198,6 +201,7 @@ public class FirebaseCloudAuthService
                         {
                             Log.Warning("SECURITY ALERT: Tampered session envelope detected! MAC mismatch. Deleting session.");
                             File.Delete(_sessionFilePath);
+                            CurrentUser = null;
                             CurrentStatus = CloudAuthStatus.NotLoggedIn;
                             return CurrentStatus;
                         }
@@ -229,6 +233,7 @@ public class FirebaseCloudAuthService
                             {
                                 Log.Warning("SECURITY ALERT: Inner session signature mismatch! Tampered user account fields detected. Deleting session.");
                                 File.Delete(_sessionFilePath);
+                                CurrentUser = null;
                                 CurrentStatus = CloudAuthStatus.NotLoggedIn;
                                 return CurrentStatus;
                             }
@@ -239,6 +244,7 @@ public class FirebaseCloudAuthService
                 {
                     Log.Warning(ex, "Failed to decrypt session envelope. Resetting session.");
                     try { File.Delete(_sessionFilePath); } catch { }
+                    CurrentUser = null;
                     CurrentStatus = CloudAuthStatus.NotLoggedIn;
                     return CurrentStatus;
                 }
@@ -267,6 +273,7 @@ public class FirebaseCloudAuthService
 
             if (cached == null || string.IsNullOrWhiteSpace(cached.Email))
             {
+                CurrentUser = null;
                 CurrentStatus = CloudAuthStatus.NotLoggedIn;
                 return CurrentStatus;
             }
@@ -282,6 +289,7 @@ public class FirebaseCloudAuthService
             if (!isDeviceMatch)
             {
                 Log.Warning("Cached session bound to device {BoundId} but running on {CurrentHwid}", cached.DeviceId, currentHwid);
+                CurrentUser = null;
                 CurrentStatus = CloudAuthStatus.DeviceMismatch;
                 return CurrentStatus;
             }
@@ -299,6 +307,7 @@ public class FirebaseCloudAuthService
             if (clockRolledBack)
             {
                 Log.Warning("SECURITY ALERT: System clock rollback detected! Last verified: {Last}, Current: {Now}", cached.LastOnlineVerifiedTimestamp, nowMs);
+                CurrentUser = null;
                 CurrentStatus = CloudAuthStatus.NotLoggedIn;
                 return CurrentStatus;
             }
@@ -308,23 +317,33 @@ public class FirebaseCloudAuthService
                 CurrentUser = cached;
                 CurrentStatus = CloudAuthStatus.Approved;
 
-                // Fire non-blocking background online sync & timestamp update
-                _ = Task.Run(async () =>
+                // Fire non-blocking background online sync & timestamp update (only when not running automated unit tests)
+                if (!BypassForTests)
                 {
-                    try
+                    _ = Task.Run(async () =>
                     {
-                        await LoginAsync(cached.Email, null, isNewRegistration: false).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Debug(ex, "Background cloud auth check fallback to cache.");
-                    }
-                });
+                        try
+                        {
+                            await LoginAsync(cached.Email, null, isNewRegistration: false).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug(ex, "Background cloud auth check fallback to cache.");
+                        }
+                    });
+                }
 
                 return CurrentStatus;
             }
 
             // If not approved or offline grace expired, verify online with 5s timeout
+            if (BypassForTests)
+            {
+                CurrentUser = null;
+                CurrentStatus = CloudAuthStatus.NotLoggedIn;
+                return CurrentStatus;
+            }
+
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             return await Task.Run(() => LoginAsync(cached.Email, null, isNewRegistration: false), cts.Token).ConfigureAwait(false);
         }

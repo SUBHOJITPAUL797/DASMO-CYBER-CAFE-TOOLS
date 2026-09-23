@@ -3247,9 +3247,8 @@ public static class Program
             Console.Write("Test 51: Cryptographic Session Integrity & Anti-Tamper Protection... ");
             try
             {
-                string sessionPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "SmartSaver", "pc_auth_session.json");
+                var authSvc = FirebaseCloudAuthService.Instance;
+                string sessionPath = authSvc.SessionFilePath;
                 string backupPath = sessionPath + ".bak_test51";
 
                 if (File.Exists(sessionPath))
@@ -3258,7 +3257,6 @@ public static class Program
                 try
                 {
                     // 1. Initialize with fresh session
-                    var authSvc = FirebaseCloudAuthService.Instance;
                     var testAccount = new CloudUserAccount
                     {
                         Email = "verified_cafe_user@example.com",
