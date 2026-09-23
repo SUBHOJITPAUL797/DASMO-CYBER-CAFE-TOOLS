@@ -33,15 +33,15 @@ Before building, bump the version in **TWO** files:
 
 ### 1. `src/SmartSaver/SmartSaver.csproj`
 ```xml
-<Version>1.5.4.0</Version>
-<AssemblyVersion>1.5.4.0</AssemblyVersion>
-<FileVersion>1.5.4.0</FileVersion>
+<Version>1.5.5.0</Version>
+<AssemblyVersion>1.5.5.0</AssemblyVersion>
+<FileVersion>1.5.5.0</FileVersion>
 ```
 
 ### 2. `src/SmartSaver.Installer/Package.wxs`
 ```xml
 <Package Name="DASMO CYBER CAFE TOOLS"
-         Version="1.5.4.0"   ← change this
+         Version="1.5.5.0"   ← change this
          ...>
 ```
 
@@ -73,7 +73,7 @@ After publish, verify:
 [System.Diagnostics.FileVersionInfo]::GetVersionInfo(
     "src\SmartSaver\bin\Release\net8.0-windows10.0.17763.0\win-x64\publish\DASMO CYBER CAFE TOOLS.exe"
 ).FileVersion
-# Must show the new version e.g. 1.5.4.0
+# Must show the new version e.g. 1.5.5.0
 ```
 
 ---
@@ -96,15 +96,15 @@ cd "c:\CODING\coading\DASMO CYBER CAFE\src\SmartSaver.Installer"
     -ext $uiExt -ext $utilExt `
     -d "PublishDir=$pubDir" `
     -arch x64 `
-    -o "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi"
+    -o "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi"
 ```
 
 > **Why output directly to `releases/`?** This keeps `releases/` as the single source of truth.
-> The MSI filename must include the version number e.g. `_v1.5.4.msi`
+> The MSI filename must include the version number e.g. `_v1.5.5.msi`
 
 After build, verify the MSI:
 ```powershell
-Get-Item "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi" | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,1)}}, LastWriteTime
+Get-Item "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi" | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,1)}}, LastWriteTime
 # Expected: ~77 MB
 ```
 
@@ -115,12 +115,12 @@ Get-Item "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Set
 1. **Uninstall old version** — `Win+R` → `appwiz.cpl` → find **DASMO CYBER CAFE TOOLS** → Uninstall
 2. **Install new MSI** — Double-click:
    ```
-   releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi
+   releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi
    ```
 3. **Verify version** after install:
    ```powershell
    (Get-Item "C:\Program Files\DASMO CYBER CAFE TOOLS\DASMO CYBER CAFE TOOLS.exe").VersionInfo.FileVersion
-   # Must show: 1.5.4.0
+   # Must show: 1.5.5.0
    ```
 4. **Test the features** that were changed in this version
 
@@ -132,15 +132,15 @@ Get-Item "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Set
 cd "c:\CODING\coading\DASMO CYBER CAFE"
 
 # Create the release tag
-git tag v1.5.4
-git push origin v1.5.4
+git tag v1.5.5
+git push origin v1.5.5
 
 # Create GitHub release and upload MSI
-gh release create v1.5.4 `
-    "releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi" `
+gh release create v1.5.5 `
+    "releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi" `
     --repo SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS `
-    --title "v1.5.4 — [Short Description]" `
-    --notes "## What's New in v1.5.4
+    --title "v1.5.5 — [Short Description]" `
+    --notes "## What's New in v1.5.5
 - Feature 1
 - Bug fix 1
 - Improvement 1"
@@ -148,7 +148,7 @@ gh release create v1.5.4 `
 
 > To **replace** a bad asset on an existing release:
 > ```powershell
-> gh release upload v1.5.4 "releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi" `
+> gh release upload v1.5.5 "releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi" `
 >     --repo SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS --clobber
 > ```
 
@@ -163,10 +163,10 @@ Update the version policy so existing users get notified:
 # Document: projects/dasmo-scanner-android/databases/(default)/documents/system_config/licensing
 #
 # Fields to update:
-#   latestVersion:      "1.5.4"
-#   minRequiredVersion: "1.5.4"      ← set this ONLY if update is MANDATORY
+#   latestVersion:      "1.5.5"
+#   minRequiredVersion: "1.5.5"      ← set this ONLY if update is MANDATORY
 #   forceUpdate:        true          ← set to true for mandatory updates
-#   updateDownloadUrl:  "https://github.com/SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS/releases/download/v1.5.4/DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi"
+#   updateDownloadUrl:  "https://github.com/SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS/releases/download/v1.5.5/DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi"
 ```
 
 ---
@@ -187,7 +187,8 @@ Update the version policy so existing users get notified:
 
 | File in `releases/` | Version | Date | Status |
 |---------------------|---------|------|--------|
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi` | 1.5.4.0 | 2026-09-22 | ✅ Current |
+| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi` | 1.5.5.0 | 2026-09-23 | ✅ Current |
+| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi` | 1.5.4.0 | 2026-09-22 | 📦 Previous |
 | `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.3.msi` | 1.5.3.0 | 2026-09-22 | 📦 Previous |
 | `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.2.msi` | 1.5.2.0 | 2026-09-22 | 📦 Previous |
 | `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.1.msi` | 1.5.1.0 | 2026-09-22 | 📦 Previous |

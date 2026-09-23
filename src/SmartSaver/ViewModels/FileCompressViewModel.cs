@@ -15,6 +15,16 @@ public class FileCompressViewModel : ViewModelBase
 
     public string FileName => Path.GetFileName(_filePath);
     public string CurrentFileSize => CompressionResult.FormatFileSize(new FileInfo(_filePath).Length);
+    public string FilePath => _filePath;
+    public string DirectoryPath => Path.GetDirectoryName(_filePath) ?? string.Empty;
+    public string DirectoryName => string.IsNullOrEmpty(DirectoryPath) ? string.Empty : Path.GetFileName(DirectoryPath);
+
+    private string? _lastOutputFilePath;
+    public string? LastOutputFilePath
+    {
+        get => _lastOutputFilePath;
+        set => SetProperty(ref _lastOutputFilePath, value);
+    }
 
     private int _targetSize = 200;
     public int TargetSize
@@ -107,6 +117,7 @@ public class FileCompressViewModel : ViewModelBase
     public System.Windows.Input.ICommand CompressCommand { get; }
     public System.Windows.Input.ICommand CancelCommand { get; }
     public System.Windows.Input.ICommand SetPresetSizeCommand { get; }
+    public System.Windows.Input.ICommand OpenFileLocationCommand { get; }
 
     public Action? RequestClose { get; set; }
 
@@ -162,6 +173,7 @@ public class FileCompressViewModel : ViewModelBase
 
         CompressCommand = new RelayCommand(async _ => await CompressAsync(), _ => CanCompress);
         CancelCommand = new RelayCommand(_ => RequestClose?.Invoke());
+        OpenFileLocationCommand = new RelayCommand(_ => OpenFileLocation());
         SetPresetSizeCommand = new RelayCommand(param =>
         {
             if (param is string sizeStr && int.TryParse(sizeStr, out int size))
@@ -170,6 +182,33 @@ public class FileCompressViewModel : ViewModelBase
                 TargetSizeUnit = "KB";
             }
         });
+    }
+
+    private void OpenFileLocation()
+    {
+        try
+        {
+            string targetToOpen = (!string.IsNullOrEmpty(_lastOutputFilePath) && File.Exists(_lastOutputFilePath))
+                ? _lastOutputFilePath
+                : _filePath;
+
+            if (File.Exists(targetToOpen))
+            {
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{targetToOpen}\"");
+            }
+            else
+            {
+                string dir = Path.GetDirectoryName(targetToOpen) ?? DirectoryPath;
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    System.Diagnostics.Process.Start("explorer.exe", $"\"{dir}\"");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to open file location for {Path}", _filePath);
+        }
     }
 
     private void UpdateFormatNote()
@@ -254,6 +293,7 @@ public class FileCompressViewModel : ViewModelBase
 
                 if (result.Success)
                 {
+                    LastOutputFilePath = outputPath;
                     OutputHistoryService.Instance.Record(result.FilePath, "Converted", result.OriginalSizeBytes, result.NewSizeBytes);
                     ResultText = $"✅ Converted! {result.OriginalSizeFormatted} → {result.CompressedSizeFormatted}\n→ {Path.GetFileName(outputPath)}";
                 }
@@ -276,6 +316,7 @@ public class FileCompressViewModel : ViewModelBase
 
             if (compResult.Success)
             {
+                LastOutputFilePath = outputPath;
                 OutputHistoryService.Instance.Record(compResult.FilePath, "Compressed", compResult.OriginalSizeBytes, compResult.NewSizeBytes);
                 double pct = compResult.OriginalSizeBytes > 0
                     ? 100.0 * (1.0 - (double)compResult.NewSizeBytes / compResult.OriginalSizeBytes)

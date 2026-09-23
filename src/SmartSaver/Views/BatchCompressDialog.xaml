@@ -231,12 +231,21 @@
             <!-- Bottom Action Toolbar -->
             <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,10,10" 
                     BorderBrush="#444455" BorderThickness="0,1,0,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,20,0">
-                    <Button Content="Close" Command="{Binding CancelCommand}" Width="100" Margin="0,0,10,0"/>
+                <Grid Margin="20,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Content="Close" Command="{Binding CancelCommand}" Width="80" Margin="0,0,10,0"/>
+                        <Button Command="{Binding OpenFileLocationCommand}" Width="120"
+                                ToolTip="Open containing folder in File Explorer">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📂 " FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="Open Folder" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                     <Button Content="⚡ Compress All Files" Command="{Binding CompressAllCommand}" 
-                            Style="{StaticResource PrimaryButton}" Width="160"
+                            Style="{StaticResource PrimaryButton}" Width="160" HorizontalAlignment="Right"
                             IsEnabled="{Binding CanCompress}"/>
-                </StackPanel>
+                </Grid>
             </Border>
         </Grid>
     </Border>

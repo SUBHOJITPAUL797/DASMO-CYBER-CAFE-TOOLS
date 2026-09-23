@@ -138,6 +138,7 @@ public class BatchCompressViewModel : ViewModelBase
     public ICommand CancelCommand { get; }
     public ICommand SetPresetSizeCommand { get; }
     public ICommand MergePdfsCommand { get; }
+    public ICommand OpenFileLocationCommand { get; }
 
     public Action? RequestClose { get; set; }
 
@@ -160,6 +161,7 @@ public class BatchCompressViewModel : ViewModelBase
 
         CompressAllCommand = new RelayCommand(async _ => await CompressAllAsync(), _ => CanCompress);
         CancelCommand = new RelayCommand(_ => RequestClose?.Invoke());
+        OpenFileLocationCommand = new RelayCommand(_ => OpenFileLocation());
         SetPresetSizeCommand = new RelayCommand(param =>
         {
             if (param is string sizeStr && int.TryParse(sizeStr, out int size))
@@ -326,6 +328,31 @@ public class BatchCompressViewModel : ViewModelBase
         finally
         {
             IsMerging = false;
+        }
+    }
+
+    private void OpenFileLocation()
+    {
+        try
+        {
+            var firstFile = _filePaths.FirstOrDefault();
+            if (!string.IsNullOrEmpty(firstFile))
+            {
+                if (File.Exists(firstFile))
+                {
+                    System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{firstFile}\"");
+                }
+                else
+                {
+                    var dir = Path.GetDirectoryName(firstFile);
+                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                        System.Diagnostics.Process.Start("explorer.exe", $"\"{dir}\"");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to open folder from batch dialog");
         }
     }
 }
