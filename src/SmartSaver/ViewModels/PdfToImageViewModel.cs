@@ -78,7 +78,50 @@ public class PdfToImageViewModel : ViewModelBase
     public string OutputDirectory
     {
         get => _outputDirectory;
-        set => SetProperty(ref _outputDirectory, value);
+        set
+        {
+            if (SetProperty(ref _outputDirectory, value))
+            {
+                OnPropertyChanged(nameof(EffectiveOutputDirectory));
+            }
+        }
+    }
+
+    private bool _createSubfolder;
+    public bool CreateSubfolder
+    {
+        get => _createSubfolder;
+        set
+        {
+            if (SetProperty(ref _createSubfolder, value))
+            {
+                OnPropertyChanged(nameof(EffectiveOutputDirectory));
+            }
+        }
+    }
+
+    public string SubfolderNamePreview => !string.IsNullOrEmpty(_filePath)
+        ? $"{Path.GetFileNameWithoutExtension(_filePath)}_Images"
+        : "[PDF_Name]_Images";
+
+    public string EffectiveOutputDirectory
+    {
+        get
+        {
+            string baseDir = !string.IsNullOrWhiteSpace(OutputDirectory)
+                ? OutputDirectory
+                : (!string.IsNullOrEmpty(_filePath) ? (Path.GetDirectoryName(_filePath) ?? string.Empty) : string.Empty);
+
+            if (string.IsNullOrWhiteSpace(baseDir))
+                baseDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            if (CreateSubfolder && !string.IsNullOrEmpty(_filePath))
+            {
+                return Path.Combine(baseDir, SubfolderNamePreview);
+            }
+
+            return baseDir;
+        }
     }
 
     private bool _openFolderOnComplete = true;
@@ -141,6 +184,7 @@ public class PdfToImageViewModel : ViewModelBase
     public ICommand ConvertCommand { get; }
     public ICommand CancelCommand { get; }
     public ICommand BrowseDirectoryCommand { get; }
+    public ICommand ResetDirectoryCommand { get; }
     public ICommand OpenResultFolderCommand { get; }
     public ICommand SelectInExplorerCommand { get; }
     public ICommand CopyPathCommand { get; }
@@ -157,6 +201,7 @@ public class PdfToImageViewModel : ViewModelBase
         ConvertCommand = new RelayCommand(async _ => await ConvertAsync(), _ => !IsProcessing && TotalPages > 0);
         CancelCommand = new RelayCommand(_ => RequestClose?.Invoke());
         BrowseDirectoryCommand = new RelayCommand(_ => BrowseDirectory());
+        ResetDirectoryCommand = new RelayCommand(_ => ResetDirectory());
         OpenResultFolderCommand = new RelayCommand(_ => OpenResultFolder());
         SelectInExplorerCommand = new RelayCommand(_ => SelectFileInExplorer());
         CopyPathCommand = new RelayCommand(_ => CopyPathToClipboard());
@@ -188,7 +233,17 @@ public class PdfToImageViewModel : ViewModelBase
         OnPropertyChanged(nameof(FilePath));
         OnPropertyChanged(nameof(FileName));
         OnPropertyChanged(nameof(FileSizeFormatted));
+        OnPropertyChanged(nameof(SubfolderNamePreview));
+        OnPropertyChanged(nameof(EffectiveOutputDirectory));
         (ConvertCommand as RelayCommand)?.OnCanExecuteChanged();
+    }
+
+    private void ResetDirectory()
+    {
+        if (!string.IsNullOrEmpty(_filePath) && File.Exists(_filePath))
+        {
+            OutputDirectory = Path.GetDirectoryName(_filePath) ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        }
     }
 
     private void BrowseDirectory()
@@ -214,9 +269,14 @@ public class PdfToImageViewModel : ViewModelBase
 
         try
         {
-            Directory.CreateDirectory(OutputDirectory);
+            string targetDir = EffectiveOutputDirectory;
+            if (string.IsNullOrWhiteSpace(targetDir))
+            {
+                targetDir = Path.GetDirectoryName(_filePath) ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            }
+            Directory.CreateDirectory(targetDir);
 
-            var createdFiles = await _engine.PdfToImagesAsync(_filePath, OutputDirectory, SelectedFormat, SelectedDpi);
+            var createdFiles = await _engine.PdfToImagesAsync(_filePath, targetDir, SelectedFormat, SelectedDpi);
 
             if (createdFiles.Count > 0)
             {
@@ -281,7 +341,7 @@ public class PdfToImageViewModel : ViewModelBase
     {
         string target = !string.IsNullOrEmpty(LastResultPath) && File.Exists(LastResultPath)
             ? LastResultPath
-            : OutputDirectory;
+            : EffectiveOutputDirectory;
 
         if (string.IsNullOrEmpty(target)) return;
 
@@ -313,13 +373,14 @@ public class PdfToImageViewModel : ViewModelBase
 
     private void OpenResultFolder()
     {
-        if (!string.IsNullOrEmpty(OutputDirectory) && Directory.Exists(OutputDirectory))
+        string target = EffectiveOutputDirectory;
+        if (!string.IsNullOrEmpty(target) && Directory.Exists(target))
         {
             try
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = OutputDirectory,
+                    FileName = target,
                     UseShellExecute = true
                 });
             }
@@ -329,7 +390,7 @@ public class PdfToImageViewModel : ViewModelBase
 
     private void CopyPathToClipboard()
     {
-        string path = !string.IsNullOrEmpty(LastResultPath) ? LastResultPath : OutputDirectory;
+        string path = !string.IsNullOrEmpty(LastResultPath) ? LastResultPath : EffectiveOutputDirectory;
         if (!string.IsNullOrEmpty(path))
         {
             try

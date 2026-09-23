@@ -988,11 +988,38 @@
                         <!-- Settings -->
                         <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16">
                             <StackPanel>
-                                <TextBlock Text="Output Image Format:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}" Height="34" Width="180" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="24"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Output Image Format:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}" Height="34" Width="180" HorizontalAlignment="Left"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Resolution (DPI Quality):" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <ComboBox ItemsSource="{Binding DpiOptions}" SelectedItem="{Binding SelectedDpi}" Height="34" Width="180" HorizontalAlignment="Left"/>
+                                    </StackPanel>
+                                </Grid>
 
-                                <TextBlock Text="Resolution (DPI Quality):" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <ComboBox ItemsSource="{Binding DpiOptions}" SelectedItem="{Binding SelectedDpi}" Height="34" Width="180" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+                                <!-- Output Destination -->
+                                <TextBlock Text="Export Location (Optional):" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="10,0" VerticalContentAlignment="Center" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1" Content="📁 Browse Folder..." Style="{StaticResource SecondaryButton}" Command="{Binding BrowseDirectoryCommand}" Padding="14,0" Height="34" Margin="0,0,6,0"/>
+                                    <Button Grid.Column="2" Content="↺ Reset" Style="{StaticResource SecondaryButton}" Command="{Binding ResetDirectoryCommand}" ToolTip="Reset to PDF source folder" Padding="12,0" Height="34"/>
+                                </Grid>
+
+                                <CheckBox Content="{Binding SubfolderNamePreview, StringFormat='📁 Create dedicated subfolder for images ({0})'}" 
+                                          IsChecked="{Binding CreateSubfolder}" Margin="0,0,0,12" FontWeight="SemiBold"
+                                          ToolTip="Prevents cluttering by saving all pages inside a clean subfolder"/>
 
                                 <CheckBox Content="Open folder and select / highlight output file in Explorer" IsChecked="{Binding OpenFolderOnComplete}" Margin="0,0,0,8" FontWeight="SemiBold"/>
                                 <CheckBox Content="Automatically copy output file path to Clipboard (For instant portal upload)" IsChecked="{Binding AutoCopyPathToClipboard}" Foreground="{StaticResource AccentBrush}"/>
