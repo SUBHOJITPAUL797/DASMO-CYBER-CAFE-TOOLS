@@ -76,9 +76,9 @@ public sealed class FileWatcherService : IDisposable
         Stop();
 
         var settings = SettingsManager.Instance.Current;
-        if (!settings.AutoCompress.Enabled)
+        if (!settings.AutoCompress.Enabled || settings.AutoCompress.ActionOnNewFile == "off" || settings.AutoCompress.ActionOnNewFile == "disabled")
         {
-            Log.Information("Auto-compress is disabled. FileWatcherService will not start");
+            Log.Information("Auto-compress is disabled or turned off ({Mode}). FileWatcherService will not start", settings.AutoCompress.ActionOnNewFile);
             return;
         }
 
@@ -221,8 +221,12 @@ public sealed class FileWatcherService : IDisposable
         if (string.IsNullOrEmpty(ext) || ext is ".crdownload" or ".part" or ".tmp" or ".download" or ".opdownload")
             return;
 
-        // Check if extension is supported in settings
+        // Check if auto-compress is disabled or turned off
         var settings = SettingsManager.Instance.Current;
+        if (!settings.AutoCompress.Enabled || settings.AutoCompress.ActionOnNewFile == "off" || settings.AutoCompress.ActionOnNewFile == "disabled")
+            return;
+
+        // Check if extension is supported in settings
         if (!settings.AutoCompress.SupportedExtensions.Any(s => s.Equals(ext, StringComparison.OrdinalIgnoreCase)))
             return;
 
@@ -318,8 +322,14 @@ public sealed class FileWatcherService : IDisposable
         {
             if (!File.Exists(filePath)) return;
 
-            // Check if file is already under target
             var settings = SettingsManager.Instance.Current;
+            if (!settings.AutoCompress.Enabled || settings.AutoCompress.ActionOnNewFile == "off" || settings.AutoCompress.ActionOnNewFile == "disabled")
+            {
+                Log.Debug("Auto-compress is disabled or turned off. Skipping {Path}", filePath);
+                return;
+            }
+
+            // Check if file is already under target
             long targetBytes = settings.AutoCompress.TargetSizeKB * 1024L;
             var fileInfo = new FileInfo(filePath);
 
@@ -339,7 +349,8 @@ public sealed class FileWatcherService : IDisposable
                 return;
             }
 
-            Log.Information("Processing file: {Path} ({Size} bytes)", filePath, fileInfo.Length);
+            Log.Information("Processing file: {Path} ({Size} bytes), mode: {Mode}, target: {TargetKB} KB",
+                filePath, fileInfo.Length, settings.AutoCompress.ActionOnNewFile, settings.AutoCompress.TargetSizeKB);
 
             if (settings.AutoCompress.ActionOnNewFile == "prompt")
             {
@@ -394,10 +405,22 @@ public sealed class FileWatcherService : IDisposable
                 return;
             }
 
+            // Silent Auto-Compression in background to user-configured TargetSizeKB
+            Log.Information("Starting silent auto-compression for {Path} to target {TargetKB} KB",
+                filePath, settings.AutoCompress.TargetSizeKB);
+
+            IgnoreOutputFile(filePath);
             var result = await _compressionEngine.CompressFileAsync(filePath);
+            IgnoreOutputFile(filePath);
 
             if (result.Success && result.NewSizeBytes < result.OriginalSizeBytes)
             {
+                OutputHistoryService.Instance.Record(
+                    filePath,
+                    "Auto-Compressed (Silent)",
+                    result.OriginalSizeBytes,
+                    result.NewSizeBytes);
+
                 _notificationService.NotifySuccess(
                     Path.GetFileName(filePath), result.OriginalSizeBytes, result.NewSizeBytes);
             }

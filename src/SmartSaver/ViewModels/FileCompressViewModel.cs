@@ -85,6 +85,24 @@ public class FileCompressViewModel : ViewModelBase
     public string ActionButtonLabel => IsConvertOnlyMode ? "🔄 Convert Format" : "⚡ Compress Now";
     public bool SectionOneVisible => !IsConvertOnlyMode;
 
+    private bool _autoDetectEnabled = true;
+    public bool AutoDetectEnabled
+    {
+        get => _autoDetectEnabled;
+        set
+        {
+            if (SetProperty(ref _autoDetectEnabled, value))
+            {
+                SettingsManager.Instance.Update(settings =>
+                {
+                    settings.AutoCompress.ActionOnNewFile = value ? "prompt" : "off";
+                    settings.AutoCompress.Enabled = value;
+                });
+                (System.Windows.Application.Current as App)?.RestartFileWatcher();
+            }
+        }
+    }
+
     public ObservableCollection<string> SizeUnits { get; } = new() { "KB", "MB" };
     public ObservableCollection<string> OutputFormats { get; } = new();
     public List<GovtPortalPreset> PortalPresets { get; } = GovtPortalPresets.All;
@@ -166,10 +184,13 @@ public class FileCompressViewModel : ViewModelBase
         _selectedOutputFormat = OutputFormats.FirstOrDefault() ?? "Same as input";
         UpdateFormatNote();
 
-        // Pre-fill default target size from settings
+        // Pre-fill default target size and auto-detect status from settings
         var settings = SettingsManager.Instance.Current;
         _targetSize = settings.AutoCompress.TargetSizeKB;
         _targetSizeUnit = "KB";
+        _autoDetectEnabled = settings.AutoCompress.Enabled &&
+                             settings.AutoCompress.ActionOnNewFile != "off" &&
+                             settings.AutoCompress.ActionOnNewFile != "disabled";
 
         CompressCommand = new RelayCommand(async _ => await CompressAsync(), _ => CanCompress);
         CancelCommand = new RelayCommand(_ => RequestClose?.Invoke());

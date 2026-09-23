@@ -197,8 +197,16 @@ public class SettingsViewModel : ViewModelBase
     {
         _settingsManager.Update(settings =>
         {
-            settings.AutoCompress.Enabled = AutoCompressEnabled;
-            settings.AutoCompress.ActionOnNewFile = ActionOnNewFile;
+            if (ActionOnNewFile == "off")
+            {
+                settings.AutoCompress.Enabled = false;
+                settings.AutoCompress.ActionOnNewFile = "off";
+            }
+            else
+            {
+                settings.AutoCompress.Enabled = AutoCompressEnabled;
+                settings.AutoCompress.ActionOnNewFile = ActionOnNewFile;
+            }
             settings.AutoCompress.WatchFolders = WatchFolders.ToList();
             
             settings.AutoCompress.TargetSizeKB = TargetSizeUnit == "MB" ? TargetSize * 1024 : TargetSize;
@@ -232,6 +240,9 @@ public class SettingsViewModel : ViewModelBase
         {
             Helpers.RegistryHelper.FixExplorerPdfPreviewHandler();
         }
+
+        // Instantly apply settings to running file watcher service
+        (System.Windows.Application.Current as App)?.RestartFileWatcher();
 
         RequestSave?.Invoke(this, EventArgs.Empty);
         RequestClose?.Invoke();

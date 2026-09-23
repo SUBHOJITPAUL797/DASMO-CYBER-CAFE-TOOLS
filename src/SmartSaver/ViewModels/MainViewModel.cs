@@ -183,6 +183,113 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _updateChangelogText, value);
     }
 
+    private static string? _lastNotifiedUpdateVersion;
+    private readonly System.Windows.Threading.DispatcherTimer _updateCheckTimer;
+
+    private string _autoDetectMode = "prompt";
+    public string AutoDetectMode
+    {
+        get => _autoDetectMode;
+        set
+        {
+            if (SetProperty(ref _autoDetectMode, value))
+            {
+                OnPropertyChanged(nameof(AutoDetectStatusText));
+                OnPropertyChanged(nameof(AutoDetectStatusIcon));
+                OnPropertyChanged(nameof(AutoDetectButtonBackground));
+                OnPropertyChanged(nameof(AutoDetectTooltip));
+            }
+        }
+    }
+
+    public string AutoDetectStatusText => AutoDetectMode switch
+    {
+        "silent" => $"Auto: SILENT ({SettingsManager.Instance.Current.AutoCompress.TargetSizeKB}KB)",
+        "prompt" => "Auto: PROMPT",
+        _ => "Auto: OFF"
+    };
+
+    public string AutoDetectStatusIcon => AutoDetectMode switch
+    {
+        "silent" => "🤖",
+        "prompt" => "⚡",
+        _ => "⏸️"
+    };
+
+    public string AutoDetectTooltip => AutoDetectMode switch
+    {
+        "silent" => $"Auto-Detection: SILENT mode (Auto-compresses new downloads directly to {SettingsManager.Instance.Current.AutoCompress.TargetSizeKB} KB in background). Click to switch mode.",
+        "prompt" => "Auto-Detection: PROMPT mode (Shows interactive popup on new downloads). Click to switch mode.",
+        _ => "Auto-Detection: OFF (Disabled). Click to switch mode."
+    };
+
+    public System.Windows.Media.Brush AutoDetectButtonBackground => AutoDetectMode switch
+    {
+        "silent" => new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0284C7")),
+        "prompt" => new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#10B981")),
+        _ => new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#64748B"))
+    };
+
+    public ICommand ToggleAutoDetectCommand => new RelayCommand(_ =>
+    {
+        var settings = SettingsManager.Instance.Current;
+        // Cycle: prompt -> silent -> off -> prompt
+        string nextMode = AutoDetectMode switch
+        {
+            "prompt" => "silent",
+            "silent" => "off",
+            _ => "prompt"
+        };
+
+        SettingsManager.Instance.Update(s =>
+        {
+            if (nextMode == "off")
+            {
+                s.AutoCompress.Enabled = false;
+                s.AutoCompress.ActionOnNewFile = "off";
+            }
+            else
+            {
+                s.AutoCompress.Enabled = true;
+                s.AutoCompress.ActionOnNewFile = nextMode;
+            }
+        });
+
+        (System.Windows.Application.Current as App)?.RestartFileWatcher();
+        RefreshAutoDetectStatus();
+        SettingsVm.ActionOnNewFile = nextMode;
+        SettingsVm.AutoCompressEnabled = (nextMode != "off");
+
+        Log.Information("User toggled Auto-Detect mode to {Mode}", nextMode);
+    });
+
+    public void RefreshAutoDetectStatus()
+    {
+        var settings = SettingsManager.Instance.Current;
+        if (!settings.AutoCompress.Enabled || settings.AutoCompress.ActionOnNewFile == "off" || settings.AutoCompress.ActionOnNewFile == "disabled")
+        {
+            AutoDetectMode = "off";
+        }
+        else
+        {
+            AutoDetectMode = settings.AutoCompress.ActionOnNewFile == "silent" ? "silent" : "prompt";
+        }
+    }
+
+    public ICommand OpenUpdateDialogCommand => new RelayCommand(_ =>
+    {
+        SwitchToTab(DashboardTab.UpdatesAbout);
+        var ask = System.Windows.MessageBox.Show(
+            $"🚀 A new update ({LatestVersionText}) is available for DASMO CYBER CAFE TOOLS!\n\nRelease Notes:\n{(string.IsNullOrWhiteSpace(UpdateChangelogText) ? "Bug fixes and performance improvements." : UpdateChangelogText)}\n\nWould you like to download and install this update now?",
+            "Update Available",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Information);
+        if (ask == System.Windows.MessageBoxResult.Yes)
+        {
+            _ = DownloadAndInstallUpdateAsync();
+        }
+    });
+
     private string _customAdminNoticeText = string.Empty;
     public string CustomAdminNoticeText
     {
@@ -254,8 +361,27 @@ public class MainViewModel : ViewModelBase
 
         ToggleSidebarCommand = new RelayCommand(_ => IsSidebarCollapsed = !IsSidebarCollapsed);
 
+        RefreshAutoDetectStatus();
         SettingsVm.RequestClose = () => SwitchToTab(0);
-        SettingsVm.RequestSave = (s, e) => SwitchToTab(0);
+        SettingsVm.RequestSave = (s, e) =>
+        {
+            RefreshAutoDetectStatus();
+            SwitchToTab(0);
+        };
+
+        _updateCheckTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMinutes(30)
+        };
+        _updateCheckTimer.Tick += async (s, e) =>
+        {
+            try
+            {
+                await CheckForUpdatesAsync(silent: true);
+            }
+            catch { }
+        };
+        _updateCheckTimer.Start();
 
         NavigateCommand = new RelayCommand(param =>
         {
@@ -491,6 +617,14 @@ public class MainViewModel : ViewModelBase
             {
                 HasUpdateAvailable = true;
                 UpdateStatusText = $"New version v{result.LatestVersion} is available for installation!";
+
+                // Always send Windows Toast notification if not previously notified for this version in this session
+                if (_lastNotifiedUpdateVersion != result.LatestVersion)
+                {
+                    _lastNotifiedUpdateVersion = result.LatestVersion;
+                    NotificationService.NotifyUpdateAvailable(result.LatestVersion, result.ReleaseNotes);
+                }
+
                 if (result.IsMandatory)
                 {
                     System.Windows.Application.Current?.Dispatcher.Invoke(() =>
@@ -501,9 +635,13 @@ public class MainViewModel : ViewModelBase
                 }
                 else if (!silent)
                 {
-                    System.Windows.MessageBox.Show(
-                        $"A new update (v{result.LatestVersion}) is available!\n\nClick 'Download & Install Update' to update now.",
-                        "Update Available", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                    var ask = System.Windows.MessageBox.Show(
+                        $"🚀 A new update (v{result.LatestVersion}) is available for DASMO CYBER CAFE TOOLS!\n\nRelease Highlights:\n{(string.IsNullOrWhiteSpace(result.ReleaseNotes) ? "Bug fixes and improvements" : result.ReleaseNotes)}\n\nWould you like to download and install this update now?",
+                        "Update Available", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
+                    if (ask == System.Windows.MessageBoxResult.Yes)
+                    {
+                        _ = DownloadAndInstallUpdateAsync();
+                    }
                 }
             }
             else

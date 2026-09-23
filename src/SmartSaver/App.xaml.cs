@@ -704,6 +704,45 @@ public partial class App : System.Windows.Application
         Log.Information("File watcher service stopped");
     }
 
+    /// <summary>
+    /// Restarts or stops the background file watcher service depending on current settings.
+    /// </summary>
+    public void RestartFileWatcher()
+    {
+        try
+        {
+            var settings = SettingsManager.Instance.Current;
+            if (!settings.AutoCompress.Enabled || settings.AutoCompress.ActionOnNewFile == "off" || settings.AutoCompress.ActionOnNewFile == "disabled")
+            {
+                StopFileWatcher();
+            }
+            else
+            {
+                if (_fileWatcherService == null)
+                {
+                    StartFileWatcher();
+                }
+                else
+                {
+                    _fileWatcherService.Restart();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to dynamically restart file watcher service");
+        }
+    }
+
+    /// <summary>
+    /// Checks whether the background file watcher service is currently active and monitoring.
+    /// </summary>
+    public bool IsFileWatcherActive => _fileWatcherService != null &&
+                                       !_fileWatcherService.IsPaused &&
+                                       SettingsManager.Instance.Current.AutoCompress.Enabled &&
+                                       SettingsManager.Instance.Current.AutoCompress.ActionOnNewFile != "off" &&
+                                       SettingsManager.Instance.Current.AutoCompress.ActionOnNewFile != "disabled";
+
     private void OnOpenStacker(object? sender, EventArgs e)
     {
         ShowStackerWindow();

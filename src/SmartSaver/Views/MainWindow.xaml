@@ -179,6 +179,31 @@
 
                 <!-- WindowChrome.IsHitTestVisibleInChrome="True" allows buttons to be clicked inside the caption area -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <!-- Top Update Notification Button -->
+                    <Button Command="{Binding OpenUpdateDialogCommand}"
+                            Visibility="{Binding HasUpdateAvailable, Converter={StaticResource BoolToVis}}"
+                            Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="11"
+                            Padding="10,3" Margin="0,0,10,0" Cursor="Hand" BorderThickness="0"
+                            ToolTip="New software update is available! Click to view details and install.">
+                        <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🚀 " FontSize="11"/>
+                            <TextBlock Text="{Binding LatestVersionText, StringFormat='Update {0} Ready!'}" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Top Auto-Detect / Auto-Compress Mode Toggle Button -->
+                    <Button Command="{Binding ToggleAutoDetectCommand}"
+                            Background="{Binding AutoDetectButtonBackground}" Foreground="White" FontWeight="Bold" FontSize="11"
+                            Padding="10,3" Margin="0,0,12,0" Cursor="Hand" BorderThickness="0"
+                            ToolTip="{Binding AutoDetectTooltip}">
+                        <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding AutoDetectStatusIcon}" FontSize="11" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding AutoDetectStatusText}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
+
                     <Button Content="🗕" Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
                     <Button Content="🗖" Style="{StaticResource TitleBarButton}" Click="MaximizeButton_Click" ToolTip="Maximize / Restore"/>
                     <Button Content="✕" Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click" ToolTip="Close to Background Tray"/>
@@ -1434,8 +1459,13 @@
                                                              ToolTip="Pops up an interactive dialog with preset target size chips (50KB, 100KB, 200KB, 500KB) whenever a new file is downloaded!"/>
                                                 <RadioButton Content="🤖 Auto-Compress Automatically in Background (Silent)" 
                                                              IsChecked="{Binding ActionOnNewFile, Converter={StaticResource StringEquals}, ConverterParameter=silent}" 
-                                                             Margin="0,0,0,6"
+                                                             Margin="0,0,0,8"
                                                              ToolTip="Automatically compresses files to the default target size in the background without prompting."/>
+                                                <RadioButton Content="🛑 Turn Off Download Auto-Detection (Do Not Detect or Prompt)" 
+                                                             IsChecked="{Binding ActionOnNewFile, Converter={StaticResource StringEquals}, ConverterParameter=off}" 
+                                                             Margin="0,0,0,6"
+                                                             Foreground="{StaticResource TextSecondaryBrush}"
+                                                             ToolTip="Disables the automatic popup and background compression for newly downloaded files. You can still right-click files to compress manually."/>
                                             </StackPanel>
                                         </GroupBox>
 

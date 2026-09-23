@@ -18,7 +18,7 @@ public class AutoCompressSettings
 {
     public bool Enabled { get; set; } = true;
     /// <summary>
-    /// Action mode when new file is detected: "prompt" (Ask user with dialog) or "silent" (Auto-compress in background)
+    /// Action mode when new file is detected: "prompt" (Ask user with dialog), "silent" (Auto-compress in background to TargetSizeKB), or "off" (Disabled)
     /// </summary>
     public string ActionOnNewFile { get; set; } = "prompt";
     public List<string> WatchFolders { get; set; } = new()

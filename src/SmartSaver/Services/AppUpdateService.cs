@@ -149,7 +149,7 @@ public class AppUpdateService
             // Check if current version is strictly mandatory to update
             bool isOutdated = FirebaseCloudAuthService.IsVersionOutdated(CurrentVersion, policy.MinRequiredVersion);
             bool isBlocked = FirebaseCloudAuthService.IsVersionBlocked(CurrentVersion, policy.BlockedVersions);
-            result.IsMandatory = policy.ForceUpdate && (isOutdated || isBlocked);
+            result.IsMandatory = (policy.ForceUpdate && hasNewer) || isOutdated || isBlocked;
 
             return result;
         }

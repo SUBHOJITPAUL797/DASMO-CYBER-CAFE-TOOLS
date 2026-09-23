@@ -95,6 +95,35 @@ public sealed class NotificationService
     }
 
     /// <summary>
+    /// Sends a Windows toast notification informing the user that a new software update is available.
+    /// </summary>
+    /// <param name="newVersion">The new version number (e.g. 1.5.7).</param>
+    /// <param name="releaseNotes">Optional changelog notes.</param>
+    public static void NotifyUpdateAvailable(string newVersion, string? releaseNotes = null)
+    {
+        try
+        {
+            var builder = new ToastContentBuilder()
+                .AddText($"🚀 {AppName} — Update Available!")
+                .AddText($"Version v{newVersion} is now ready to download.")
+                .AddAttributionText("DASMO Cloud Update System");
+
+            if (!string.IsNullOrWhiteSpace(releaseNotes))
+            {
+                string shortNotes = releaseNotes.Length > 120 ? releaseNotes.Substring(0, 117) + "..." : releaseNotes;
+                builder.AddText(shortNotes);
+            }
+
+            builder.Show();
+            Log.Information("Sent update available notification for v{Version}", newVersion);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to send update toast notification for v{Version}", newVersion);
+        }
+    }
+
+    /// <summary>
     /// Clears all SmartSaver notifications from the Windows notification center.
     /// </summary>
     public static void ClearAll()

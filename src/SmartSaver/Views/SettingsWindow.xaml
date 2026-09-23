@@ -74,8 +74,13 @@
                                                  ToolTip="Pops up an interactive dialog with preset target size chips (50KB, 100KB, 200KB, 500KB) whenever a new file is downloaded!"/>
                                     <RadioButton Content="🤖 Auto-Compress Automatically in Background (Silent)" 
                                                  IsChecked="{Binding ActionOnNewFile, Converter={StaticResource StringEquals}, ConverterParameter=silent}" 
-                                                 Margin="0,0,0,6"
+                                                 Margin="0,0,0,8"
                                                  ToolTip="Automatically compresses files to the default target size in the background without prompting."/>
+                                    <RadioButton Content="🛑 Turn Off Download Auto-Detection (Do Not Detect or Prompt)" 
+                                                 IsChecked="{Binding ActionOnNewFile, Converter={StaticResource StringEquals}, ConverterParameter=off}" 
+                                                 Margin="0,0,0,6"
+                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                 ToolTip="Disables the automatic popup and background compression for newly downloaded files. You can still compress files manually."/>
                                 </StackPanel>
                             </GroupBox>
 

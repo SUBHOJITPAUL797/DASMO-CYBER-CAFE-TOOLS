@@ -33,15 +33,15 @@ Before building, bump the version in **TWO** files:
 
 ### 1. `src/SmartSaver/SmartSaver.csproj`
 ```xml
-<Version>1.5.6.0</Version>
-<AssemblyVersion>1.5.6.0</AssemblyVersion>
-<FileVersion>1.5.6.0</FileVersion>
+<Version>1.5.7.0</Version>
+<AssemblyVersion>1.5.7.0</AssemblyVersion>
+<FileVersion>1.5.7.0</FileVersion>
 ```
 
 ### 2. `src/SmartSaver.Installer/Package.wxs`
 ```xml
 <Package Name="DASMO CYBER CAFE TOOLS"
-         Version="1.5.6.0"   ← change this
+         Version="1.5.7.0"   ← change this
          ...>
 ```
 
@@ -187,7 +187,8 @@ Update the version policy so existing users get notified:
 
 | File in `releases/` | Version | Date | Status |
 |---------------------|---------|------|--------|
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi` | 1.5.6.0 | 2026-09-23 | ✅ Current |
+| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.7.msi` | 1.5.7.0 | 2026-09-23 | ✅ Current |
+| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi` | 1.5.6.0 | 2026-09-23 | 📦 Previous |
 | `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi` | 1.5.5.0 | 2026-09-23 | 📦 Previous |
 | `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi` | 1.5.4.0 | 2026-09-22 | 📦 Previous |
 | `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.3.msi` | 1.5.3.0 | 2026-09-22 | 📦 Previous |

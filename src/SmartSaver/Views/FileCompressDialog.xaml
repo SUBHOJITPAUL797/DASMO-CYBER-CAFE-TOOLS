@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SmartSaver.Converters"
-        Title="DASMO CYBER COMPRESSOR — Compress File" Height="520" Width="500"
+        Title="DASMO CYBER COMPRESSOR — Compress File" Height="550" Width="500"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True">
@@ -17,7 +17,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="38"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="64"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Photo Background Layer -->
@@ -190,23 +190,39 @@
                 </Image>
             </Grid>
 
-            <!-- Bottom Buttons -->
+            <!-- Bottom Buttons & Auto-Detect CheckBox -->
             <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,10,10" 
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-                <Grid Margin="20,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <Button Content="Close" Command="{Binding CancelCommand}" Width="75" Margin="0,0,8,0"/>
-                        <Button Command="{Binding OpenFileLocationCommand}" Width="120"
-                                ToolTip="Open the folder where this file was detected or saved in File Explorer">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📂 " FontSize="12" VerticalAlignment="Center"/>
-                                <TextBlock Text="Open Path" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                    <Button Content="{Binding ActionButtonLabel}" Command="{Binding CompressCommand}" 
-                            Style="{StaticResource PrimaryButton}" Width="160" HorizontalAlignment="Right"
-                            IsEnabled="{Binding CanCompress}"/>
+                <Grid Margin="18,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Auto-Detect Toggle CheckBox -->
+                    <CheckBox Grid.Row="0"
+                              IsChecked="{Binding AutoDetectEnabled}" 
+                              Content="⚡ Auto-detect downloads &amp; show this popup" 
+                              FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                              ToolTip="Uncheck this to turn off automatic download detection and this popup."
+                              Margin="0,0,0,10" VerticalAlignment="Center"/>
+
+                    <!-- Action Buttons -->
+                    <Grid Grid.Row="1">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <Button Content="Close" Command="{Binding CancelCommand}" Width="75" Margin="0,0,8,0"/>
+                            <Button Command="{Binding OpenFileLocationCommand}" Width="120"
+                                    ToolTip="Open the folder where this file was detected or saved in File Explorer">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📂 " FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Open Path" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <Button Content="{Binding ActionButtonLabel}" Command="{Binding CompressCommand}" 
+                                Style="{StaticResource PrimaryButton}" Width="160" HorizontalAlignment="Right"
+                                IsEnabled="{Binding CanCompress}"/>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>
