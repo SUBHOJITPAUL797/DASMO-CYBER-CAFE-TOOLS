@@ -118,9 +118,23 @@ public class CustomerBillSession
 
     public List<PrintJobRecord> Jobs { get; set; } = new();
 
-    public int TotalPages => Jobs.Sum(j => j.TotalImpressions);
-    public int TotalSheets => Jobs.Sum(j => j.SheetsUsed);
-    public double TotalAmount => Jobs.Sum(j => j.TotalCost);
+    public int TotalPages
+    {
+        get => Jobs.Sum(j => j.TotalImpressions);
+        set { }
+    }
+
+    public int TotalSheets
+    {
+        get => Jobs.Sum(j => j.SheetsUsed);
+        set { }
+    }
+
+    public double TotalAmount
+    {
+        get => Jobs.Sum(j => j.TotalCost);
+        set { }
+    }
 
     public string PaymentMode { get; set; } = "Cash"; // Cash, UPI, Card, Due
     public string Notes { get; set; } = string.Empty;

@@ -4329,6 +4329,15 @@ public static class Program
                         string exportedFile = tracker.ExportHistoryToCsvAsync(csvOutPath).GetAwaiter().GetResult();
                         if (!File.Exists(exportedFile) || new FileInfo(exportedFile).Length == 0)
                             throw new Exception("Failed to export sales history to CSV");
+
+                        // 8. Test PrintTrackerStudioWindow STA Instantiation & Layout (0 Binding / Layout Exceptions)
+                        var studioWin = new SmartSaver.Views.PrintTrackerStudioWindow();
+                        studioWin.Measure(new System.Windows.Size(1200, 700));
+                        studioWin.Arrange(new System.Windows.Rect(0, 0, 1200, 700));
+                        studioWin.UpdateLayout();
+                        if (studioWin.FindName("RootBorder") == null)
+                            throw new Exception("RootBorder was not found on PrintTrackerStudioWindow");
+                        studioWin.Close();
                     }
                     catch (Exception ex)
                     {

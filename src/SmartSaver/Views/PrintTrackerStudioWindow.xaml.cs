@@ -17,6 +17,46 @@ public partial class PrintTrackerStudioWindow : Window
         InitializeComponent();
         Vm = new PrintTrackerViewModel();
         DataContext = Vm;
+
+        Loaded += (_, _) =>
+        {
+            if (WindowState != WindowState.Maximized)
+            {
+                EnsureOnScreen();
+            }
+            UpdateMaximizeState();
+        };
+
+        StateChanged += (_, _) => UpdateMaximizeState();
+    }
+
+    private void UpdateMaximizeState()
+    {
+        if (BtnMaximize != null)
+        {
+            BtnMaximize.Content = WindowState == WindowState.Maximized ? "🗗" : "🗖";
+        }
+
+        if (RootBorder != null)
+        {
+            // When maximized in WPF with WindowChrome, offset by resize border margin
+            // to keep all controls, title bar, and edges strictly within the monitor work area
+            RootBorder.Margin = WindowState == WindowState.Maximized ? new Thickness(7) : new Thickness(0);
+            RootBorder.BorderThickness = WindowState == WindowState.Maximized ? new Thickness(0) : new Thickness(1);
+        }
+    }
+
+    private void EnsureOnScreen()
+    {
+        var wa = SystemParameters.WorkArea;
+        if (Width > wa.Width) Width = Math.Max(MinWidth, wa.Width - 40);
+        if (Height > wa.Height) Height = Math.Max(MinHeight, wa.Height - 40);
+
+        Left = wa.Left + (wa.Width - Width) / 2;
+        Top = wa.Top + (wa.Height - Height) / 2;
+
+        if (Left < wa.Left) Left = wa.Left;
+        if (Top < wa.Top) Top = wa.Top;
     }
 
     public static void ShowStudio()

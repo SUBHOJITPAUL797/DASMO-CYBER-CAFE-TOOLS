@@ -37,6 +37,18 @@ public class BooleanToVisibilityConverter : IValueConverter
             var tmp = (bool?)value;
             bValue = tmp.HasValue ? tmp.Value : false;
         }
+        else if (value is int i)
+        {
+            bValue = i > 0;
+        }
+        else if (value is long l)
+        {
+            bValue = l > 0;
+        }
+        else if (value is double d)
+        {
+            bValue = d > 0;
+        }
 
         bool invert = parameter != null && (parameter.ToString()?.ToLower() == "inverse" || parameter.ToString()?.ToLower() == "invert");
 

@@ -6,13 +6,14 @@
         xmlns:local="clr-namespace:SmartSaver.Converters"
         mc:Ignorable="d"
         Title="🖨️ DASMO CYBER CAFE — Automatic Print Counter &amp; Customer Billing Studio" 
-        Height="680" Width="1180" MinHeight="560" MinWidth="980"
+        Height="700" Width="1200" MinHeight="580" MinWidth="980"
         WindowStartupLocation="CenterScreen"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        WindowStyle="None" AllowsTransparency="False" Background="{StaticResource BackgroundBrush}"
+        ResizeMode="CanResize"
         PreviewKeyDown="Window_PreviewKeyDown">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="42" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="10"/>
+        <WindowChrome CaptionHeight="42" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -84,8 +85,8 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="10" 
-            BorderBrush="#444455" BorderThickness="1" SnapsToDevicePixels="True">
+    <Border x:Name="RootBorder" x:FieldModifier="public" Background="{StaticResource BackgroundBrush}" 
+            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="42"/> <!-- Custom Title Bar -->
@@ -113,7 +114,7 @@
                 <!-- Window Control Buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0" WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Content="🗕" Style="{StaticResource StudioHeaderButton}" Click="Minimize_Click" ToolTip="Minimize"/>
-                    <Button Content="🗖" Style="{StaticResource StudioHeaderButton}" Click="Maximize_Click" ToolTip="Maximize / Restore"/>
+                    <Button x:Name="BtnMaximize" Content="🗖" Style="{StaticResource StudioHeaderButton}" Click="Maximize_Click" ToolTip="Maximize / Restore"/>
                     <Button Content="✕" Style="{StaticResource StudioCloseButton}" Click="Close_Click" ToolTip="Close"/>
                 </StackPanel>
             </Grid>
@@ -550,13 +551,13 @@
                                                             <TextBlock Text="{Binding CustomerName}" FontWeight="SemiBold" FontSize="12" Foreground="White"/>
                                                         </StackPanel>
                                                         <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0">
-                                                            <Run Text="{Binding BilledAt, StringFormat='{}{0:hh:mm tt}'}"/>
+                                                            <Run Text="{Binding BilledAt, Mode=OneWay, StringFormat='{}{0:hh:mm tt}'}"/>
                                                             <Run Text=" • "/>
-                                                            <Run Text="{Binding TotalPages, StringFormat='{}{0} pages'}"/>
+                                                            <Run Text="{Binding TotalPages, Mode=OneWay, StringFormat='{}{0} pages'}"/>
                                                             <Run Text=" ("/>
-                                                            <Run Text="{Binding TotalSheets, StringFormat='{}{0} sheets'}"/>
+                                                            <Run Text="{Binding TotalSheets, Mode=OneWay, StringFormat='{}{0} sheets'}"/>
                                                             <Run Text=") • "/>
-                                                            <Run Text="{Binding PaymentMode}"/>
+                                                            <Run Text="{Binding PaymentMode, Mode=OneWay}"/>
                                                         </TextBlock>
                                                     </StackPanel>
 
