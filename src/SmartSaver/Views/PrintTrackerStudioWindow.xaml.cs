@@ -20,15 +20,37 @@ public partial class PrintTrackerStudioWindow : Window
 
         Loaded += (_, _) =>
         {
-            if (WindowState != WindowState.Maximized)
-            {
-                EnsureOnScreen();
-            }
+            // Clamp to work area on first load
+            EnsureOnScreen();
             UpdateMaximizeState();
         };
 
-        StateChanged += (_, _) => UpdateMaximizeState();
+        StateChanged += (_, _) =>
+        {
+            UpdateMaximizeState();
+            // After restoring from maximized, re-clamp to work area
+            if (WindowState == WindowState.Normal)
+            {
+                Dispatcher.BeginInvoke(EnsureOnScreen);
+            }
+        };
+
+        // Ensure window never exceeds work area height (prevents taskbar overlap)
+        SizeChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Normal)
+            {
+                var wa = SystemParameters.WorkArea;
+                if (Height > wa.Height)
+                    Height = wa.Height;
+                if (Top < wa.Top)
+                    Top = wa.Top;
+                if (Top + Height > wa.Bottom)
+                    Top = Math.Max(wa.Top, wa.Bottom - Height);
+            }
+        };
     }
+
 
     private void UpdateMaximizeState()
     {
@@ -39,25 +61,45 @@ public partial class PrintTrackerStudioWindow : Window
 
         if (RootBorder != null)
         {
-            // When maximized in WPF with WindowChrome, offset by resize border margin
-            // to keep all controls, title bar, and edges strictly within the monitor work area
-            RootBorder.Margin = WindowState == WindowState.Maximized ? new Thickness(7) : new Thickness(0);
-            RootBorder.BorderThickness = WindowState == WindowState.Maximized ? new Thickness(0) : new Thickness(1);
+            if (WindowState == WindowState.Maximized)
+            {
+                // WindowStyle=None + AllowsTransparency=False: WPF maximizes to FULL screen
+                // including the taskbar. We must constrain ourselves to the WorkArea.
+                // Setting MaxHeight = WorkArea.Height tells WPF to never exceed that height.
+                var wa = SystemParameters.WorkArea;
+                MaxHeight = wa.Height;
+
+                // The Margin(7) on RootBorder compensates for WindowChrome resize handle thickness
+                // so controls don't bleed off-screen edges. This is the standard WPF technique.
+                RootBorder.Margin = new Thickness(7);
+                RootBorder.BorderThickness = new Thickness(0);
+            }
+            else
+            {
+                MaxHeight = double.PositiveInfinity;
+                RootBorder.Margin = new Thickness(0);
+                RootBorder.BorderThickness = new Thickness(1);
+            }
         }
     }
 
     private void EnsureOnScreen()
     {
         var wa = SystemParameters.WorkArea;
-        if (Width > wa.Width) Width = Math.Max(MinWidth, wa.Width - 40);
-        if (Height > wa.Height) Height = Math.Max(MinHeight, wa.Height - 40);
 
-        Left = wa.Left + (wa.Width - Width) / 2;
-        Top = wa.Top + (wa.Height - Height) / 2;
+        // Clamp size to fit within work area (leave 20px breathing room on each side)
+        if (Width  > wa.Width)  Width  = Math.Max(MinWidth,  wa.Width  - 20);
+        if (Height > wa.Height) Height = Math.Max(MinHeight, wa.Height - 20);
 
-        if (Left < wa.Left) Left = wa.Left;
-        if (Top < wa.Top) Top = wa.Top;
+        // Center on work area
+        double newLeft = wa.Left + (wa.Width  - Width)  / 2.0;
+        double newTop  = wa.Top  + (wa.Height - Height) / 2.0;
+
+        // Hard clamps — window must not go outside the work area on any edge
+        Left = Math.Max(wa.Left, Math.Min(newLeft, wa.Right  - Width));
+        Top  = Math.Max(wa.Top,  Math.Min(newTop,  wa.Bottom - Height));
     }
+
 
     public static void ShowStudio()
     {

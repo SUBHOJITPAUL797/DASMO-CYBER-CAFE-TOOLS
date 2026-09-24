@@ -147,11 +147,12 @@ public sealed class PrintTrackerService : IDisposable
     }
 
     /// <summary>
-    /// Scans all local and network print queues using System.Printing and Win32 EnumJobs.
+    /// Scans all local print queues using Win32 EnumJobs — the sole authoritative path.
+    /// The old System.Printing fallback has been removed: it was registering the same job
+    /// a second time because dedup keyed on (pages+docName) which change mid-spool.
     /// </summary>
     public void PollPrintQueues()
     {
-        // 1. Try Win32 EnumJobs on monitored or all printers first for rich DEVMODE (duplex/color)
         var installedPrinters = GetInstalledPrinterNames();
         foreach (var printerName in installedPrinters)
         {
@@ -164,83 +165,19 @@ public sealed class PrintTrackerService : IDisposable
             ScanPrinterWithWin32(printerName);
         }
 
-        // 2. High-level System.Printing fallback to ensure 0 jobs are missed
-        try
+        // Prune old seen-job entries (>20 minutes) to prevent memory growth in long sessions
+        var cutoff = DateTimeOffset.Now.AddMinutes(-20);
+        if (_seenJobs.Count > 100)
         {
-            using var server = new LocalPrintServer();
-            var queues = server.GetPrintQueues();
-            foreach (var q in queues)
-            {
-                try
-                {
-                    if (Settings.TargetPrinters.Count > 0 &&
-                        !Settings.TargetPrinters.Any(p => p.Equals(q.Name, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        continue;
-                    }
-
-                    q.Refresh();
-                    if (q.NumberOfJobs == 0) continue;
-
-                    var jobs = q.GetPrintJobInfoCollection();
-                    foreach (var job in jobs)
-                    {
-                        try
-                        {
-                            string docName = string.IsNullOrWhiteSpace(job.Name) ? "Print Document" : job.Name;
-                            int pages = Math.Max(1, job.NumberOfPages);
-                            uint jobId = (uint)job.JobIdentifier;
-
-                            string dedupKey = $"{q.Name}:{jobId}:{docName}:{pages}";
-                            if (_seenJobs.ContainsKey(dedupKey)) continue;
-
-                            // Mark seen with sliding 10-minute expiry
-                            _seenJobs.TryAdd(dedupKey, DateTimeOffset.Now);
-
-                            // Detect duplex and color from Win32 DEVMODE
-                            var (isDuplex, isColor, copies) = InspectJobDevMode(q.Name, jobId);
-
-                            var record = new PrintJobRecord
-                            {
-                                SpoolerJobId = jobId,
-                                DocumentName = CleanDocumentName(docName),
-                                PrinterName = q.Name,
-                                Submitter = string.IsNullOrWhiteSpace(job.Submitter) ? Environment.UserName : job.Submitter,
-                                Timestamp = DateTimeOffset.Now,
-                                Pages = pages,
-                                Copies = Math.Max(1, copies),
-                                IsDuplex = isDuplex,
-                                IsColor = isColor,
-                                PaperSize = "A4"
-                            };
-
-                            CalculateCost(record);
-                            RegisterNewJob(record);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Debug(ex, "Failed to parse print job {JobId} on queue {Queue}", job.JobIdentifier, q.Name);
-                        }
-                    }
-                }
-                catch { }
-            }
-        }
-        catch { }
-
-        // Clean old seen jobs (> 15 minutes)
-        if (_seenJobs.Count > 200)
-        {
-            var cutoff = DateTimeOffset.Now.AddMinutes(-15);
             foreach (var kvp in _seenJobs)
             {
                 if (kvp.Value < cutoff)
-                {
                     _seenJobs.TryRemove(kvp.Key, out _);
-                }
             }
         }
     }
+
+
 
     private void ScanPrinterWithWin32(string printerName)
     {
@@ -252,64 +189,118 @@ public sealed class PrintTrackerService : IDisposable
 
             uint bytesNeeded = 0;
             uint jobsReturned = 0;
-            EnumJobs(hPrinter, 0, 50, 2, IntPtr.Zero, 0, out bytesNeeded, out jobsReturned);
+            EnumJobs(hPrinter, 0, 100, 2, IntPtr.Zero, 0, out bytesNeeded, out jobsReturned);
 
             if (bytesNeeded == 0) return;
 
             IntPtr pBuf = Marshal.AllocHGlobal((int)bytesNeeded);
             try
             {
-                if (EnumJobs(hPrinter, 0, 50, 2, pBuf, bytesNeeded, out bytesNeeded, out jobsReturned) && jobsReturned > 0)
+                if (!EnumJobs(hPrinter, 0, 100, 2, pBuf, bytesNeeded, out bytesNeeded, out jobsReturned) || jobsReturned == 0)
+                    return;
+
+                int structSize = Marshal.SizeOf<JOB_INFO_2>();
+                for (int i = 0; i < jobsReturned; i++)
                 {
-                    int structSize = Marshal.SizeOf<JOB_INFO_2>();
-                    for (int i = 0; i < jobsReturned; i++)
+                    IntPtr jobPtr = IntPtr.Add(pBuf, i * structSize);
+                    var jobInfo = Marshal.PtrToStructure<JOB_INFO_2>(jobPtr);
+
+                    // ── GATE 1: Only capture fully-spooled jobs ──────────────────────────────
+                    // JOB_STATUS_SPOOLING = 0x0004, JOB_STATUS_DELETING = 0x0004 overlap check:
+                    // We want at least TotalPages > 0 meaning the spooler has counted the pages.
+                    // Jobs with TotalPages==0 are still streaming in — skip them; we'll catch them
+                    // on the next 500ms poll cycle once TotalPages is finalized.
+                    int pages = (int)jobInfo.TotalPages;
+                    if (pages <= 0)
                     {
-                        IntPtr jobPtr = IntPtr.Add(pBuf, i * structSize);
-                        var jobInfo = Marshal.PtrToStructure<JOB_INFO_2>(jobPtr);
-
-                        string docName = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "Print Document";
-                        int pages = (int)jobInfo.TotalPages;
-                        if (pages <= 0) pages = 1;
-
-                        string dedupKey = $"{printerName}:{jobInfo.JobId}:{docName}:{pages}";
-                        if (_seenJobs.ContainsKey(dedupKey)) continue;
-
-                        _seenJobs.TryAdd(dedupKey, DateTimeOffset.Now);
-
-                        bool isDuplex = false;
-                        bool isColor = false;
-                        int copies = 1;
-
-                        if (jobInfo.pDevMode != IntPtr.Zero)
-                        {
-                            try
-                            {
-                                var devMode = Marshal.PtrToStructure<DEVMODE>(jobInfo.pDevMode);
-                                isDuplex = devMode.dmDuplex is 2 or 3; // 2=Vertical (Long-Edge), 3=Horizontal (Short-Edge)
-                                isColor = devMode.dmColor == 2;        // 2=Color
-                                if (devMode.dmCopies > 1) copies = devMode.dmCopies;
-                            }
-                            catch { }
-                        }
-
-                        // Brother DCP-T530DW heuristic: if printer name contains T530DW and job wasn't explicitly single, check settings
-                        var record = new PrintJobRecord
-                        {
-                            SpoolerJobId = jobInfo.JobId,
-                            DocumentName = CleanDocumentName(docName),
-                            PrinterName = printerName,
-                            Submitter = Marshal.PtrToStringAuto(jobInfo.pUserName) ?? Environment.UserName,
-                            Timestamp = DateTimeOffset.Now,
-                            Pages = pages,
-                            Copies = copies,
-                            IsDuplex = isDuplex,
-                            IsColor = isColor,
-                            PaperSize = "A4"
-                        };
-
-                        CalculateCost(record);
-                        RegisterNewJob(record);
+                        Log.Debug("Skipping partially-spooled job {JobId} on {Printer} (TotalPages=0)", jobInfo.JobId, printerName);
+                        continue;
                     }
+
+                    // ── GATE 2: Deduplicate by JobId only ───────────────────────────────────
+                    // Do NOT include pages or docName in the key — they can change between polls
+                    // as the spooler writes more data, causing the same physical print job to be
+                    // registered as two different entries with different page counts / costs.
+                    string dedupKey = $"{printerName}:{jobInfo.JobId}";
+                    if (_seenJobs.ContainsKey(dedupKey)) continue;
+                    _seenJobs.TryAdd(dedupKey, DateTimeOffset.Now);
+
+                    // ── GATE 3: Parse DEVMODE — authoritative duplex + color flags ──────────
+                    bool isDuplex = false;
+                    bool isColor  = false;
+                    int  copies   = 1;
+
+                    string docName = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "Print Document";
+
+                    if (jobInfo.pDevMode != IntPtr.Zero)
+                    {
+                        try
+                        {
+                            var devMode = Marshal.PtrToStructure<DEVMODE>(jobInfo.pDevMode);
+
+                            // dmDuplex: 1=Simplex, 2=Duplex Long-Edge (portrait), 3=Duplex Short-Edge (landscape)
+                            isDuplex = devMode.dmDuplex is 2 or 3;
+
+                            // ── COLOR DETECTION (industry-grade) ────────────────────────────
+                            // dmColor=2 means the printer driver *supports* color, NOT that this
+                            // job is color. Brother DCP-T530DW always sends dmColor=2 even for
+                            // plain black text documents printed from Word, Chrome, or Adobe.
+                            //
+                            // The CORRECT flag is dmICMIntent:
+                            //   0 = Not specified / driver default (treat as B&W for billing)
+                            //   1 = Saturate        ← Color (ICC color management)
+                            //   2 = RelativeColorimetric ← Color
+                            //   3 = Perceptual      ← Color
+                            //   4 = AbsoluteColorimetric ← Color
+                            //
+                            // Additionally, if dmColor==1 the driver explicitly forces monochrome.
+                            // This overrides any ICM intent.
+                            if (devMode.dmColor == 1)
+                            {
+                                // Driver explicitly forced monochrome — definitely B&W
+                                isColor = false;
+                            }
+                            else if (devMode.dmICMIntent >= 1 && devMode.dmICMIntent <= 4)
+                            {
+                                // ICM is active → color job
+                                isColor = true;
+                            }
+                            else
+                            {
+                                // dmColor==2 (color-capable hardware) but no ICM intent set.
+                                // This is the "false color" Brother scenario.
+                                // Default to B&W — the user printed a B&W document.
+                                isColor = false;
+                            }
+
+                            if (devMode.dmCopies > 1) copies = devMode.dmCopies;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug(ex, "DEVMODE parse failed for job {JobId} on {Printer}", jobInfo.JobId, printerName);
+                        }
+                    }
+
+                    Log.Information(
+                        "Win32 print job captured: [{Printer}] JobId={JobId} Doc='{Doc}' Pages={Pages} Duplex={Duplex} Color={Color} Copies={Copies}",
+                        printerName, jobInfo.JobId, CleanDocumentName(docName), pages, isDuplex, isColor, copies);
+
+                    var record = new PrintJobRecord
+                    {
+                        SpoolerJobId = jobInfo.JobId,
+                        DocumentName = CleanDocumentName(docName),
+                        PrinterName  = printerName,
+                        Submitter    = Marshal.PtrToStringAuto(jobInfo.pUserName) ?? Environment.UserName,
+                        Timestamp    = DateTimeOffset.Now,
+                        Pages        = pages,
+                        Copies       = copies,
+                        IsDuplex     = isDuplex,
+                        IsColor      = isColor,
+                        PaperSize    = "A4"
+                    };
+
+                    CalculateCost(record);
+                    RegisterNewJob(record);
                 }
             }
             finally
@@ -326,6 +317,8 @@ public sealed class PrintTrackerService : IDisposable
             if (hPrinter != IntPtr.Zero) ClosePrinter(hPrinter);
         }
     }
+
+
 
     private (bool isDuplex, bool isColor, int copies) InspectJobDevMode(string printerName, uint jobId)
     {
@@ -349,7 +342,14 @@ public sealed class PrintTrackerService : IDisposable
                     {
                         var devMode = Marshal.PtrToStructure<DEVMODE>(jobInfo.pDevMode);
                         bool isDuplex = devMode.dmDuplex is 2 or 3;
-                        bool isColor = devMode.dmColor == 2;
+                        // Use the same industry-grade color detection as ScanPrinterWithWin32
+                        bool isColor;
+                        if (devMode.dmColor == 1)
+                            isColor = false; // driver explicitly forced monochrome
+                        else if (devMode.dmICMIntent >= 1 && devMode.dmICMIntent <= 4)
+                            isColor = true;  // ICC color management active → color job
+                        else
+                            isColor = false; // hardware color-capable but no ICM → B&W
                         int copies = devMode.dmCopies > 1 ? devMode.dmCopies : 1;
                         return (isDuplex, isColor, copies);
                     }
