@@ -55,11 +55,16 @@
 
   <ItemGroup>
     <Resource Include="Resources\tray_icon.ico" />
+    <Resource Include="Resources\app_logo.png" />
     <Resource Include="Resources\owner_portrait.png" />
     <Resource Include="Resources\photo.webp" />
     <Resource Include="Resources\background_photo.png" />
     <Content Include="Resources\tray_icon.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\app_logo.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </Content>
     <Content Include="Services\SmartCardDetector.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

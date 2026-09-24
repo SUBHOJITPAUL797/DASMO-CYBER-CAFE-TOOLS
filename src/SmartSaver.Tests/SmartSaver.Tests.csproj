@@ -9,6 +9,10 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>..\SmartSaver\Resources\tray_icon.ico</ApplicationIcon>
+    <Title>DASMO CYBER CAFE TOOLS</Title>
+    <Product>DASMO CYBER CAFE TOOLS</Product>
+    <Company>DASMO Cyber Cafe</Company>
   </PropertyGroup>
 
   <ItemGroup>

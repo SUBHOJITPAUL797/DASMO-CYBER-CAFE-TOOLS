@@ -22,6 +22,18 @@ public static class Program
         Console.WriteLine();
 
         FirebaseCloudAuthService.BypassForTests = true;
+        NotificationService.EnsureNotificationBranding();
+
+        if (args.Length > 0 && args[0] == "TEST_TOAST")
+        {
+            Console.WriteLine("Sending live test toast with official branding and app logo...");
+            NotificationService.SuppressToastsForTesting = false;
+            NotificationService.NotifyUpdateAvailable("1.5.8", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
+            Console.WriteLine("Toast dispatched! Check your Windows desktop notification center.");
+            return 0;
+        }
+
+        NotificationService.SuppressToastsForTesting = true;
 
         if (args.Length > 1 && args[0] == "DIAG_PDF")
         {
@@ -4159,8 +4171,15 @@ public static class Program
                         if (mainVm.AutoDetectMode != "prompt" || !mainVm.AutoDetectStatusText.Contains("PROMPT"))
                             throw new Exception($"Expected PROMPT mode after toggle cycle, got {mainVm.AutoDetectMode} ({mainVm.AutoDetectStatusText})");
 
-                        // 4. NotificationService.NotifyUpdateAvailable execution
-                        SmartSaver.Services.NotificationService.NotifyUpdateAvailable("1.5.7", "Test release notes");
+                        // 4. NotificationService branding & logo verification
+                        SmartSaver.Services.NotificationService.EnsureNotificationBranding();
+                        string logoPath = SmartSaver.Services.NotificationService.EnsureAppLogoPng();
+                        if (string.IsNullOrEmpty(logoPath) || !File.Exists(logoPath))
+                            throw new Exception("Notification logo PNG was not extracted/found!");
+                        var logoUri = SmartSaver.Services.NotificationService.GetAppLogoUri();
+                        if (logoUri == null)
+                            throw new Exception("Notification logo Uri is null!");
+                        SmartSaver.Services.NotificationService.NotifyUpdateAvailable("1.5.8", "Test release notes");
 
                         // 5. AppUpdateService mandatory logic test
                         bool isMandatory = (true && true) || false || false; // ForceUpdate && hasNewer

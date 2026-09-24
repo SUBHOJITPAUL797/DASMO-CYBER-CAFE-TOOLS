@@ -140,6 +140,9 @@ public partial class App : System.Windows.Application
         {
             base.OnStartup(e);
 
+            // Stamp process and Windows registry with DASMO CYBER CAFE TOOLS AUMID & official logo
+            NotificationService.EnsureNotificationBranding();
+
             // Register Global Exception Handlers to log all errors and prevent silent application crashes
             DispatcherUnhandledException += (sender, args) =>
             {
@@ -275,6 +278,10 @@ public partial class App : System.Windows.Application
                 else if (e.Args.Contains("--print-counter") || e.Args.Contains("--printcounter") || e.Args.Contains("--printbilling"))
                 {
                     SingleInstanceHelper.SignalExistingInstance("SHOW_PRINT_COUNTER");
+                }
+                else if (e.Args.Contains("--test-toast"))
+                {
+                    SingleInstanceHelper.SignalExistingInstance("TEST_TOAST");
                 }
                 else if (e.Args.Contains("--dashboard"))
                 {
@@ -512,6 +519,13 @@ public partial class App : System.Windows.Application
             Log.Information("Command-line print counter studio requested");
             ShowPrintTrackerStudio();
         }
+        else if (e.Args.Contains("--test-toast"))
+        {
+            Log.Information("Test toast requested via command-line");
+            NotificationService.NotifyUpdateAvailable("1.5.8", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
+            Shutdown(0);
+            return;
+        }
         else if (!e.Args.Contains("--background"))
         {
             Log.Information("Manual launch detected - opening Unified Dashboard Window");
@@ -615,6 +629,11 @@ public partial class App : System.Windows.Application
                 {
                     Log.Information("IPC Request: Show Print Counter & Billing Studio");
                     ShowPrintTrackerStudio();
+                }
+                else if (message == "TEST_TOAST")
+                {
+                    Log.Information("IPC Request: Test toast");
+                    NotificationService.NotifyUpdateAvailable("1.5.8", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
                 }
                 else if (message.StartsWith("RESIZE|"))
                 {

@@ -21,7 +21,9 @@
                   Description="DASMO CYBER CAFE TOOLS - All-in-One Cyber Cafe Management &amp; Document Processing Suite"
                   Target="[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe"
                   WorkingDirectory="INSTALLFOLDER"
-                  Icon="DasmoIcon" />
+                  Icon="DasmoIcon">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="DASMO.CYBER.CAFE.TOOLS" />
+        </Shortcut>
         <RemoveFolder Id="RemoveStartMenuFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\DASMO CYBER CAFE TOOLS" Name="StartMenuShortcut"
                        Type="integer" Value="1" KeyPath="yes" />
