@@ -518,6 +518,9 @@ public class MainViewModel : ViewModelBase
             case DashboardTab.ResizeSignature:
                 SignatureResizeVm.LoadFile(filePath);
                 break;
+            case DashboardTab.PrintCounter:
+                PrintTrackerStudioWindow.ShowStudio();
+                break;
         }
     }
 

@@ -270,7 +270,7 @@ public class PrintTrackerViewModel : ViewModelBase
         // Subscribe to service events
         _tracker.OnJobDetected += job =>
         {
-            Application.Current?.Dispatcher.Invoke(() =>
+            RunOnUI(() =>
             {
                 RefreshCart();
                 RefreshAnalytics();
@@ -279,12 +279,12 @@ public class PrintTrackerViewModel : ViewModelBase
 
         _tracker.OnActiveCartChanged += () =>
         {
-            Application.Current?.Dispatcher.Invoke(RefreshCart);
+            RunOnUI(RefreshCart);
         };
 
         _tracker.OnHistoryUpdated += () =>
         {
-            Application.Current?.Dispatcher.Invoke(() =>
+            RunOnUI(() =>
             {
                 RefreshAnalytics();
                 ApplyHistoryFilter();
@@ -574,6 +574,25 @@ public class PrintTrackerViewModel : ViewModelBase
         {
             Log.Error(ex, "Failed to export print sales CSV");
             MessageBox.Show($"Failed to export: {ex.Message}", "Export Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static void RunOnUI(Action action)
+    {
+        if (Application.Current?.Dispatcher != null)
+        {
+            if (Application.Current.Dispatcher.CheckAccess())
+            {
+                action();
+            }
+            else
+            {
+                Application.Current.Dispatcher.Invoke(action);
+            }
+        }
+        else
+        {
+            action();
         }
     }
 }
