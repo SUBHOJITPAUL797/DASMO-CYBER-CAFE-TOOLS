@@ -236,7 +236,31 @@ public class PrintTrackerViewModel : ViewModelBase
 
     public ObservableCollection<string> InstalledPrinters { get; } = new();
 
-    // ── Commands ──
+    // ── Live Detected Job Banner ──
+    private PrintJobRecord? _lastDetectedJob;
+    public PrintJobRecord? LastDetectedJob
+    {
+        get => _lastDetectedJob;
+        set
+        {
+            if (SetProperty(ref _lastDetectedJob, value))
+            {
+                OnPropertyChanged(nameof(HasRecentDetectedJob));
+                OnPropertyChanged(nameof(RecentDetectedJobText));
+            }
+        }
+    }
+
+    public bool HasRecentDetectedJob => _lastDetectedJob != null;
+
+    public string RecentDetectedJobText => _lastDetectedJob == null
+        ? string.Empty
+        : $"⚡ NEW PRINT CAPTURED: {_lastDetectedJob.Pages} Pages • {(_lastDetectedJob.IsDuplex ? $"{_lastDetectedJob.SheetsUsed} Sheets (Duplex)" : "Single-Sided")} ({(_lastDetectedJob.IsColor ? "Color" : "B&W")}) = ₹{_lastDetectedJob.TotalCost:F2} added to active cart!";
+
+    public ICommand DismissDetectedJobBannerCommand { get; }
+    public ICommand ApplyStandardRatesCommand { get; }
+    public ICommand ApplyEconomyRatesCommand { get; }
+
     public ICommand CompleteBillCommand { get; }
     public ICommand ClearCartCommand { get; }
     public ICommand ToggleDuplexCommand { get; }
@@ -272,6 +296,7 @@ public class PrintTrackerViewModel : ViewModelBase
         {
             RunOnUI(() =>
             {
+                LastDetectedJob = job;
                 RefreshCart();
                 RefreshAnalytics();
             });
@@ -292,6 +317,32 @@ public class PrintTrackerViewModel : ViewModelBase
         };
 
         // Wire Commands
+        DismissDetectedJobBannerCommand = new RelayCommand(_ => LastDetectedJob = null);
+
+        ApplyStandardRatesCommand = new RelayCommand(_ =>
+        {
+            BwSingleSideRate = 2.0;
+            BwDuplexRate = 3.0;
+            ColorSingleSideRate = 10.0;
+            ColorDuplexRate = 15.0;
+            PhotoGlossyRate = 20.0;
+            PhotocopyBwRate = 2.0;
+            PhotocopyColorRate = 10.0;
+            LaminationRate = 20.0;
+        });
+
+        ApplyEconomyRatesCommand = new RelayCommand(_ =>
+        {
+            BwSingleSideRate = 1.5;
+            BwDuplexRate = 2.5;
+            ColorSingleSideRate = 8.0;
+            ColorDuplexRate = 12.0;
+            PhotoGlossyRate = 15.0;
+            PhotocopyBwRate = 1.5;
+            PhotocopyColorRate = 8.0;
+            LaminationRate = 15.0;
+        });
+
         CompleteBillCommand = new RelayCommand(_ => FinishBill(), _ => CanFinishBill);
         ClearCartCommand = new RelayCommand(_ => ClearCart(), _ => HasActiveJobs);
 

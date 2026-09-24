@@ -6,14 +6,14 @@
         xmlns:local="clr-namespace:SmartSaver.Converters"
         mc:Ignorable="d"
         Title="🖨️ DASMO CYBER CAFE — Automatic Print Counter &amp; Customer Billing Studio" 
-        Height="700" Width="1200" MinHeight="580" MinWidth="980"
+        Height="660" Width="1160" MinHeight="460" MinWidth="860"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="False" Background="{StaticResource BackgroundBrush}"
         ResizeMode="CanResize"
         PreviewKeyDown="Window_PreviewKeyDown">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="42" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -140,21 +140,21 @@
                                 ToolTip="Toggle automatic background print job detection"/>
                     </StackPanel>
 
-                    <!-- Rate Card Badges -->
+                    <!-- Rate Card Badges & Custom Prices Editor Trigger -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Rate Card: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                            <TextBlock Text="{Binding BwSingleSideRate, StringFormat='⚫ B&amp;W: ₹{0}/p'}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
-                        </Border>
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                            <TextBlock Text="{Binding BwDuplexRate, StringFormat='📑 Duplex: ₹{0}/sheet'}" FontSize="11" FontWeight="SemiBold" Foreground="#10B981"/>
-                        </Border>
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                            <TextBlock Text="{Binding ColorSingleSideRate, StringFormat='🌈 Color: ₹{0}/p'}" FontSize="11" FontWeight="SemiBold" Foreground="#00BCD4"/>
-                        </Border>
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="4" Padding="6,2">
-                            <TextBlock Text="{Binding PhotoGlossyRate, StringFormat='📸 Photo: ₹{0}'}" FontSize="11" FontWeight="SemiBold" Foreground="#FF9800"/>
-                        </Border>
+                        <Button Content="{Binding BwSingleSideRate, StringFormat='⚫ B&amp;W: ₹{0}/p'}" Click="OpenRateSettings_Click"
+                                Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" ToolTip="Click to customize B&amp;W print price"/>
+                        <Button Content="{Binding BwDuplexRate, StringFormat='📑 Duplex: ₹{0}/s'}" Click="OpenRateSettings_Click"
+                                Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" Foreground="#10B981" BorderBrush="#10B981" ToolTip="Click to customize Duplex print price"/>
+                        <Button Content="{Binding ColorSingleSideRate, StringFormat='🌈 Color: ₹{0}/p'}" Click="OpenRateSettings_Click"
+                                Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" Foreground="#00BCD4" BorderBrush="#00BCD4" ToolTip="Click to customize Color print price"/>
+                        <Button Content="{Binding PhotoGlossyRate, StringFormat='📸 Photo: ₹{0}'}" Click="OpenRateSettings_Click"
+                                Style="{StaticResource CounterChipButton}" Margin="0,0,6,0" Padding="7,2" FontSize="11" Foreground="#FF9800" BorderBrush="#FF9800" ToolTip="Click to customize Photo print price"/>
+                        <Button Content="⚙️ Set Custom Prices" Click="OpenRateSettings_Click"
+                                Style="{StaticResource CounterChipButton}" Margin="4,0,0,0" Padding="10,3" FontSize="11"
+                                Background="#1A2E26" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"
+                                ToolTip="Customize B&amp;W, Color, Duplex &amp; Photo print rates"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -177,9 +177,24 @@
                         <RowDefinition Height="Auto"/> <!-- Bottom Finish Bill Actions -->
                     </Grid.RowDefinitions>
 
-                    <!-- Customer Info Header -->
-                    <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="10,8" Margin="0,0,0,6"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <!-- Customer Info Header & Live Alert Banner -->
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <!-- Live Detected Print Toast Banner -->
+                        <Border Background="#1A2E26" BorderBrush="#10B981" BorderThickness="1.5" CornerRadius="6"
+                                Padding="10,6" Margin="0,0,0,6"
+                                Visibility="{Binding HasRecentDetectedJob, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Width="8" Height="8" CornerRadius="4" Background="#10B981" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding RecentDetectedJobText}" FontWeight="Bold" FontSize="11.5" Foreground="White" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button Content="✕" HorizontalAlignment="Right" Command="{Binding DismissDetectedJobBannerCommand}"
+                                        Style="{StaticResource StudioHeaderButton}" Width="24" Height="22" FontSize="11" Foreground="#A0AEC0" ToolTip="Dismiss"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="8,6"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*"/>
@@ -213,6 +228,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                    </StackPanel>
 
                     <!-- Big Live Total Banner -->
                     <Border Grid.Row="1" CornerRadius="8" Margin="0,0,0,6" Padding="12,8"
@@ -434,7 +450,6 @@
                         <RowDefinition Height="Auto"/> <!-- Daily Analytics Summary Cards -->
                         <RowDefinition Height="Auto"/> <!-- Search & Date Filter Bar -->
                         <RowDefinition Height="*"/>    <!-- Completed Bills / Job Log -->
-                        <RowDefinition Height="Auto"/> <!-- Rate Card & Shop Settings Drawer -->
                     </Grid.RowDefinitions>
 
                     <!-- Daily Analytics Cards -->
@@ -504,15 +519,21 @@
                                      Padding="6,3" VerticalContentAlignment="Center" FontSize="12" Margin="0,0,8,0"
                                      ToolTip="Search by customer name, mobile, document, or bill number"/>
 
-                            <!-- Export CSV Button -->
-                            <Button Grid.Column="2" Command="{Binding ExportCsvCommand}"
-                                    Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0"
-                                    ToolTip="Export sales report to Excel CSV">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="📥 " FontSize="11"/>
-                                    <TextBlock Text="Excel / CSV" FontWeight="SemiBold" FontSize="11"/>
-                                </StackPanel>
-                            </Button>
+                            <!-- Export CSV & Set Prices Buttons -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button Command="{Binding ExportCsvCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0,0,6,0"
+                                        ToolTip="Export sales report to Excel CSV">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📥 " FontSize="11"/>
+                                        <TextBlock Text="Excel / CSV" FontWeight="SemiBold" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Content="⚙️ Set Prices" Click="OpenRateSettings_Click"
+                                        Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0"
+                                        Background="#1A2E26" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"
+                                        ToolTip="Set custom rates for B&amp;W, Duplex, Color, and Photos"/>
+                            </StackPanel>
                         </Grid>
                     </Border>
 
@@ -586,63 +607,168 @@
                         </Grid>
                     </Border>
 
-                    <!-- Rate Card Drawer / Quick Rates Editor -->
-                    <Expander Grid.Row="3" Header="⚙️ Configure Cyber Cafe Rates &amp; Shop Details" 
-                              Foreground="{StaticResource TextBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,10,0,0">
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,6,0,0"
-                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                </Grid>
+            </Grid>
+
+            <!-- ════ MODAL OVERLAY: CUSTOM PRINT & PHOTOCOPY RATES ════ -->
+            <Grid x:Name="RateSettingsModal" Visibility="Collapsed" Background="#D00A0B12" Grid.RowSpan="3" Panel.ZIndex="999">
+                <Border Background="#1A1C2B" BorderBrush="#10B981" BorderThickness="1.5" CornerRadius="12"
+                        Width="620" MaxHeight="520" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        SnapsToDevicePixels="True">
+                    <Border.Effect>
+                        <DropShadowEffect Color="#000000" BlurRadius="25" ShadowDepth="8" Opacity="0.85"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/> <!-- Header -->
+                            <RowDefinition Height="*"/>    <!-- Scrollable Rate Inputs -->
+                            <RowDefinition Height="Auto"/> <!-- Footer Actions -->
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <Border Grid.Row="0" Background="#222538" CornerRadius="10,10,0,0" Padding="16,12" BorderBrush="#2D314A" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="⚙️ " FontSize="16" VerticalAlignment="Center"/>
+                                    <TextBlock Text="CYBER CAFE CUSTOM PRINT &amp; XEROX RATES" FontWeight="Bold" FontSize="14" Foreground="#10B981" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button Content="✕" HorizontalAlignment="Right" Click="CloseRateSettings_Click"
+                                        Style="{StaticResource StudioCloseButton}" Width="28" Height="28" FontSize="13"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Body with Rate Inputs -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="18,14">
                             <StackPanel>
-                                <UniformGrid Columns="2" Rows="3" Margin="0,0,0,8">
-                                    <!-- B&W Single -->
-                                    <StackPanel Margin="0,0,8,6">
-                                        <TextBlock Text="B&amp;W Single-Sided (₹/page):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                        <TextBox Text="{Binding BwSingleSideRate, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
-                                    </StackPanel>
+                                <TextBlock Text="Set your cyber cafe's custom print rates below. Changes apply instantly to Brother DCP-T530DW auto-counting and active customer carts."
+                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,14"/>
+
+                                <!-- Quick Presets -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                    <TextBlock Text="Quick Presets: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Button Content="💰 Standard (₹2 B&amp;W / ₹3 Duplex / ₹10 Color)" Command="{Binding ApplyStandardRatesCommand}"
+                                            Style="{StaticResource CounterChipButton}" Padding="8,3" FontSize="11" Margin="0,0,6,0"/>
+                                    <Button Content="🏷️ Economy (₹1.5 B&amp;W / ₹2.5 Duplex / ₹8 Color)" Command="{Binding ApplyEconomyRatesCommand}"
+                                            Style="{StaticResource CounterChipButton}" Padding="8,3" FontSize="11"/>
+                                </StackPanel>
+
+                                <!-- 2-Column Rates Grid -->
+                                <UniformGrid Columns="2" Margin="0,0,0,14">
+                                    <!-- B&W Single-Sided -->
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="⚫ B&amp;W Single-Sided Print" FontWeight="Bold" FontSize="12" Foreground="White" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per single-sided page" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding BwSingleSideRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / page" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
                                     <!-- B&W Duplex -->
-                                    <StackPanel Margin="8,0,0,6">
-                                        <TextBlock Text="B&amp;W Duplex (₹/sheet):" FontSize="11" Foreground="#10B981"/>
-                                        <TextBox Text="{Binding BwDuplexRate, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
-                                    </StackPanel>
-                                    <!-- Color Single -->
-                                    <StackPanel Margin="0,0,8,6">
-                                        <TextBlock Text="Color Single-Sided (₹/page):" FontSize="11" Foreground="#00BCD4"/>
-                                        <TextBox Text="{Binding ColorSingleSideRate, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
-                                    </StackPanel>
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,8" BorderBrush="#10B981" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="📑 B&amp;W Duplex Print (Double-Sided)" FontWeight="Bold" FontSize="12" Foreground="#10B981" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per sheet (2-in-1 replacement)" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding BwDuplexRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / sheet" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Color Single-Sided -->
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="🌈 Color Single-Sided Print" FontWeight="Bold" FontSize="12" Foreground="#00BCD4" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per single-sided color page" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#00BCD4" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding ColorSingleSideRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / page" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
                                     <!-- Color Duplex -->
-                                    <StackPanel Margin="8,0,0,6">
-                                        <TextBlock Text="Color Duplex (₹/sheet):" FontSize="11" Foreground="#00BCD4"/>
-                                        <TextBox Text="{Binding ColorDuplexRate, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
-                                    </StackPanel>
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,8" BorderBrush="#10B981" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="🌈 Color Duplex Print (Double-Sided)" FontWeight="Bold" FontSize="12" Foreground="#00BCD4" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per double-sided color sheet" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#00BCD4" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding ColorDuplexRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / sheet" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
                                     <!-- Photo Paper -->
-                                    <StackPanel Margin="0,0,8,0">
-                                        <TextBlock Text="Photo Paper (₹/sheet):" FontSize="11" Foreground="#FF9800"/>
-                                        <TextBox Text="{Binding PhotoGlossyRate, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
-                                    </StackPanel>
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="📸 Photo Paper (Glossy 4×6 / A4)" FontWeight="Bold" FontSize="12" Foreground="#FF9800" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per printed photo sheet" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#FF9800" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding PhotoGlossyRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / photo" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
                                     <!-- Lamination -->
-                                    <StackPanel Margin="8,0,0,0">
-                                        <TextBlock Text="Lamination (₹/pouch):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                        <TextBox Text="{Binding LaminationRate, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
-                                    </StackPanel>
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="🛡️ Lamination Pouch (A4 / ID)" FontWeight="Bold" FontSize="12" Foreground="White" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per lamination pouch" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding LaminationRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / pouch" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
                                 </UniformGrid>
 
-                                <Grid Margin="0,4,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                        <TextBlock Text="Shop Name on Slip:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                        <TextBox Text="{Binding ShopName, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
+                                <!-- Shop Details for Receipts -->
+                                <Border Background="#141520" CornerRadius="8" Padding="12,10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="🏬 Shop Information (Appears on WhatsApp &amp; Thermal Receipts)" FontWeight="Bold" FontSize="12" Foreground="White" Margin="0,0,0,8"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                                <TextBlock Text="Shop Name:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding ShopName, UpdateSourceTrigger=PropertyChanged}" Padding="8,4" FontSize="12"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                                <TextBlock Text="Shop WhatsApp / Mobile:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding ShopPhone, UpdateSourceTrigger=PropertyChanged}" Padding="8,4" FontSize="12"/>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                        <TextBlock Text="Shop Phone on Slip:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                        <TextBox Text="{Binding ShopPhone, UpdateSourceTrigger=PropertyChanged}" Padding="6,3"/>
-                                    </StackPanel>
-                                </Grid>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Footer Actions -->
+                        <Border Grid.Row="2" Background="#222538" CornerRadius="0,0,10,10" Padding="16,12" BorderBrush="#2D314A" BorderThickness="0,1,0,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="✕ Cancel" Click="CloseRateSettings_Click" Width="90" Height="34" Margin="0,0,10,0"/>
+                                <Button Content="✅ Save &amp; Apply Rates" Click="CloseRateSettings_Click"
+                                        Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="12.5"
+                                        Width="180" Height="34" Cursor="Hand" BorderThickness="0">
+                                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
+                                </Button>
                             </StackPanel>
                         </Border>
-                    </Expander>
-                </Grid>
+                    </Grid>
+                </Border>
             </Grid>
         </Grid>
     </Border>

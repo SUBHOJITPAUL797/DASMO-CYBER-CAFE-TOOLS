@@ -4332,12 +4332,39 @@ public static class Program
 
                         // 8. Test PrintTrackerStudioWindow STA Instantiation & Layout (0 Binding / Layout Exceptions)
                         var studioWin = new SmartSaver.Views.PrintTrackerStudioWindow();
-                        studioWin.Measure(new System.Windows.Size(1200, 700));
-                        studioWin.Arrange(new System.Windows.Rect(0, 0, 1200, 700));
+                        studioWin.Measure(new System.Windows.Size(1160, 660));
+                        studioWin.Arrange(new System.Windows.Rect(0, 0, 1160, 660));
                         studioWin.UpdateLayout();
                         if (studioWin.FindName("RootBorder") == null)
                             throw new Exception("RootBorder was not found on PrintTrackerStudioWindow");
+                        if (studioWin.FindName("RateSettingsModal") == null)
+                            throw new Exception("RateSettingsModal was not found on PrintTrackerStudioWindow");
+
+                        // Test Rate presets
+                        vm.ApplyEconomyRatesCommand.Execute(null);
+                        if (vm.BwSingleSideRate != 1.5 || vm.BwDuplexRate != 2.5)
+                            throw new Exception("ApplyEconomyRatesCommand failed to set expected rates");
+
+                        vm.ApplyStandardRatesCommand.Execute(null);
+                        if (vm.BwSingleSideRate != 2.0 || vm.BwDuplexRate != 3.0)
+                            throw new Exception("ApplyStandardRatesCommand failed to set expected rates");
+
                         studioWin.Close();
+
+                        // 9. Test PrintAlertPopup Floating HUD Window
+                        var alertPopup = new SmartSaver.Views.PrintAlertPopup(new PrintJobRecord
+                        {
+                            DocumentName = "TestAdmitCard.pdf",
+                            PrinterName = "Brother DCP-T530DW",
+                            Pages = 6,
+                            IsDuplex = true,
+                            IsColor = false,
+                            TotalCost = 12.0
+                        });
+                        alertPopup.Measure(new System.Windows.Size(400, 175));
+                        alertPopup.Arrange(new System.Windows.Rect(0, 0, 400, 175));
+                        alertPopup.UpdateLayout();
+                        alertPopup.Close();
                     }
                     catch (Exception ex)
                     {

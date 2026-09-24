@@ -101,23 +101,44 @@ public partial class PrintTrackerStudioWindow : Window
         Close();
     }
 
+    private void OpenRateSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (RateSettingsModal != null)
+            RateSettingsModal.Visibility = Visibility.Visible;
+    }
+
+    private void CloseRateSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (RateSettingsModal != null)
+            RateSettingsModal.Visibility = Visibility.Collapsed;
+    }
+
     private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        if (e.Key == Key.Escape)
+        {
+            if (RateSettingsModal != null && RateSettingsModal.Visibility == Visibility.Visible)
+            {
+                RateSettingsModal.Visibility = Visibility.Collapsed;
+                e.Handled = true;
+                return;
+            }
+
+            // Close window if no active jobs, or let user continue
+            if (!Vm.HasActiveJobs)
+            {
+                Close();
+                e.Handled = true;
+            }
+            return;
+        }
+
         // Ctrl+Enter or F12 finishes the customer bill instantly
         if ((e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) || e.Key == Key.F12)
         {
             if (Vm.CanFinishBill && Vm.CompleteBillCommand.CanExecute(null))
             {
                 Vm.CompleteBillCommand.Execute(null);
-                e.Handled = true;
-            }
-        }
-        else if (e.Key == Key.Escape)
-        {
-            // Close window if no active jobs, or let user continue
-            if (!Vm.HasActiveJobs)
-            {
-                Close();
                 e.Handled = true;
             }
         }

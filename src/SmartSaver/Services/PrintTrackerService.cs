@@ -396,6 +396,7 @@ public sealed class PrintTrackerService : IDisposable
         if (Settings.ShowNotificationOnJobDetected)
         {
             NotificationService.NotifyPrintJobCaptured(job.DocumentName, job.Pages, job.IsDuplex, job.IsColor, job.TotalCost);
+            Views.PrintAlertPopup.ShowAlert(job);
         }
 
         OnJobDetected?.Invoke(job);
