@@ -28,7 +28,7 @@ public static class Program
         {
             Console.WriteLine("Sending live test toast with official branding and app logo...");
             NotificationService.SuppressToastsForTesting = false;
-            NotificationService.NotifyUpdateAvailable("1.5.8", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
+            NotificationService.NotifyUpdateAvailable("1.5.9", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
             Console.WriteLine("Toast dispatched! Check your Windows desktop notification center.");
             return 0;
         }
@@ -4179,7 +4179,7 @@ public static class Program
                         var logoUri = SmartSaver.Services.NotificationService.GetAppLogoUri();
                         if (logoUri == null)
                             throw new Exception("Notification logo Uri is null!");
-                        SmartSaver.Services.NotificationService.NotifyUpdateAvailable("1.5.8", "Test release notes");
+                        SmartSaver.Services.NotificationService.NotifyUpdateAvailable("1.5.9", "Test release notes");
 
                         // 5. AppUpdateService mandatory logic test
                         bool isMandatory = (true && true) || false || false; // ForceUpdate && hasNewer
@@ -4207,11 +4207,11 @@ public static class Program
             }
 
             // ─────────────────────────────────────────────────────────────
-            // TEST 59: Cyber Cafe Automatic Print Counter & Rush-Hour Billing Engine (v1.5.8)
+            // TEST 59: Cyber Cafe Automatic Print Counter & Rush-Hour Billing Engine (v1.5.9)
             // ─────────────────────────────────────────────────────────────
             try
             {
-                Console.Write("[TEST 59] Print Counter, Brother DCP-T530DW Duplex (Replacement in 2) & Rush-Hour Billing (v1.5.8)... ");
+                Console.Write("[TEST 59] Print Counter, Brother DCP-T530DW Duplex (Replacement in 2) & Rush-Hour Billing (v1.5.9)... ");
 
                 Exception? staEx59 = null;
                 var staThread59 = new Thread(() =>

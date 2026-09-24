@@ -522,7 +522,7 @@ public partial class App : System.Windows.Application
         else if (e.Args.Contains("--test-toast"))
         {
             Log.Information("Test toast requested via command-line");
-            NotificationService.NotifyUpdateAvailable("1.5.8", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
+            NotificationService.NotifyUpdateAvailable("1.5.9", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
             Shutdown(0);
             return;
         }
@@ -633,7 +633,7 @@ public partial class App : System.Windows.Application
                 else if (message == "TEST_TOAST")
                 {
                     Log.Information("IPC Request: Test toast");
-                    NotificationService.NotifyUpdateAvailable("1.5.8", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
+                    NotificationService.NotifyUpdateAvailable("1.5.9", "Full Cyber Cafe Suite with Auto Spooler & Duplex Accounting");
                 }
                 else if (message.StartsWith("RESIZE|"))
                 {
