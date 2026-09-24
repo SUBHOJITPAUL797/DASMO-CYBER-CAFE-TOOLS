@@ -329,9 +329,16 @@
 
                                 <Separator Background="{StaticResource BorderBrush}" Margin="12,4"/>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenStackerCommand}" ToolTip="A4 Document Stacker">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}" ToolTip="🖨️ Cyber Cafe Print Counter &amp; Rush-Hour Billing Studio">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="🖨️" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Print Counter &amp; Billing" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenStackerCommand}" ToolTip="A4 Document Stacker">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📄" Margin="0,0,10,0" FontSize="14"/>
                                         <TextBlock Text="A4 Doc Stacker" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
@@ -580,6 +587,21 @@
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                             <TextBlock Text="PDF Editor Studio (In-Place Edit)" FontSize="14" FontWeight="Bold" Foreground="#00BCD4"/>
                                             <TextBlock Text="Edit text, whiteout/erase, replace photos &amp; add signatures on any PDF with 100% vector quality." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                                <!-- Card 12: Print Counter & Rush-Hour Billing Studio -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="🖨️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                            <TextBlock Text="Auto Print Counter &amp; Rush Billing" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
+                                            <TextBlock Text="Live Brother DCP-T530DW print counter, auto duplex (2-in-1 replacement), instant customer cart &amp; thermal/WhatsApp billing." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
@@ -2494,6 +2516,72 @@
                                                     IsEnabled="{Binding IsDownloadingUpdate, Converter={StaticResource InverseBool}}"/>
                                         </StackPanel>
                                     </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- TAB 12: PRINT COUNTER & RUSH BILLING STUDIO QUICK VIEW / LAUNCHER -->
+                    <Grid Visibility="{Binding DataContext.IsPrintCounterTab, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}" Style="{StaticResource ContentFadeStyle}">
+                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="24">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Studio Header Banner -->
+                                <Grid Grid.Row="0" Margin="0,0,0,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                            <TextBlock Text="🖨️" FontSize="26" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Cyber Cafe Print Counter &amp; Rush-Hour Billing Studio" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Real-time automatic print job interceptor for Brother DCP-T530DW and all printers. Automatic duplex calculation (1 sheet = 2 pages), active customer cart, quick photocopy pad, thermal receipt slips, and WhatsApp sharing." 
+                                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" MaxWidth="750"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="🚀 Launch Full Studio Window" Style="{StaticResource PrimaryButton}" Command="{Binding OpenPrintTrackerStudioCommand}" Padding="18,10" VerticalAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+
+                                <!-- Quick Info Cards -->
+                                <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,20">
+                                    <Border Background="#141520" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="PRINTER MONITORED" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Text="Brother DCP-T530DW &amp; Spooler" FontSize="14" FontWeight="Bold" Foreground="#10B981" Margin="0,4,0,0"/>
+                                            <TextBlock Text="Continuous 500ms auto-poll" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="#141520" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="4,0,4,0">
+                                        <StackPanel>
+                                            <TextBlock Text="DUPLEX ENGINE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Text="Replacement in 2 (1 Sheet = 2 Pages)" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,4,0,0"/>
+                                            <TextBlock Text="DEVMODE auto-detection + 1-click toggle" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="#141520" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="8,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="RUSH-HOUR BILLING" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Text="Active Cart + Thermal / WhatsApp" FontSize="14" FontWeight="Bold" Foreground="#F59E0B" Margin="0,4,0,0"/>
+                                            <TextBlock Text="Press Ctrl+Enter or F12 for 1-click bill" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+
+                                <!-- Launch Studio Hero CTA -->
+                                <Border Grid.Row="2" Background="#141520" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="30">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="🖨️" FontSize="56" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                                        <TextBlock Text="Open Print Counter &amp; Billing Studio Workspace" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                        <TextBlock Text="Click below to open the dedicated dual-pane rush-hour billing studio window with active cart, live total, quick photocopy pad, thermal receipt preview, and customer history." 
+                                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" MaxWidth="600" TextAlignment="Center" Margin="0,0,0,20"/>
+                                        <Button Content="⚡ Open Dedicated Studio (F12 / Ctrl+Enter)" Style="{StaticResource PrimaryButton}" Command="{Binding OpenPrintTrackerStudioCommand}" HorizontalAlignment="Center" Padding="24,12" FontSize="14" FontWeight="Bold"/>
+                                    </StackPanel>
                                 </Border>
                             </Grid>
                         </Border>

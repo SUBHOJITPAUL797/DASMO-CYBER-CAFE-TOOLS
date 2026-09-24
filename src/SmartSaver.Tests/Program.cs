@@ -4187,6 +4187,150 @@ public static class Program
                 failed++;
             }
 
+            // ─────────────────────────────────────────────────────────────
+            // TEST 59: Cyber Cafe Automatic Print Counter & Rush-Hour Billing Engine (v1.5.8)
+            // ─────────────────────────────────────────────────────────────
+            try
+            {
+                Console.Write("[TEST 59] Print Counter, Brother DCP-T530DW Duplex (Replacement in 2) & Rush-Hour Billing (v1.5.8)... ");
+
+                Exception? staEx59 = null;
+                var staThread59 = new Thread(() =>
+                {
+                    try
+                    {
+                        var tracker = SmartSaver.Services.PrintTrackerService.Instance;
+
+                        // 1. Verify installed printer listing works cleanly
+                        var printers = SmartSaver.Services.PrintTrackerService.GetInstalledPrinterNames();
+                        if (printers == null) throw new Exception("GetInstalledPrinterNames returned null");
+
+                        // 2. Configure rate card
+                        tracker.UpdateSettings(s =>
+                        {
+                            s.BwSingleSideRate = 2.0;       // ₹2.00 per single-sided page
+                            s.BwDuplexRate = 3.0;           // ₹3.00 per duplex sheet
+                            s.BwDuplexPricedPerSheet = true;
+                            s.ColorSingleSideRate = 10.0;   // ₹10.00 per single-sided color page
+                            s.ColorDuplexRate = 15.0;       // ₹15.00 per duplex color sheet
+                            s.ColorDuplexPricedPerSheet = true;
+                            s.ShopName = "DASMO CYBER CAFE";
+                            s.ShopPhone = "+91 8927408840";
+                        });
+
+                        tracker.ClearActiveCart();
+
+                        // 3. Test Duplex Math Engine ("Replacement in 2")
+                        // Test A: 10 pages duplex B&W -> 5 sheets @ ₹3/sheet = ₹15
+                        var jobDuplex10 = tracker.AddManualJob("Printout", 10, isDuplex: true, isColor: false);
+                        if (jobDuplex10.TotalImpressions != 10)
+                            throw new Exception($"Expected 10 total impressions, got {jobDuplex10.TotalImpressions}");
+                        if (jobDuplex10.SheetsUsed != 5)
+                            throw new Exception($"Expected 5 sheets for 10 duplex pages, got {jobDuplex10.SheetsUsed}");
+                        if (Math.Abs(jobDuplex10.TotalCost - 15.0) > 0.01)
+                            throw new Exception($"Expected ₹15.00 for 5 duplex sheets @ ₹3/sheet, got ₹{jobDuplex10.TotalCost}");
+
+                        // Test B: 5 pages duplex B&W -> ceil(5 / 2.0) = 3 sheets @ ₹3/sheet = ₹9
+                        var jobDuplex5 = tracker.AddManualJob("Printout", 5, isDuplex: true, isColor: false);
+                        if (jobDuplex5.SheetsUsed != 3)
+                            throw new Exception($"Expected 3 sheets for 5 duplex pages, got {jobDuplex5.SheetsUsed}");
+                        if (Math.Abs(jobDuplex5.TotalCost - 9.0) > 0.01)
+                            throw new Exception($"Expected ₹9.00 for 3 duplex sheets @ ₹3/sheet, got ₹{jobDuplex5.TotalCost}");
+
+                        // Test C: 10 pages simplex (single-sided) B&W -> 10 sheets @ ₹2/page = ₹20
+                        var jobSingle10 = tracker.AddManualJob("Printout", 10, isDuplex: false, isColor: false);
+                        if (jobSingle10.SheetsUsed != 10)
+                            throw new Exception($"Expected 10 sheets for 10 single-sided pages, got {jobSingle10.SheetsUsed}");
+                        if (Math.Abs(jobSingle10.TotalCost - 20.0) > 0.01)
+                            throw new Exception($"Expected ₹20.00 for 10 single-sided pages @ ₹2/page, got ₹{jobSingle10.TotalCost}");
+
+                        // Test D: 4 pages duplex Color -> 2 sheets @ ₹15/sheet = ₹30
+                        var jobColorDuplex = tracker.AddManualJob("Printout", 4, isDuplex: true, isColor: true);
+                        if (jobColorDuplex.SheetsUsed != 2)
+                            throw new Exception($"Expected 2 sheets for 4 color duplex pages, got {jobColorDuplex.SheetsUsed}");
+                        if (Math.Abs(jobColorDuplex.TotalCost - 30.0) > 0.01)
+                            throw new Exception($"Expected ₹30.00 for 2 color duplex sheets @ ₹15/sheet, got ₹{jobColorDuplex.TotalCost}");
+
+                        // 4. Test ViewModel Cart and Grand Total
+                        var vm = new SmartSaver.ViewModels.PrintTrackerViewModel();
+                        if (vm.ActiveJobs.Count != 4)
+                            throw new Exception($"Expected 4 active jobs in cart, got {vm.ActiveJobs.Count}");
+
+                        // Expected Total: 15 + 9 + 20 + 30 = ₹74
+                        if (Math.Abs(vm.ActiveCartTotalCost - 74.0) > 0.01)
+                            throw new Exception($"Expected ₹74.00 active cart total, got ₹{vm.ActiveCartTotalCost}");
+
+                        // Test 1-click toggles: toggle jobDuplex10 from Duplex to Single-Sided -> 10 sheets @ ₹2 = ₹20 (Total becomes 20 + 9 + 20 + 30 = ₹79)
+                        vm.ToggleDuplexCommand.Execute(jobDuplex10);
+                        if (jobDuplex10.IsDuplex)
+                            throw new Exception("Expected jobDuplex10 to be toggled to single-sided");
+                        if (Math.Abs(jobDuplex10.TotalCost - 20.0) > 0.01)
+                            throw new Exception($"Expected ₹20.00 after toggle to single-sided, got ₹{jobDuplex10.TotalCost}");
+
+                        // Toggle it back to duplex -> ₹15
+                        vm.ToggleDuplexCommand.Execute(jobDuplex10);
+                        if (!jobDuplex10.IsDuplex)
+                            throw new Exception("Expected jobDuplex10 to be toggled back to duplex");
+                        if (Math.Abs(jobDuplex10.TotalCost - 15.0) > 0.01)
+                            throw new Exception($"Expected ₹15.00 after toggling back to duplex, got ₹{jobDuplex10.TotalCost}");
+
+                        // Test Quick Photocopy addition: +5 B&W @ ₹2 = ₹10
+                        vm.AddQuickPhotocopyBwCommand.Execute(5);
+                        if (vm.ActiveJobs.Count != 5)
+                            throw new Exception($"Expected 5 active jobs after quick photocopy, got {vm.ActiveJobs.Count}");
+
+                        // 5. Finalize Customer Bill
+                        vm.CustomerName = "Rajesh Sharma";
+                        vm.CustomerPhone = "9876543210";
+                        vm.PaymentMode = "UPI";
+                        vm.CompleteBillCommand.Execute(null);
+
+                        if (vm.ActiveJobs.Count != 0)
+                            throw new Exception("Active cart was not cleared after bill completion");
+
+                        var lastBill = vm.LastCompletedBill;
+                        if (lastBill == null)
+                            throw new Exception("LastCompletedBill is null after completing bill");
+                        if (lastBill.CustomerName != "Rajesh Sharma")
+                            throw new Exception($"Expected customer Rajesh Sharma, got {lastBill.CustomerName}");
+                        if (string.IsNullOrEmpty(lastBill.BillNumber) || !lastBill.BillNumber.StartsWith("BILL-"))
+                            throw new Exception($"Invalid bill number: {lastBill.BillNumber}");
+
+                        // 6. Test Thermal Receipt and WhatsApp formatting
+                        string receiptText = tracker.GenerateReceiptText(lastBill);
+                        if (!receiptText.Contains("DASMO CYBER CAFE") || !receiptText.Contains("Rajesh Sharma") || !receiptText.Contains("GRAND TOTAL"))
+                            throw new Exception("Thermal receipt text is missing key fields");
+
+                        string waUrl = tracker.GenerateWhatsAppShareUrl(lastBill);
+                        if (!waUrl.StartsWith("https://wa.me/919876543210?text="))
+                            throw new Exception($"Unexpected WhatsApp share URL: {waUrl}");
+
+                        // 7. Test CSV Export
+                        string csvOutPath = Path.Combine(testDir, "print_sales_export.csv");
+                        string exportedFile = tracker.ExportHistoryToCsvAsync(csvOutPath).GetAwaiter().GetResult();
+                        if (!File.Exists(exportedFile) || new FileInfo(exportedFile).Length == 0)
+                            throw new Exception("Failed to export sales history to CSV");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx59 = ex;
+                    }
+                });
+                staThread59.SetApartmentState(ApartmentState.STA);
+                staThread59.Start();
+                staThread59.Join(TimeSpan.FromSeconds(25));
+
+                if (staEx59 != null) throw staEx59;
+
+                Console.WriteLine("PASSED (Brother DCP-T530DW Spooler Interceptor, Duplex Replacement in 2 Math, Active Customer Cart, Thermal Slips & WhatsApp Billing)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

@@ -124,6 +124,31 @@ public sealed class NotificationService
     }
 
     /// <summary>
+    /// Sends a Windows toast notification when a print job is automatically detected from the spooler.
+    /// </summary>
+    public static void NotifyPrintJobCaptured(string docName, int pages, bool isDuplex, bool isColor, double cost)
+    {
+        try
+        {
+            string shortDoc = docName.Length > 25 ? docName.Substring(0, 22) + "..." : docName;
+            string mode = isDuplex ? "📑 Duplex" : "📄 Single";
+            string color = isColor ? "🌈 Color" : "⚫ B&W";
+
+            new ToastContentBuilder()
+                .AddText($"🖨️ Print Detected: {shortDoc}")
+                .AddText($"{pages} Page{(pages > 1 ? "s" : "")} ({mode}, {color}) → Total: ₹{cost:F2}")
+                .AddAttributionText("DASMO Cyber Cafe Print Counter")
+                .Show();
+
+            Log.Information("Sent print job captured notification for {Doc}", docName);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to send print toast notification for {Doc}", docName);
+        }
+    }
+
+    /// <summary>
     /// Clears all SmartSaver notifications from the Windows notification center.
     /// </summary>
     public static void ClearAll()

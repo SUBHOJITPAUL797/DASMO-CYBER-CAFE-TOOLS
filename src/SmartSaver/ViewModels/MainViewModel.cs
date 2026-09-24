@@ -25,7 +25,8 @@ public enum DashboardTab
     Settings = 8,
     GovtCardTab = 9,
     ResizeSignature = 10,
-    UpdatesAbout = 11
+    UpdatesAbout = 11,
+    PrintCounter = 12
 }
 
 public class MainViewModel : ViewModelBase
@@ -59,6 +60,7 @@ public class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsGovtCardTab));
                 OnPropertyChanged(nameof(IsResizeSignatureTab));
                 OnPropertyChanged(nameof(IsUpdatesAboutTab));
+                OnPropertyChanged(nameof(IsPrintCounterTab));
                 OnPropertyChanged(nameof(CurrentHeaderTitle));
             }
         }
@@ -76,6 +78,7 @@ public class MainViewModel : ViewModelBase
     public bool IsGovtCardTab => SelectedTabIndex == 9;
     public bool IsResizeSignatureTab => SelectedTabIndex == 10;
     public bool IsUpdatesAboutTab => SelectedTabIndex == 11;
+    public bool IsPrintCounterTab => SelectedTabIndex == 12;
 
     public string CurrentHeaderTitle => SelectedTabIndex switch
     {
@@ -90,6 +93,7 @@ public class MainViewModel : ViewModelBase
         9 => "💳 e-Ration / Aadhaar / PAN A4 Multi-Card Print Sheet Generator",
         10 => "✍️ Resize Signature & Photo (Exact px/cm & KB for Govt Portals)",
         11 => "🚀 Application Updates & About Developer",
+        12 => "🖨️ Cyber Cafe Print Counter & Rush-Hour Billing Studio",
         _ => "⚡ DASMO CYBER COMPRESSOR — All-In-One Cyber Cafe Suite"
     };
 
@@ -127,12 +131,14 @@ public class MainViewModel : ViewModelBase
     public SettingsViewModel SettingsVm { get; }
     public GovtCardExtractorViewModel GovtCardVm { get; }
     public SignatureResizeViewModel SignatureResizeVm { get; }
+    public PrintTrackerViewModel PrintTrackerVm { get; }
 
     // Navigation Commands
     public ICommand NavigateCommand { get; }
     public ICommand OpenStackerCommand { get; }
     public ICommand OpenPassportStudioCommand { get; }
     public ICommand OpenPdfEditorCommand { get; }
+    public ICommand OpenPrintTrackerStudioCommand { get; }
     public ICommand OpenCompressDialogCommand { get; }
     public ICommand SelectToolFileCommand { get; }
     public ICommand ToggleSidebarCommand { get; }
@@ -358,6 +364,7 @@ public class MainViewModel : ViewModelBase
         SettingsVm = new SettingsViewModel();
         GovtCardVm = new GovtCardExtractorViewModel();
         SignatureResizeVm = new SignatureResizeViewModel(string.Empty);
+        PrintTrackerVm = new PrintTrackerViewModel();
 
         ToggleSidebarCommand = new RelayCommand(_ => IsSidebarCollapsed = !IsSidebarCollapsed);
 
@@ -398,6 +405,7 @@ public class MainViewModel : ViewModelBase
         OpenStackerCommand = new RelayCommand(_ => RequestOpenStacker?.Invoke());
         OpenPassportStudioCommand = new RelayCommand(_ => PassportStudioDialog.ShowStudio());
         OpenPdfEditorCommand = new RelayCommand(p => ShowPdfEditor(p?.ToString()));
+        OpenPrintTrackerStudioCommand = new RelayCommand(_ => PrintTrackerStudioWindow.ShowStudio());
         OpenCompressDialogCommand = new RelayCommand(_ => RequestOpenCompressDialog?.Invoke());
         SelectToolFileCommand = new RelayCommand(param => BrowseFileForCurrentTool(param?.ToString()));
 

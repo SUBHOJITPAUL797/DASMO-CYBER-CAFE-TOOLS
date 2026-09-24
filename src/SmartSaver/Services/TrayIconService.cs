@@ -58,6 +58,9 @@ public sealed class TrayIconService : IDisposable
     /// <summary>Raised when the user selects "Today's Output History" from the tray menu.</summary>
     public event EventHandler? OnOpenHistory;
 
+    /// <summary>Raised when the user selects "Print Counter & Billing Studio" from the tray menu.</summary>
+    public event EventHandler? OnOpenPrintCounter;
+
     /// <summary>Raised when the user toggles the Pause/Resume state.</summary>
     public event EventHandler<bool>? OnPauseToggle;
 
@@ -206,6 +209,14 @@ public sealed class TrayIconService : IDisposable
         menu.Items.Add(openDashboardItem);
 
         menu.Items.Add(MakeSep());
+
+        // Print Counter & Billing Studio
+        var openPrintCounterItem = MakeItem("🖨️   Print Counter & Billing Studio...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open Print Counter & Billing Studio");
+            OnOpenPrintCounter?.Invoke(this, EventArgs.Empty);
+        });
+        menu.Items.Add(openPrintCounterItem);
 
         // A4 Document Stacker
         var openStackerItem = MakeItem("🖨   A4 Document Stacker", (_, _) =>

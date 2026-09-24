@@ -272,6 +272,10 @@ public partial class App : System.Windows.Application
                 {
                     SingleInstanceHelper.SignalExistingInstance("SHOW_STACKER");
                 }
+                else if (e.Args.Contains("--print-counter") || e.Args.Contains("--printcounter") || e.Args.Contains("--printbilling"))
+                {
+                    SingleInstanceHelper.SignalExistingInstance("SHOW_PRINT_COUNTER");
+                }
                 else if (e.Args.Contains("--dashboard"))
                 {
                     SingleInstanceHelper.SignalExistingInstance("SHOW_DASHBOARD");
@@ -361,6 +365,17 @@ public partial class App : System.Windows.Application
         if (settings.AutoCompress.Enabled)
         {
             StartFileWatcher();
+        }
+
+        // Start automatic print queue monitor for Brother DCP-T530DW & cyber cafe billing
+        try
+        {
+            PrintTrackerService.Instance.Start();
+            Log.Information("PrintTrackerService background spooler monitor initialized");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to start PrintTrackerService");
         }
 
         // Start Explorer global Spacebar Quick Peek hook
@@ -492,6 +507,11 @@ public partial class App : System.Windows.Application
             Log.Information("Command-line stack requested");
             OnOpenStacker(this, EventArgs.Empty);
         }
+        else if (e.Args.Contains("--print-counter") || e.Args.Contains("--printcounter") || e.Args.Contains("--printbilling"))
+        {
+            Log.Information("Command-line print counter studio requested");
+            ShowPrintTrackerStudio();
+        }
         else if (!e.Args.Contains("--background"))
         {
             Log.Information("Manual launch detected - opening Unified Dashboard Window");
@@ -591,6 +611,11 @@ public partial class App : System.Windows.Application
                     Log.Information("IPC Request: Show Output History");
                     ShowTodayHistoryDialog();
                 }
+                else if (message == "SHOW_PRINT_COUNTER" || message == "SHOW_PRINT_TRACKER")
+                {
+                    Log.Information("IPC Request: Show Print Counter & Billing Studio");
+                    ShowPrintTrackerStudio();
+                }
                 else if (message.StartsWith("RESIZE|"))
                 {
                     string filePath = message.Substring("RESIZE|".Length);
@@ -669,6 +694,7 @@ public partial class App : System.Windows.Application
         _trayIconService.OnOpenStamp += OnOpenStamp;
         _trayIconService.OnOpenSignatureResize += OnOpenSignatureResize;
         _trayIconService.OnOpenPdfEditor += (_, _) => ShowPdfEditor();
+        _trayIconService.OnOpenPrintCounter += (_, _) => ShowPrintTrackerStudio();
         _trayIconService.OnOpenHistory += OnOpenHistory;
         _trayIconService.OnPauseToggle += OnPauseToggle;
         _trayIconService.OnViewLog += OnViewLog;
@@ -1319,8 +1345,25 @@ public partial class App : System.Windows.Application
         });
     }
 
+    public void ShowPrintTrackerStudio()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            try
+            {
+                if (!EnsureCloudLicenseApproved()) return;
+                PrintTrackerStudioWindow.ShowStudio();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to show PrintTrackerStudioWindow");
+            }
+        });
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        try { PrintTrackerService.Instance.Stop(); } catch { }
         _explorerKeyboardHook?.Dispose();
         _fileWatcherService?.Dispose();
         _trayIconService?.Dispose();
