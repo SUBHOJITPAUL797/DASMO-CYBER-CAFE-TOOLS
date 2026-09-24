@@ -299,5 +299,14 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SidebarScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is ScrollViewer scv)
+        {
+            scv.ScrollToVerticalOffset(scv.VerticalOffset - (e.Delta / 3.0));
+            e.Handled = true;
+        }
+    }
+
     #endregion
 }

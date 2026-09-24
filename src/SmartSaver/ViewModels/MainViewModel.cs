@@ -204,13 +204,64 @@ public class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(AutoDetectStatusIcon));
                 OnPropertyChanged(nameof(AutoDetectButtonBackground));
                 OnPropertyChanged(nameof(AutoDetectTooltip));
+                OnPropertyChanged(nameof(IsPromptMode));
+                OnPropertyChanged(nameof(IsSilentMode));
+                OnPropertyChanged(nameof(IsOffMode));
             }
         }
     }
 
+    public bool IsPromptMode => AutoDetectMode == "prompt";
+    public bool IsSilentMode => AutoDetectMode == "silent";
+    public bool IsOffMode => AutoDetectMode == "off";
+
+    private bool _isSilentSizePopupOpen;
+    public bool IsSilentSizePopupOpen
+    {
+        get => _isSilentSizePopupOpen;
+        set => SetProperty(ref _isSilentSizePopupOpen, value);
+    }
+
+    public int SilentTargetSizeKB
+    {
+        get => SettingsManager.Instance.Current.AutoCompress.TargetSizeKB;
+        set
+        {
+            SettingsManager.Instance.Update(s => s.AutoCompress.TargetSizeKB = value);
+            (System.Windows.Application.Current as App)?.RestartFileWatcher();
+            if (SettingsVm != null)
+            {
+                SettingsVm.TargetSize = value;
+            }
+            OnPropertyChanged(nameof(SilentTargetSizeKB));
+            OnPropertyChanged(nameof(AutoDetectStatusText));
+            OnPropertyChanged(nameof(AutoDetectTooltip));
+            OnPropertyChanged(nameof(Is50KbSelected));
+            OnPropertyChanged(nameof(Is100KbSelected));
+            OnPropertyChanged(nameof(Is150KbSelected));
+            OnPropertyChanged(nameof(Is200KbSelected));
+            OnPropertyChanged(nameof(Is300KbSelected));
+            OnPropertyChanged(nameof(Is500KbSelected));
+        }
+    }
+
+    public bool Is50KbSelected => SilentTargetSizeKB == 50;
+    public bool Is100KbSelected => SilentTargetSizeKB == 100;
+    public bool Is150KbSelected => SilentTargetSizeKB == 150;
+    public bool Is200KbSelected => SilentTargetSizeKB == 200;
+    public bool Is300KbSelected => SilentTargetSizeKB == 300;
+    public bool Is500KbSelected => SilentTargetSizeKB == 500;
+
+    private string _customSilentSizeText = string.Empty;
+    public string CustomSilentSizeText
+    {
+        get => _customSilentSizeText;
+        set => SetProperty(ref _customSilentSizeText, value);
+    }
+
     public string AutoDetectStatusText => AutoDetectMode switch
     {
-        "silent" => $"Auto: SILENT ({SettingsManager.Instance.Current.AutoCompress.TargetSizeKB}KB)",
+        "silent" => $"Auto: SILENT ({SettingsManager.Instance.Current.AutoCompress.TargetSizeKB} KB)",
         "prompt" => "Auto: PROMPT",
         _ => "Auto: OFF"
     };
@@ -224,7 +275,7 @@ public class MainViewModel : ViewModelBase
 
     public string AutoDetectTooltip => AutoDetectMode switch
     {
-        "silent" => $"Auto-Detection: SILENT mode (Auto-compresses new downloads directly to {SettingsManager.Instance.Current.AutoCompress.TargetSizeKB} KB in background). Click to switch mode.",
+        "silent" => $"Auto-Detection: SILENT mode (Auto-compresses new downloads directly to {SettingsManager.Instance.Current.AutoCompress.TargetSizeKB} KB in background). Click to switch mode or change size.",
         "prompt" => "Auto-Detection: PROMPT mode (Shows interactive popup on new downloads). Click to switch mode.",
         _ => "Auto-Detection: OFF (Disabled). Click to switch mode."
     };
@@ -238,7 +289,6 @@ public class MainViewModel : ViewModelBase
 
     public ICommand ToggleAutoDetectCommand => new RelayCommand(_ =>
     {
-        var settings = SettingsManager.Instance.Current;
         // Cycle: prompt -> silent -> off -> prompt
         string nextMode = AutoDetectMode switch
         {
@@ -247,9 +297,78 @@ public class MainViewModel : ViewModelBase
             _ => "prompt"
         };
 
+        SetAutoDetectModeInternal(nextMode);
+
+        if (nextMode == "silent")
+        {
+            // When user activates silent mode, immediately open size selector popup so they can choose their target file size!
+            CustomSilentSizeText = SilentTargetSizeKB.ToString();
+            IsSilentSizePopupOpen = true;
+        }
+        else
+        {
+            IsSilentSizePopupOpen = false;
+        }
+
+        Log.Information("User toggled Auto-Detect mode to {Mode}", nextMode);
+    });
+
+    public ICommand OpenSilentSizePopupCommand => new RelayCommand(_ =>
+    {
+        CustomSilentSizeText = SilentTargetSizeKB.ToString();
+        IsSilentSizePopupOpen = !IsSilentSizePopupOpen;
+    });
+
+    public ICommand CloseSilentSizePopupCommand => new RelayCommand(_ =>
+    {
+        IsSilentSizePopupOpen = false;
+    });
+
+    public ICommand SetSilentTargetSizeCommand => new RelayCommand(param =>
+    {
+        if (param != null && int.TryParse(param.ToString(), out int size) && size > 0)
+        {
+            SilentTargetSizeKB = size;
+            CustomSilentSizeText = size.ToString();
+            IsSilentSizePopupOpen = false;
+            Log.Information("User selected silent auto-compress target size {Size} KB", size);
+        }
+    });
+
+    public ICommand ApplyCustomSilentSizeCommand => new RelayCommand(_ =>
+    {
+        if (int.TryParse(CustomSilentSizeText, out int size) && size >= 10 && size <= 50000)
+        {
+            SilentTargetSizeKB = size;
+            IsSilentSizePopupOpen = false;
+            Log.Information("User applied custom silent auto-compress target size {Size} KB", size);
+        }
+        else
+        {
+            System.Windows.MessageBox.Show("Please enter a valid target file size between 10 KB and 50,000 KB.", "Invalid Size", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
+    });
+
+    public ICommand SetModeCommand => new RelayCommand(param =>
+    {
+        string mode = param?.ToString() ?? "prompt";
+        SetAutoDetectModeInternal(mode);
+        if (mode == "silent")
+        {
+            CustomSilentSizeText = SilentTargetSizeKB.ToString();
+            IsSilentSizePopupOpen = true;
+        }
+        else
+        {
+            IsSilentSizePopupOpen = false;
+        }
+    });
+
+    public void SetAutoDetectModeInternal(string mode)
+    {
         SettingsManager.Instance.Update(s =>
         {
-            if (nextMode == "off")
+            if (mode == "off")
             {
                 s.AutoCompress.Enabled = false;
                 s.AutoCompress.ActionOnNewFile = "off";
@@ -257,17 +376,18 @@ public class MainViewModel : ViewModelBase
             else
             {
                 s.AutoCompress.Enabled = true;
-                s.AutoCompress.ActionOnNewFile = nextMode;
+                s.AutoCompress.ActionOnNewFile = mode;
             }
         });
 
         (System.Windows.Application.Current as App)?.RestartFileWatcher();
         RefreshAutoDetectStatus();
-        SettingsVm.ActionOnNewFile = nextMode;
-        SettingsVm.AutoCompressEnabled = (nextMode != "off");
-
-        Log.Information("User toggled Auto-Detect mode to {Mode}", nextMode);
-    });
+        if (SettingsVm != null)
+        {
+            SettingsVm.ActionOnNewFile = mode;
+            SettingsVm.AutoCompressEnabled = (mode != "off");
+        }
+    }
 
     public void RefreshAutoDetectStatus()
     {
@@ -280,6 +400,17 @@ public class MainViewModel : ViewModelBase
         {
             AutoDetectMode = settings.AutoCompress.ActionOnNewFile == "silent" ? "silent" : "prompt";
         }
+        CustomSilentSizeText = settings.AutoCompress.TargetSizeKB.ToString();
+        OnPropertyChanged(nameof(IsPromptMode));
+        OnPropertyChanged(nameof(IsSilentMode));
+        OnPropertyChanged(nameof(IsOffMode));
+        OnPropertyChanged(nameof(SilentTargetSizeKB));
+        OnPropertyChanged(nameof(Is50KbSelected));
+        OnPropertyChanged(nameof(Is100KbSelected));
+        OnPropertyChanged(nameof(Is150KbSelected));
+        OnPropertyChanged(nameof(Is200KbSelected));
+        OnPropertyChanged(nameof(Is300KbSelected));
+        OnPropertyChanged(nameof(Is500KbSelected));
     }
 
     public ICommand OpenUpdateDialogCommand => new RelayCommand(_ =>

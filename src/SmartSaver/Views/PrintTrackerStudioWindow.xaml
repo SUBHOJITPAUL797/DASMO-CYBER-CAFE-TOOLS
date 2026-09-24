@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SmartSaver.Converters"
         mc:Ignorable="d"
         Title="🖨️ DASMO CYBER CAFE — Automatic Print Counter &amp; Customer Billing Studio" 
-        Height="780" Width="1240" MinHeight="650" MinWidth="1050"
+        Height="680" Width="1180" MinHeight="560" MinWidth="980"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         PreviewKeyDown="Window_PreviewKeyDown">
@@ -177,7 +177,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- Customer Info Header -->
-                    <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,10"
+                    <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="10,8" Margin="0,0,0,6"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -214,7 +214,7 @@
                     </Border>
 
                     <!-- Big Live Total Banner -->
-                    <Border Grid.Row="1" CornerRadius="8" Margin="0,0,0,10" Padding="16,12"
+                    <Border Grid.Row="1" CornerRadius="8" Margin="0,0,0,6" Padding="12,8"
                             Background="#1A2E26" BorderBrush="#10B981" BorderThickness="1">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -375,25 +375,25 @@
                     </Border>
 
                     <!-- Rush-Hour Quick Photocopy / Manual Pad -->
-                    <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,10,0,10"
+                    <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="10,8" Margin="0,6,0,6"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="⚡ Quick Manual Counter (Photocopy / Xerox / Offline Add):" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Text="⚡ Quick Manual Counter (Photocopy / Xerox / Offline Add):" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                             <WrapPanel Orientation="Horizontal">
-                                <Button Content="➕ +1 B&amp;W (₹2)" Command="{Binding AddQuickPhotocopyBwCommand}" CommandParameter="1" Style="{StaticResource CounterChipButton}"/>
-                                <Button Content="➕ +5 B&amp;W (₹10)" Command="{Binding AddQuickPhotocopyBwCommand}" CommandParameter="5" Style="{StaticResource CounterChipButton}"/>
-                                <Button Content="➕ +10 B&amp;W (₹20)" Command="{Binding AddQuickPhotocopyBwCommand}" CommandParameter="10" Style="{StaticResource CounterChipButton}"/>
-                                <Button Content="📑 +1 Duplex (₹3)" Command="{Binding AddQuickDuplexBwCommand}" CommandParameter="1" Style="{StaticResource CounterChipButton}" Foreground="#10B981"/>
-                                <Button Content="📑 +5 Duplex (₹15)" Command="{Binding AddQuickDuplexBwCommand}" CommandParameter="5" Style="{StaticResource CounterChipButton}" Foreground="#10B981"/>
-                                <Button Content="🌈 +1 Color (₹10)" Command="{Binding AddQuickPhotocopyColorCommand}" CommandParameter="1" Style="{StaticResource CounterChipButton}" Foreground="#00BCD4"/>
-                                <Button Content="📸 Passport Photo (₹20)" Command="{Binding AddQuickPhotoCommand}" Style="{StaticResource CounterChipButton}" Foreground="#FF9800"/>
-                                <Button Content="🛡️ Lamination (₹20)" Command="{Binding AddQuickLaminationCommand}" Style="{StaticResource CounterChipButton}"/>
+                                <Button Content="➕ +1 B&amp;W (₹2)" Command="{Binding AddQuickPhotocopyBwCommand}" CommandParameter="1" Style="{StaticResource CounterChipButton}" Margin="0,0,4,4"/>
+                                <Button Content="➕ +5 B&amp;W (₹10)" Command="{Binding AddQuickPhotocopyBwCommand}" CommandParameter="5" Style="{StaticResource CounterChipButton}" Margin="0,0,4,4"/>
+                                <Button Content="➕ +10 B&amp;W (₹20)" Command="{Binding AddQuickPhotocopyBwCommand}" CommandParameter="10" Style="{StaticResource CounterChipButton}" Margin="0,0,4,4"/>
+                                <Button Content="📑 +1 Duplex (₹3)" Command="{Binding AddQuickDuplexBwCommand}" CommandParameter="1" Style="{StaticResource CounterChipButton}" Foreground="#10B981" Margin="0,0,4,4"/>
+                                <Button Content="📑 +5 Duplex (₹15)" Command="{Binding AddQuickDuplexBwCommand}" CommandParameter="5" Style="{StaticResource CounterChipButton}" Foreground="#10B981" Margin="0,0,4,4"/>
+                                <Button Content="🌈 +1 Color (₹10)" Command="{Binding AddQuickPhotocopyColorCommand}" CommandParameter="1" Style="{StaticResource CounterChipButton}" Foreground="#00BCD4" Margin="0,0,4,4"/>
+                                <Button Content="📸 Passport Photo (₹20)" Command="{Binding AddQuickPhotoCommand}" Style="{StaticResource CounterChipButton}" Foreground="#FF9800" Margin="0,0,4,4"/>
+                                <Button Content="🛡️ Lamination (₹20)" Command="{Binding AddQuickLaminationCommand}" Style="{StaticResource CounterChipButton}" Margin="0,0,4,4"/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>
 
                     <!-- Bottom Action Buttons: Finish Bill / Next Customer -->
-                    <Grid Grid.Row="4">
+                    <Grid Grid.Row="4" Margin="0,2,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
@@ -401,11 +401,11 @@
                         </Grid.ColumnDefinitions>
 
                         <Button Grid.Column="0" Content="✕ Clear Cart" Command="{Binding ClearCartCommand}" 
-                                Style="{StaticResource CounterChipButton}" Padding="12,10" Margin="0,0,8,0"
+                                Style="{StaticResource CounterChipButton}" Padding="10,8" Margin="0,0,6,0"
                                 ToolTip="Clear active unbilled jobs"/>
 
                         <Button Grid.Column="1" Command="{Binding ShareWhatsAppCommand}"
-                                Style="{StaticResource CounterChipButton}" Padding="12,10" Margin="0,0,8,0"
+                                Style="{StaticResource CounterChipButton}" Padding="10,8" Margin="0,0,6,0"
                                 ToolTip="Send bill details to customer WhatsApp">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📱 " FontSize="12"/>
@@ -415,12 +415,12 @@
 
                         <!-- BIG FINISH BILL BUTTON -->
                         <Button Grid.Column="2" Command="{Binding CompleteBillCommand}"
-                                Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="14"
-                                Padding="16,12" Cursor="Hand" BorderThickness="0"
+                                Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="13"
+                                Padding="14,10" Cursor="Hand" BorderThickness="0"
                                 ToolTip="Finalizes bill, saves into daily sales history, and clears for next customer! Shortcut: Enter / Space">
                             <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="✅ " FontSize="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="✅ " FontSize="13" VerticalAlignment="Center"/>
                                 <TextBlock Text="BILL DONE &amp; NEXT CUSTOMER (Enter / Space)" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
