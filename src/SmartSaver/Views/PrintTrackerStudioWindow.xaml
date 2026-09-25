@@ -143,6 +143,10 @@
                                 Style="{StaticResource CounterChipButton}" Margin="8,0,0,0" Padding="10,3" FontSize="11"
                                 Background="#1A2036" BorderBrush="#F59E0B" Foreground="#F59E0B" FontWeight="Bold"
                                 ToolTip="Open Daily Cash Drawer, UPI transfers, Borrow &amp; Accounts Manager"/>
+                        <Button Content="🖨️ Printer Meter &amp; Xerox Audit" Command="{Binding OpenPrinterAuditCommand}"
+                                Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="10,3" FontSize="11"
+                                Background="#162638" BorderBrush="#38BDF8" Foreground="#38BDF8" FontWeight="Bold"
+                                ToolTip="Reconcile Brother hardware meter against PC prints and auto-detect physical walk-up Xerox copies"/>
                     </StackPanel>
 
                     <!-- Rate Card Badges & Custom Prices Editor Trigger -->

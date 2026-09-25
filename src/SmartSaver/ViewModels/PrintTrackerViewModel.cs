@@ -284,6 +284,7 @@ public class PrintTrackerViewModel : ViewModelBase
     public ICommand ExportCsvCommand { get; }
     public ICommand ExportExcelCommand { get; }
     public ICommand OpenCashDrawerCommand { get; }
+    public ICommand OpenPrinterAuditCommand { get; }
     public ICommand ToggleMonitoringCommand { get; }
     public ICommand PollNowCommand { get; }
 
@@ -590,6 +591,7 @@ public class PrintTrackerViewModel : ViewModelBase
         ExportCsvCommand = new RelayCommand(async _ => await ExportCsvAsync());
         ExportExcelCommand = new RelayCommand(async _ => await ExportExcelAsync());
         OpenCashDrawerCommand = new RelayCommand(_ => Views.CashDrawerWindow.ShowCashDrawer());
+        OpenPrinterAuditCommand = new RelayCommand(_ => Views.PrinterAuditDialog.ShowPrinterAudit());
 
         LinkExcelFileCommand = new RelayCommand(_ => ExecuteLinkExcelFile());
         SyncExcelNowCommand = new RelayCommand(_ => ExecuteSyncExcelNow());

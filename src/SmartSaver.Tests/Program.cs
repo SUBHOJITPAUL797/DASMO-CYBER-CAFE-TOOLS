@@ -4680,6 +4680,118 @@ public static class Program
                 failed++;
             }
 
+            // ── TEST 62: Brother Printer Hardware Meter Audit, Wi-Fi Live Ink & Xerox Reconciliation (v1.5.15) ──
+            Console.Write("Test 62: Brother Printer Hardware Meter Audit, Live Ink & Walk-up Xerox Reconciliation (v1.5.15)... ");
+            try
+            {
+                var auditService = SmartSaver.Services.BrotherPrinterAuditService.Instance;
+                var todayRec = auditService.GetTodayMeter();
+                if (todayRec == null || string.IsNullOrEmpty(todayRec.Date))
+                    throw new Exception("BrotherPrinterAuditService failed to initialize today's meter record");
+
+                // Set initial meter
+                auditService.SaveOpeningMeter(15000);
+                auditService.SaveClosingMeter(15200); // 200 hardware pages passed
+
+                var testJobsList = new List<PrintJobRecord>
+                {
+                    new PrintJobRecord
+                    {
+                        DocumentName = "Client_Project_Report.pdf",
+                        Pages = 120,
+                        Copies = 1,
+                        IsDuplex = false,
+                        IsManualEntry = false,
+                        Timestamp = DateTimeOffset.Now
+                    },
+                    new PrintJobRecord
+                    {
+                        DocumentName = "Aadhaar Card Photocopy",
+                        Pages = 50,
+                        Copies = 1,
+                        IsDuplex = false,
+                        IsManualEntry = true,
+                        ItemCategory = "Photocopy",
+                        Timestamp = DateTimeOffset.Now
+                    }
+                };
+
+                // Reconcile: 200 HW - 120 PC = 80 Actual Xerox. 80 Actual - 50 Logged = 30 Missing Xerox.
+                var recon = auditService.CalculateReconciliation(15200, testJobsList);
+                if (recon.totalHardware != 200)
+                    throw new Exception($"Expected 200 total hardware sheets, got {recon.totalHardware}");
+                if (recon.totalPcSpooler != 120)
+                    throw new Exception($"Expected 120 PC spooler pages, got {recon.totalPcSpooler}");
+                if (recon.actualXerox != 80)
+                    throw new Exception($"Expected 80 actual Xerox, got {recon.actualXerox}");
+                if (recon.loggedXerox != 50)
+                    throw new Exception($"Expected 50 logged Xerox, got {recon.loggedXerox}");
+                if (recon.unrecordedXerox != 30)
+                    throw new Exception($"Expected 30 unrecorded Xerox copies, got {recon.unrecordedXerox}");
+
+                // Test Auto-Log Missing Xerox
+                auditService.AutoLogUnrecordedXerox(30, 2.0, "Cash");
+                testJobsList.Insert(0, new PrintJobRecord
+                {
+                    DocumentName = "Physical Xerox (Audit Reconciled × 30)",
+                    Pages = 30,
+                    Copies = 1,
+                    IsManualEntry = true,
+                    ItemCategory = "Photocopy",
+                    Timestamp = DateTimeOffset.Now
+                });
+
+                var reconAfter = auditService.CalculateReconciliation(15200, testJobsList);
+                if (reconAfter.unrecordedXerox != 0)
+                    throw new Exception($"Expected 0 unrecorded Xerox after auto-log, got {reconAfter.unrecordedXerox}");
+
+                // Test 1-Click Rush-Hour Walkup Counter
+                int initialTxCount = SmartSaver.Services.CashDrawerService.Instance.Today.Transactions.Count;
+                auditService.LogQuickWalkupXerox(5, isDuplex: false, isColor: false, medium: "Cash", customerName: "Rush Customer");
+                if (SmartSaver.Services.CashDrawerService.Instance.Today.Transactions.Count <= initialTxCount)
+                    throw new Exception("Quick walk-up Xerox did not create Cash Drawer transaction");
+
+                // Test STA ViewModels & Dialog
+                Exception? staEx62 = null;
+                var staThread62 = new Thread(() =>
+                {
+                    try
+                    {
+                        var auditVm = new SmartSaver.ViewModels.PrinterAuditViewModel();
+                        if (auditVm.AutoLogMissingXeroxCommand == null || auditVm.QuickLogXeroxCommand == null)
+                            throw new Exception("PrinterAuditViewModel commands are null");
+
+                        var mainVm = new SmartSaver.ViewModels.MainViewModel();
+                        if (mainVm.OpenPrinterAuditCommand == null)
+                            throw new Exception("MainViewModel.OpenPrinterAuditCommand is null");
+
+                        var printVm = new SmartSaver.ViewModels.PrintTrackerViewModel();
+                        if (printVm.OpenPrinterAuditCommand == null)
+                            throw new Exception("PrintTrackerViewModel.OpenPrinterAuditCommand is null");
+
+                        var dlg = new SmartSaver.Views.PrinterAuditDialog();
+                        if (dlg.DataContext == null)
+                            throw new Exception("PrinterAuditDialog DataContext is null");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx62 = ex;
+                    }
+                });
+                staThread62.SetApartmentState(ApartmentState.STA);
+                staThread62.Start();
+                staThread62.Join(TimeSpan.FromSeconds(15));
+                if (staEx62 != null) throw staEx62;
+
+                Console.WriteLine("PASSED (Brother DCP-T530DW Live Status & Ink, HW Meter Reconciliation, Unrecorded Xerox Auto-Logger, 1-Click Counter & UI Bindings)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");
