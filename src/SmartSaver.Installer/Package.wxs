@@ -5,7 +5,7 @@
 
   <Package Name="DASMO CYBER CAFE TOOLS"
            Manufacturer="DASMO Cyber Cafe"
-           Version="1.5.13.0"
+           Version="1.5.14.0"
            UpgradeCode="E7A3C1D2-4B5F-6789-0ABC-DEF123456789"
            Scope="perMachine"
            Language="1033"
