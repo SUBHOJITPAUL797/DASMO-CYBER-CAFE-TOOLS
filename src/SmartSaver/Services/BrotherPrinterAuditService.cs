@@ -409,6 +409,19 @@ public sealed class BrotherPrinterAuditService
             }
         }
 
+        // Query physical hardware lifetime page counter via Wi-Fi SNMP (port 161)
+        try
+        {
+            int pageCount = await FetchHardwarePageCountAsync(ip).ConfigureAwait(false);
+            if (pageCount > 0)
+            {
+                status.HardwarePageCount = pageCount;
+                status.IsOnline = true;
+                querySuccess = true;
+            }
+        }
+        catch { }
+
         if (!querySuccess)
         {
             status.IsOnline = false;
@@ -851,5 +864,147 @@ public sealed class BrotherPrinterAuditService
         LiveStatus.IpAddress = ip;
         OnPrinterIpDiscovered?.Invoke(ip);
         OnAuditUpdated?.Invoke();
+    }
+
+    /// <summary>
+    /// Reads the lifetime physical hardware page counter directly from Brother DCP-T530DW over Wi-Fi
+    /// via standard Printer MIB SNMP (OID 1.3.6.1.2.1.43.10.2.1.4.1.1 prtMarkerLifeCount) on UDP port 161.
+    /// Completely eliminates having to check the printer LCD menu.
+    /// </summary>
+    public async Task<int> FetchHardwarePageCountAsync(string? ipOverride = null)
+    {
+        string ip = !string.IsNullOrWhiteSpace(ipOverride) ? ipOverride.Trim() : CurrentIp;
+        return await Task.Run(() =>
+        {
+            try
+            {
+                // Primary: Standard RFC 3805 Printer-MIB prtMarkerLifeCount
+                int count = QuerySnmpCounter(ip, "1.3.6.1.2.1.43.10.2.1.4.1.1", timeoutMs: 1500);
+                if (count > 0) return count;
+
+                // Secondary: Brother enterprise OID fallback
+                count = QuerySnmpCounter(ip, "1.3.6.1.4.1.2435.2.3.9.4.2.1.5.5.8.0", timeoutMs: 1000);
+                if (count > 0) return count;
+
+                count = QuerySnmpCounter(ip, "1.3.6.1.4.1.2435.2.3.9.1.1.7.0", timeoutMs: 1000);
+                return count > 0 ? count : 0;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug("SNMP page counter query failed for {Ip}: {Msg}", ip, ex.Message);
+                return 0;
+            }
+        }).ConfigureAwait(false);
+    }
+
+    private static int QuerySnmpCounter(string ip, string oidStr, int timeoutMs = 1500)
+    {
+        try
+        {
+            using var client = new UdpClient();
+            client.Client.ReceiveTimeout = timeoutMs;
+            client.Client.SendTimeout = timeoutMs;
+            client.Connect(ip, 161);
+
+            byte[] oidBytes = EncodeOid(oidStr);
+            if (oidBytes.Length == 0) return 0;
+            byte[] packet = BuildSnmpGetPacket("public", oidBytes);
+
+            client.Send(packet, packet.Length);
+            var remote = new IPEndPoint(IPAddress.Any, 0);
+            byte[] resp = client.Receive(ref remote);
+
+            // Find Counter32 tag 0x41 or Integer tag 0x02 in SNMP VarBind
+            for (int i = resp.Length - 1; i >= 0; i--)
+            {
+                if (resp[i] == 0x41 || (i > 10 && resp[i] == 0x02 && resp[i - 1] != 0x02))
+                {
+                    int len = resp[i + 1];
+                    if (i + 1 + len < resp.Length)
+                    {
+                        int val = 0;
+                        for (int j = 0; j < len; j++)
+                        {
+                            val = (val << 8) | resp[i + 2 + j];
+                        }
+                        return val;
+                    }
+                }
+            }
+            return 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static byte[] EncodeOid(string oid)
+    {
+        var parts = oid.TrimStart('.').Split('.');
+        var numbers = new List<uint>();
+        foreach (var p in parts)
+        {
+            if (uint.TryParse(p, out uint n)) numbers.Add(n);
+        }
+        if (numbers.Count < 2) return Array.Empty<byte>();
+
+        using var ms = new MemoryStream();
+        ms.WriteByte((byte)(numbers[0] * 40 + numbers[1]));
+        for (int i = 2; i < numbers.Count; i++)
+        {
+            uint val = numbers[i];
+            var bytes = new List<byte>();
+            bytes.Add((byte)(val & 0x7F));
+            while ((val >>= 7) > 0)
+            {
+                bytes.Insert(0, (byte)((val & 0x7F) | 0x80));
+            }
+            foreach (var b in bytes) ms.WriteByte(b);
+        }
+        return ms.ToArray();
+    }
+
+    private static byte[] BuildSnmpGetPacket(string community, byte[] oidBytes)
+    {
+        using var msVarBind = new MemoryStream();
+        msVarBind.WriteByte(0x06); // OID tag
+        msVarBind.WriteByte((byte)oidBytes.Length);
+        msVarBind.Write(oidBytes, 0, oidBytes.Length);
+        msVarBind.WriteByte(0x05); // NULL tag
+        msVarBind.WriteByte(0x00);
+        byte[] varBind = msVarBind.ToArray();
+
+        using var msVarBindList = new MemoryStream();
+        msVarBindList.WriteByte(0x30); // Sequence
+        msVarBindList.WriteByte((byte)varBind.Length);
+        msVarBindList.Write(varBind, 0, varBind.Length);
+        byte[] varBindList = msVarBindList.ToArray();
+
+        using var msPdu = new MemoryStream();
+        msPdu.Write(new byte[] { 0x02, 0x04, 0x12, 0x34, 0x56, 0x78 }, 0, 6); // Request ID
+        msPdu.Write(new byte[] { 0x02, 0x01, 0x00 }, 0, 3); // Error status 0
+        msPdu.Write(new byte[] { 0x02, 0x01, 0x00 }, 0, 3); // Error index 0
+        msPdu.WriteByte(0x30);
+        msPdu.WriteByte((byte)varBindList.Length);
+        msPdu.Write(varBindList, 0, varBindList.Length);
+        byte[] pdu = msPdu.ToArray();
+
+        using var msTop = new MemoryStream();
+        msTop.Write(new byte[] { 0x02, 0x01, 0x00 }, 0, 3); // Version 1 (0)
+        byte[] commBytes = System.Text.Encoding.ASCII.GetBytes(community);
+        msTop.WriteByte(0x04); // OctetString tag
+        msTop.WriteByte((byte)commBytes.Length);
+        msTop.Write(commBytes, 0, commBytes.Length);
+        msTop.WriteByte(0xA0); // GetRequest PDU tag
+        msTop.WriteByte((byte)pdu.Length);
+        msTop.Write(pdu, 0, pdu.Length);
+        byte[] top = msTop.ToArray();
+
+        using var msFinal = new MemoryStream();
+        msFinal.WriteByte(0x30); // Sequence tag
+        msFinal.WriteByte((byte)top.Length);
+        msFinal.Write(top, 0, top.Length);
+        return msFinal.ToArray();
     }
 }

@@ -21,6 +21,9 @@ public class PrinterLiveStatus
     public int InkYellowPercent { get; set; } = 100;
     public bool IsCalibratedByVisualCheck { get; set; } = false;
 
+    // Lifetime Physical Hardware Page Counter (queried directly via Wi-Fi SNMP)
+    public int HardwarePageCount { get; set; } = 0;
+
     public DateTimeOffset LastChecked { get; set; } = DateTimeOffset.Now;
 }
 

@@ -138,7 +138,7 @@
                     <TextBlock Text="DASMO CYBER CAFE" FontWeight="Bold" FontSize="14" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
                     <TextBlock Text=" — Automatic Print Counter, Meter &amp; Customer Billing Studio" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
                     <Border Background="#10B981" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="ALL-IN-ONE V1.5.18" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="ALL-IN-ONE V1.5.19" FontSize="10" FontWeight="Bold" Foreground="White"/>
                     </Border>
                 </StackPanel>
 
@@ -909,7 +909,13 @@
                                     <!-- Closing / Current Meter (Now) -->
                                     <Border Grid.Column="2" Background="#262635" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                         <StackPanel>
-                                            <TextBlock Text="🌙 Current / Closing Meter Reading:" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6"/>
+                                            <Grid Margin="0,0,0,6">
+                                                <TextBlock Text="🌙 Current / Closing Meter Reading:" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                                <Button Content="⚡ Auto-Read Wi-Fi" Command="{Binding AutoReadHardwareMeterCommand}" 
+                                                        Style="{StaticResource CounterChipButton}" HorizontalAlignment="Right" Margin="0" Padding="8,2" FontSize="10.5"
+                                                        Background="#1A2E26" Foreground="#10B981" BorderBrush="#10B981" FontWeight="Bold"
+                                                        ToolTip="Fetch live hardware page count directly from Brother DCP-T530DW over Wi-Fi (No LCD screen check needed!)"/>
+                                            </Grid>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
@@ -920,7 +926,7 @@
                                                 <Button Grid.Column="1" Content="💾 Set Closing" Command="{Binding SaveClosingMeterCommand}" 
                                                         Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="10,4" Background="#152636" Foreground="#00BCD4" BorderBrush="#00BCD4"/>
                                             </Grid>
-                                            <TextBlock Text="Check on LCD: Menu ➔ Machine Info ➔ Page Counter." FontSize="10.5" Foreground="#F59E0B" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                            <TextBlock Text="⚡ Auto-read live over Wi-Fi directly from Brother hardware (0 manual typing)." FontSize="10.5" Foreground="#10B981" FontWeight="SemiBold" Margin="0,4,0,0"/>
                                         </StackPanel>
                                     </Border>
                                 </Grid>

@@ -531,6 +531,7 @@ public class PrintTrackerViewModel : ViewModelBase
     public ICommand QuickLogWalkupXeroxCommand { get; }
     public ICommand QuickLogXeroxCommand => QuickLogWalkupXeroxCommand;
     public ICommand AutoDetectIpCommand { get; }
+    public ICommand AutoReadHardwareMeterCommand { get; }
     public ICommand RefreshLiveStatusCommand { get; }
     public ICommand OpenInkCalibrateModalCommand { get; }
     public ICommand CloseInkCalibrateModalCommand { get; }
@@ -861,6 +862,7 @@ public class PrintTrackerViewModel : ViewModelBase
         });
 
         AutoDetectIpCommand = new RelayCommand(async _ => await AutoDetectIpAsync());
+        AutoReadHardwareMeterCommand = new RelayCommand(async _ => await AutoReadMeterAsync(showToast: true));
         RefreshLiveStatusCommand = new RelayCommand(async _ => await RefreshStatusAsync());
 
         OpenInkCalibrateModalCommand = new RelayCommand(_ =>
@@ -981,6 +983,15 @@ public class PrintTrackerViewModel : ViewModelBase
         try
         {
             await _auditService.FetchPrinterStatusAsync(PrinterIp);
+            if (LiveStatus.HardwarePageCount > 0)
+            {
+                CurrentHardwareMeter = LiveStatus.HardwarePageCount;
+                if (OpeningMeter <= 0)
+                {
+                    OpeningMeter = LiveStatus.HardwarePageCount;
+                }
+                RecalculateMeterAudit();
+            }
         }
         catch { }
         finally
@@ -992,6 +1003,40 @@ public class PrintTrackerViewModel : ViewModelBase
             OnPropertyChanged(nameof(InkMagenta));
             OnPropertyChanged(nameof(InkYellow));
             OnPropertyChanged(nameof(IsInkVisual));
+            OnPropertyChanged(nameof(CurrentHardwareMeter));
+            OnPropertyChanged(nameof(OpeningMeter));
+        }
+    }
+
+    public async Task AutoReadMeterAsync(bool showToast = true)
+    {
+        try
+        {
+            int pageCount = await _auditService.FetchHardwarePageCountAsync(PrinterIp);
+            if (pageCount > 0)
+            {
+                CurrentHardwareMeter = pageCount;
+                if (OpeningMeter <= 0)
+                {
+                    OpeningMeter = pageCount;
+                }
+                RecalculateMeterAudit();
+                OnPropertyChanged(nameof(CurrentHardwareMeter));
+                OnPropertyChanged(nameof(OpeningMeter));
+
+                if (showToast)
+                {
+                    ShowMessage($"✅ Live Meter Synced: {pageCount} pages read directly from Brother DCP-T530DW over Wi-Fi!\n(Zero manual typing, zero LCD checks needed)", "Wi-Fi Hardware Meter Synced", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            else if (showToast)
+            {
+                ShowMessage("Could not query hardware page count from Brother printer over Wi-Fi.\nPlease ensure the printer is turned on and connected to your Wi-Fi network.", "Wi-Fi Printer Notice", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "AutoReadMeterAsync failed");
         }
     }
 

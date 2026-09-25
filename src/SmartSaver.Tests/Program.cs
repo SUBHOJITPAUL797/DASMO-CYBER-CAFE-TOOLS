@@ -4880,6 +4880,15 @@ public static class Program
                         cashDrawerWin.ApplyTemplate();
                         if (cashDrawerWin.Vm == null)
                             throw new Exception("CashDrawerWindow Vm was null");
+
+                        // 5. Verify SNMP Wi-Fi Auto-Read Hardware Meter Command (v1.5.19)
+                        if (printVm.AutoReadHardwareMeterCommand == null)
+                            throw new Exception("AutoReadHardwareMeterCommand was null");
+                        printVm.AutoReadHardwareMeterCommand.Execute(null);
+
+                        rawStatus.HardwarePageCount = 4464;
+                        if (rawStatus.HardwarePageCount != 4464)
+                            throw new Exception("HardwarePageCount did not preserve assigned value");
                     }
                     catch (Exception ex)
                     {
@@ -4891,7 +4900,7 @@ public static class Program
                 staThread63.Join(TimeSpan.FromSeconds(15));
                 if (staEx63 != null) throw staEx63;
 
-                Console.WriteLine("PASSED (Dynamic IP Discovery, Zero-Hardcode Visual Ink Refill & 4-Tab Unified Studio)");
+                Console.WriteLine("PASSED (Dynamic IP Discovery, Zero-Hardcode Visual Ink Refill, 4-Tab Unified Studio & SNMP Wi-Fi Auto-Read Meter)");
                 passed++;
             }
             catch (Exception ex)
