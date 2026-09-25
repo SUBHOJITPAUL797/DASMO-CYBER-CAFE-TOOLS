@@ -14,11 +14,12 @@ public class PrinterLiveStatus
     public string IpAddress { get; set; } = "192.168.1.7";
     public string MacAddress { get; set; } = "4C:23:38:3F:8E:ED";
 
-    // Ink Levels (0 to 100%)
-    public int InkBlackPercent { get; set; } = 27;
-    public int InkCyanPercent { get; set; } = 88;
-    public int InkMagentaPercent { get; set; } = 95;
+    // Ink Levels (0 to 100%) - Defaults to 100% full unless live-queried or calibrated by user
+    public int InkBlackPercent { get; set; } = 100;
+    public int InkCyanPercent { get; set; } = 100;
+    public int InkMagentaPercent { get; set; } = 100;
     public int InkYellowPercent { get; set; } = 100;
+    public bool IsCalibratedByVisualCheck { get; set; } = false;
 
     public DateTimeOffset LastChecked { get; set; } = DateTimeOffset.Now;
 }

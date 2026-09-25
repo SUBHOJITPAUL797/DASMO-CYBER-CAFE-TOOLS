@@ -765,8 +765,8 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="🖨️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Auto Print Counter &amp; Rush Billing" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
-                                            <TextBlock Text="Live Brother DCP-T530DW print counter, auto duplex (2-in-1 replacement), instant customer cart &amp; thermal/WhatsApp billing." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                            <TextBlock Text="Auto Print Counter, Meter &amp; Billing" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
+                                            <TextBlock Text="Live Brother DCP-T530DW print counter, hardware meter &amp; walk-up Xerox reconciliation, real-time Wi-Fi ink levels, and instant customer billing." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>

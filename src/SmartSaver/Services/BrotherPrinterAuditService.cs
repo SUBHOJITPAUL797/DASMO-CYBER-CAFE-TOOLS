@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -39,6 +43,35 @@ public sealed class BrotherPrinterAuditService
     public List<DailyPrinterMeterRecord> MeterHistory { get; private set; } = new();
 
     public event Action? OnAuditUpdated;
+    public event Action<string>? OnPrinterIpDiscovered;
+
+    public string CurrentIp
+    {
+        get
+        {
+            try
+            {
+                var configured = PrintTrackerService.Instance?.Settings?.BrotherPrinterIp;
+                if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim();
+            }
+            catch { }
+            return "192.168.1.7";
+        }
+    }
+
+    public string CurrentMac
+    {
+        get
+        {
+            try
+            {
+                var configured = PrintTrackerService.Instance?.Settings?.BrotherPrinterMac;
+                if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim();
+            }
+            catch { }
+            return "4C:23:38:3F:8E:ED";
+        }
+    }
 
     private BrotherPrinterAuditService(string? customDir = null)
     {
@@ -313,26 +346,83 @@ public sealed class BrotherPrinterAuditService
     /// <summary>
     /// Queries the Brother DCP-T530DW embedded web server over Wi-Fi/Network in real-time.
     /// Extracts operational state (Ready, Sleep, Printing, Copying) and exact ink levels.
+    /// If unreachable, automatically triggers smart multi-tier discovery to locate the new IP.
     /// </summary>
     public async Task<PrinterLiveStatus> FetchPrinterStatusAsync(string? ipOverride = null)
     {
-        string ip = !string.IsNullOrWhiteSpace(ipOverride) ? ipOverride.Trim() : "192.168.1.7";
+        string ip = !string.IsNullOrWhiteSpace(ipOverride) ? ipOverride.Trim() : CurrentIp;
         var status = new PrinterLiveStatus
         {
             IpAddress = ip,
             ConnectionType = "Wi-Fi & USB Dual"
         };
 
+        bool querySuccess = false;
         try
         {
-            // 1. Query Monitor Page for operational state
+            querySuccess = await QueryPrinterHttpAsync(ip, status, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("Printer Wi-Fi query failed for {Ip}: {Msg}", ip, ex.Message);
+        }
+
+        // If direct query failed and auto-discovery is enabled, attempt smart multi-tier discovery
+        if (!querySuccess)
+        {
+            bool autoDiscover = true;
+            try
+            {
+                autoDiscover = PrintTrackerService.Instance?.Settings?.AutoDiscoverPrinterIp ?? true;
+            }
+            catch { }
+
+            if (autoDiscover)
+            {
+                Log.Information("Brother printer at {Ip} is unreachable. Initiating smart auto-discovery...", ip);
+                string? discoveredIp = await AutoDiscoverPrinterIpAsync(ip).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(discoveredIp) && !string.Equals(discoveredIp, ip, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Information("Auto-discovery found printer at {NewIp}. Querying status...", discoveredIp);
+                    ip = discoveredIp;
+                    status.IpAddress = discoveredIp;
+                    try
+                    {
+                        querySuccess = await QueryPrinterHttpAsync(ip, status, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        if (!querySuccess)
+        {
+            status.IsOnline = false;
+            status.DeviceStatus = "USB Connected (Wi-Fi Standby)";
+        }
+
+        status.LastChecked = DateTimeOffset.Now;
+        LiveStatus = status;
+        OnAuditUpdated?.Invoke();
+        return status;
+    }
+
+    private async Task<bool> QueryPrinterHttpAsync(string ip, PrinterLiveStatus status, CancellationToken ct)
+    {
+        bool hadSuccess = false;
+
+        // 1. Query Monitor Page for operational state (Sleep, Ready, Copying, Printing)
+        try
+        {
             string monitorUrl = $"http://{ip}/home/monitor.html";
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2.5));
-            var resp = await _http.GetAsync(monitorUrl, cts.Token).ConfigureAwait(false);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2.0));
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token);
+            var resp = await _http.GetAsync(monitorUrl, linked.Token).ConfigureAwait(false);
             if (resp.IsSuccessStatusCode)
             {
                 status.IsOnline = true;
-                string html = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                hadSuccess = true;
+                string html = await resp.Content.ReadAsStringAsync(linked.Token).ConfigureAwait(false);
                 var match = Regex.Match(html, @"<span class=""moni [^""]*"">([^<]+)</span>", RegexOptions.IgnoreCase);
                 if (match.Success)
                 {
@@ -343,47 +433,409 @@ public sealed class BrotherPrinterAuditService
                     status.DeviceStatus = "Ready";
                 }
             }
+        }
+        catch { }
 
-            // 2. Query Status Page for ink levels
+        // 2. Query Status Page for ink levels
+        try
+        {
             string statusUrl = $"http://{ip}/home/status.html";
-            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(2.5));
-            var resp2 = await _http.GetAsync(statusUrl, cts2.Token).ConfigureAwait(false);
+            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(2.0));
+            using var linked2 = CancellationTokenSource.CreateLinkedTokenSource(ct, cts2.Token);
+            var resp2 = await _http.GetAsync(statusUrl, linked2.Token).ConfigureAwait(false);
             if (resp2.IsSuccessStatusCode)
             {
                 status.IsOnline = true;
-                string html2 = await resp2.Content.ReadAsStringAsync().ConfigureAwait(false);
+                hadSuccess = true;
+                string html2 = await resp2.Content.ReadAsStringAsync(linked2.Token).ConfigureAwait(false);
 
-                // Look for images with tonerremain class
-                // e.g. <img src="../common/images/magenta.gif" alt="Magenta" class="tonerremain" height="42" />
-                // Max height is 44px
                 var mMatch = Regex.Match(html2, @"magenta\.gif""[^>]*height=""(\d+)""", RegexOptions.IgnoreCase);
                 var cMatch = Regex.Match(html2, @"cyan\.gif""[^>]*height=""(\d+)""", RegexOptions.IgnoreCase);
                 var yMatch = Regex.Match(html2, @"yellow\.gif""[^>]*height=""(\d+)""", RegexOptions.IgnoreCase);
                 var kMatch = Regex.Match(html2, @"black\.gif""[^>]*height=""(\d+)""", RegexOptions.IgnoreCase);
 
+                int k = 100, c = 100, m = 100, y = 100;
+                bool parsedAny = false;
+
                 if (kMatch.Success && int.TryParse(kMatch.Groups[1].Value, out int kHeight))
-                    status.InkBlackPercent = Math.Clamp((int)Math.Round(kHeight / 44.0 * 100), 0, 100);
+                {
+                    k = Math.Clamp((int)Math.Round(kHeight / 44.0 * 100), 0, 100);
+                    parsedAny = true;
+                }
 
                 if (cMatch.Success && int.TryParse(cMatch.Groups[1].Value, out int cHeight))
-                    status.InkCyanPercent = Math.Clamp((int)Math.Round(cHeight / 44.0 * 100), 0, 100);
+                {
+                    c = Math.Clamp((int)Math.Round(cHeight / 44.0 * 100), 0, 100);
+                    parsedAny = true;
+                }
 
                 if (mMatch.Success && int.TryParse(mMatch.Groups[1].Value, out int mHeight))
-                    status.InkMagentaPercent = Math.Clamp((int)Math.Round(mHeight / 44.0 * 100), 0, 100);
+                {
+                    m = Math.Clamp((int)Math.Round(mHeight / 44.0 * 100), 0, 100);
+                    parsedAny = true;
+                }
 
                 if (yMatch.Success && int.TryParse(yMatch.Groups[1].Value, out int yHeight))
-                    status.InkYellowPercent = Math.Clamp((int)Math.Round(yHeight / 44.0 * 100), 0, 100);
+                {
+                    y = Math.Clamp((int)Math.Round(yHeight / 44.0 * 100), 0, 100);
+                    parsedAny = true;
+                }
+
+                var settings = PrintTrackerService.Instance?.Settings;
+                if (settings != null && settings.PreferVisualInkLevels)
+                {
+                    status.InkBlackPercent = settings.CalibratedInkBlack;
+                    status.InkCyanPercent = settings.CalibratedInkCyan;
+                    status.InkMagentaPercent = settings.CalibratedInkMagenta;
+                    status.InkYellowPercent = settings.CalibratedInkYellow;
+                    status.IsCalibratedByVisualCheck = true;
+                }
+                else if (parsedAny)
+                {
+                    status.InkBlackPercent = k;
+                    status.InkCyanPercent = c;
+                    status.InkMagentaPercent = m;
+                    status.InkYellowPercent = y;
+                    status.IsCalibratedByVisualCheck = false;
+                }
+                else if (settings != null)
+                {
+                    status.InkBlackPercent = settings.CalibratedInkBlack;
+                    status.InkCyanPercent = settings.CalibratedInkCyan;
+                    status.InkMagentaPercent = settings.CalibratedInkMagenta;
+                    status.InkYellowPercent = settings.CalibratedInkYellow;
+                    status.IsCalibratedByVisualCheck = true;
+                }
+            }
+        }
+        catch { }
+
+        return hadSuccess;
+    }
+
+    /// <summary>
+    /// Calibrates the physical visual ink tank levels and saves them to settings.
+    /// Used when refilling ink bottles or when head-drop chip counters differ from the physical tank window.
+    /// </summary>
+    public void CalibrateInkLevels(int black, int cyan, int magenta, int yellow, bool preferVisual = true)
+    {
+        PrintTrackerService.Instance.UpdateSettings(s =>
+        {
+            s.CalibratedInkBlack = Math.Clamp(black, 0, 100);
+            s.CalibratedInkCyan = Math.Clamp(cyan, 0, 100);
+            s.CalibratedInkMagenta = Math.Clamp(magenta, 0, 100);
+            s.CalibratedInkYellow = Math.Clamp(yellow, 0, 100);
+            s.PreferVisualInkLevels = preferVisual;
+        });
+
+        LiveStatus.InkBlackPercent = black;
+        LiveStatus.InkCyanPercent = cyan;
+        LiveStatus.InkMagentaPercent = magenta;
+        LiveStatus.InkYellowPercent = yellow;
+        LiveStatus.IsCalibratedByVisualCheck = preferVisual;
+
+        OnAuditUpdated?.Invoke();
+        Log.Information("Calibrated visual ink tank levels: BK={Bk}%, C={C}%, M={M}%, Y={Y}% (PreferVisual={Pref})",
+            black, cyan, magenta, yellow, preferVisual);
+    }
+
+    /// <summary>
+    /// Fast probe to test whether a given IP address hosts the Brother DCP-T530DW printer web server.
+    /// Checks port 80 /home/status.html or /home/monitor.html.
+    /// </summary>
+    public async Task<bool> IsBrotherPrinterAliveAsync(string ip, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return false;
+        try
+        {
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+            string url = $"http://{ip.Trim()}/home/status.html";
+            using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, linkedCts.Token).ConfigureAwait(false);
+            if (resp.IsSuccessStatusCode)
+            {
+                string body = await resp.Content.ReadAsStringAsync(linkedCts.Token).ConfigureAwait(false);
+                if (body.Contains("DCP-T530DW", StringComparison.OrdinalIgnoreCase) ||
+                    body.Contains("Brother", StringComparison.OrdinalIgnoreCase) ||
+                    body.Contains("tonerremain", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    /// <summary>
+    /// Multi-tier smart discovery engine to locate the Brother DCP-T530DW printer when DHCP reassigns its IP.
+    /// Tier 1: Probe stored / fallback IP.
+    /// Tier 2: Query NetBIOS / DNS / mDNS hostnames (e.g. brw4c23383f8eed).
+    /// Tier 3: Query Windows ARP table matching hardware MAC (4c-23-38-3f-8e-ed) & Brother OUIs.
+    /// Tier 4: High-speed parallel local subnet sweep (/24) with 30 concurrent probes.
+    /// </summary>
+    public async Task<string?> AutoDiscoverPrinterIpAsync(string? fallbackIp = null, CancellationToken ct = default)
+    {
+        Log.Information("Starting Brother printer smart network discovery...");
+
+        // ── TIER 1: Check Last Known / Configured IP ──
+        string targetIp = !string.IsNullOrWhiteSpace(fallbackIp) ? fallbackIp.Trim() : CurrentIp;
+        if (!string.IsNullOrWhiteSpace(targetIp))
+        {
+            if (await IsBrotherPrinterAliveAsync(targetIp, ct).ConfigureAwait(false))
+            {
+                Log.Information("Tier 1: Printer responded at last known IP {Ip}", targetIp);
+                return targetIp;
+            }
+        }
+
+        // ── TIER 2: Brother Hostname DNS / NetBIOS Resolution ──
+        var candidateHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string cleanMac = CurrentMac.Replace(":", "").Replace("-", "").Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(cleanMac))
+        {
+            candidateHosts.Add($"brw{cleanMac}");
+            candidateHosts.Add($"brw{cleanMac}.local");
+            candidateHosts.Add($"brw{cleanMac}.lan");
+            candidateHosts.Add($"brn{cleanMac}");
+        }
+        candidateHosts.Add("brw4c23383f8eed");
+        candidateHosts.Add("brw4c23383f8eed.local");
+        candidateHosts.Add("brother");
+        candidateHosts.Add("brother-printer");
+
+        foreach (var host in candidateHosts)
+        {
+            if (ct.IsCancellationRequested) break;
+            try
+            {
+                var addrs = await Dns.GetHostAddressesAsync(host, ct).ConfigureAwait(false);
+                foreach (var addr in addrs)
+                {
+                    if (addr.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        string ip = addr.ToString();
+                        if (await IsBrotherPrinterAliveAsync(ip, ct).ConfigureAwait(false))
+                        {
+                            Log.Information("Tier 2: Discovered Brother printer via hostname '{Host}' -> {Ip}", host, ip);
+                            PersistDiscoveredIp(ip);
+                            return ip;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // ── TIER 3: Local Windows ARP Cache Matching ──
+        try
+        {
+            var arpEntries = GetCandidateIpsFromArpTable();
+            foreach (var candidateIp in arpEntries)
+            {
+                if (ct.IsCancellationRequested) break;
+                if (string.Equals(candidateIp, targetIp, StringComparison.OrdinalIgnoreCase)) continue;
+
+                if (await IsBrotherPrinterAliveAsync(candidateIp, ct).ConfigureAwait(false))
+                {
+                    Log.Information("Tier 3: Discovered Brother printer via ARP cache MAC match -> {Ip}", candidateIp);
+                    PersistDiscoveredIp(candidateIp);
+                    return candidateIp;
+                }
             }
         }
         catch (Exception ex)
         {
-            Log.Debug("Printer Wi-Fi query failed for {Ip}: {Msg}", ip, ex.Message);
-            status.IsOnline = false;
-            status.DeviceStatus = "USB Connected (Wi-Fi Standby)";
+            Log.Debug(ex, "ARP table inspection had error");
         }
 
-        status.LastChecked = DateTimeOffset.Now;
-        LiveStatus = status;
+        // ── TIER 4: High-Speed Parallel Local Subnet Sweep ──
+        try
+        {
+            string? sweptIp = await SweepLocalSubnetsForBrotherAsync(ct).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(sweptIp))
+            {
+                Log.Information("Tier 4: Discovered Brother printer via parallel subnet sweep -> {Ip}", sweptIp);
+                PersistDiscoveredIp(sweptIp);
+                return sweptIp;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Subnet sweep had error");
+        }
+
+        Log.Warning("Brother printer was not detected on local network");
+        return null;
+    }
+
+    /// <summary>
+    /// Reads the Windows ARP table and returns IPs matching the Brother MAC or known Brother OUIs.
+    /// </summary>
+    public List<string> GetCandidateIpsFromArpTable()
+    {
+        var candidates = new List<string>();
+        string targetMac = CurrentMac.Replace(":", "").Replace("-", "").ToUpperInvariant();
+
+        // Brother manufacturer OUI prefixes
+        string[] brotherOuis = { "4C2338", "008077", "30055C", "B499BA", "DCEFCA", "E0D55E" };
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "arp.exe",
+                Arguments = "-a",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var proc = Process.Start(psi);
+            if (proc != null)
+            {
+                string output = proc.StandardOutput.ReadToEnd();
+                proc.WaitForExit(1000);
+
+                var matches = Regex.Matches(output, @"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+([0-9a-fA-F]{2}[:-][0-9a-fA-F]{2}[:-][0-9a-fA-F]{2}[:-][0-9a-fA-F]{2}[:-][0-9a-fA-F]{2}[:-][0-9a-fA-F]{2})");
+                foreach (Match m in matches)
+                {
+                    string ip = m.Groups[1].Value;
+                    string mac = m.Groups[2].Value.Replace("-", "").Replace(":", "").ToUpperInvariant();
+
+                    if (!string.IsNullOrEmpty(targetMac) && mac.Equals(targetMac, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Priority 1: Exact MAC match!
+                        candidates.Insert(0, ip);
+                    }
+                    else if (brotherOuis.Any(oui => mac.StartsWith(oui, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // Priority 2: Brother OUI match
+                        candidates.Add(ip);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Failed to read arp table");
+        }
+
+        return candidates.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// High-speed parallel /24 subnet sweep across active local network adapters.
+    /// Probes port 80 on all 254 IPs using 30 concurrent workers with fast cancellation.
+    /// </summary>
+    private async Task<string?> SweepLocalSubnetsForBrotherAsync(CancellationToken ct)
+    {
+        var localIps = GetLocalIPv4Addresses();
+        var subnets = localIps
+            .Where(ip => ip.Contains('.'))
+            .Select(ip => ip.Substring(0, ip.LastIndexOf('.') + 1))
+            .Distinct()
+            .ToList();
+
+        if (subnets.Count == 0) subnets.Add("192.168.1.");
+
+        foreach (var subnetBase in subnets)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            using var sweepCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            string? foundIp = null;
+            var sem = new SemaphoreSlim(30, 30);
+
+            // Prioritize common printer IPs (.7, .2 to .50) before higher ranges
+            var hostIndices = Enumerable.Range(1, 254)
+                .OrderBy(h => h == 7 ? 0 : (h < 50 ? 1 : 2))
+                .ToList();
+
+            var tasks = hostIndices.Select(async host =>
+            {
+                if (sweepCts.IsCancellationRequested) return;
+
+                await sem.WaitAsync(sweepCts.Token).ConfigureAwait(false);
+                try
+                {
+                    if (sweepCts.IsCancellationRequested) return;
+
+                    string testIp = $"{subnetBase}{host}";
+                    if (await IsBrotherPrinterAliveAsync(testIp, sweepCts.Token).ConfigureAwait(false))
+                    {
+                        foundIp = testIp;
+                        sweepCts.Cancel(); // Cancel remaining sweep tasks immediately!
+                    }
+                }
+                catch { }
+                finally
+                {
+                    sem.Release();
+                }
+            });
+
+            try
+            {
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+
+            if (!string.IsNullOrWhiteSpace(foundIp))
+            {
+                return foundIp;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<string> GetLocalIPv4Addresses()
+    {
+        var list = new List<string>();
+        try
+        {
+            var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+            foreach (var iface in interfaces)
+            {
+                if (iface.OperationalStatus != OperationalStatus.Up ||
+                    iface.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                    continue;
+
+                var ipProps = iface.GetIPProperties();
+                foreach (var addr in ipProps.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        list.Add(addr.Address.ToString());
+                    }
+                }
+            }
+        }
+        catch { }
+        return list;
+    }
+
+    private void PersistDiscoveredIp(string ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return;
+        ip = ip.Trim();
+
+        try
+        {
+            PrintTrackerService.Instance.UpdateSettings(s =>
+            {
+                s.BrotherPrinterIp = ip;
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Unable to save discovered IP to settings");
+        }
+
+        LiveStatus.IpAddress = ip;
+        OnPrinterIpDiscovered?.Invoke(ip);
         OnAuditUpdated?.Invoke();
-        return status;
     }
 }

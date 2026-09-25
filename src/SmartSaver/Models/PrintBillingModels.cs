@@ -179,4 +179,17 @@ public class PrintBillingSettings
     // ── Linked Excel Spreadsheet Integration ──
     public string AttachedExcelPath { get; set; } = string.Empty;
     public bool AutoSyncToExcel { get; set; } = true;
+
+    // ── Brother Printer Network & Auto-Discovery Settings ──
+    public string BrotherPrinterIp { get; set; } = "192.168.1.7";
+    public string BrotherPrinterMac { get; set; } = "4C:23:38:3F:8E:ED";
+    public string BrotherPrinterHostname { get; set; } = "brw4c23383f8eed";
+    public bool AutoDiscoverPrinterIp { get; set; } = true;
+
+    // ── Physical Visual Ink Tank Calibration & Overrides ──
+    public int CalibratedInkBlack { get; set; } = 100;
+    public int CalibratedInkCyan { get; set; } = 100;
+    public int CalibratedInkMagenta { get; set; } = 100;
+    public int CalibratedInkYellow { get; set; } = 100;
+    public bool PreferVisualInkLevels { get; set; } = false;
 }

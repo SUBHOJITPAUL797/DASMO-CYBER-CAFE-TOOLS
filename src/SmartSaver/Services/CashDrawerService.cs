@@ -32,6 +32,7 @@ public sealed class CashDrawerService
     private readonly Dictionary<string, DailyCashRegister> _registers = new(StringComparer.OrdinalIgnoreCase);
 
     public event Action? OnRegisterChanged;
+    public event Action? OnRegisterUpdated { add => OnRegisterChanged += value; remove => OnRegisterChanged -= value; }
 
     private CashDrawerService(string? customDir = null)
     {

@@ -84,6 +84,36 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="WorkspaceTabBtn" TargetType="Button">
+            <Setter Property="Background" Value="#1C1D27"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1,1,1,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="6,6,0,0" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SurfaceHoverBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Border x:Name="RootBorder" x:FieldModifier="public" Background="{StaticResource BackgroundBrush}" 
@@ -106,9 +136,9 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
                     <TextBlock Text="🖨️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
                     <TextBlock Text="DASMO CYBER CAFE" FontWeight="Bold" FontSize="14" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text=" — Automatic Print Counter &amp; Customer Billing Studio" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text=" — Automatic Print Counter, Meter &amp; Customer Billing Studio" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
                     <Border Background="#10B981" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="AUTO-SPOOLER V1.5.9" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="ALL-IN-ONE V1.5.17" FontSize="10" FontWeight="Bold" Foreground="White"/>
                     </Border>
                 </StackPanel>
 
@@ -120,57 +150,200 @@
                 </StackPanel>
             </Grid>
 
-            <!-- ── Status Bar & Rates Quick Info ── -->
-            <Border Grid.Row="1" Background="#23232C" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
-                <Grid>
+            <!-- ── Top Navigation Tabs & Brother Live Status Strip ── -->
+            <StackPanel Grid.Row="1">
+                <!-- 1. Segmented Navigation Tabs -->
+                <Border Background="#181924" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,6,14,0">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Tab 0: Active Billing -->
+                            <Button Content="📑 1. Active Counter &amp; Billing" Command="{Binding SwitchTabCommand}" CommandParameter="0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource WorkspaceTabBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTabBilling}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                <Setter Property="BorderThickness" Value="1.5,1.5,1.5,0"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <!-- Tab 1: Hardware Meter & Xerox Audit -->
+                            <Button Content="📊 2. Hardware Meter &amp; Xerox Audit" Command="{Binding SwitchTabCommand}" CommandParameter="1">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource WorkspaceTabBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTabMeterAudit}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+                                                <Setter Property="Foreground" Value="#38BDF8"/>
+                                                <Setter Property="BorderBrush" Value="#38BDF8"/>
+                                                <Setter Property="BorderThickness" Value="1.5,1.5,1.5,0"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <!-- Tab 2: Sales History -->
+                            <Button Content="📜 3. Completed Bills &amp; Sales History" Command="{Binding SwitchTabCommand}" CommandParameter="2">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource WorkspaceTabBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTabSalesHistory}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+                                                <Setter Property="Foreground" Value="#10B981"/>
+                                                <Setter Property="BorderBrush" Value="#10B981"/>
+                                                <Setter Property="BorderThickness" Value="1.5,1.5,1.5,0"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <!-- Tab 3: Cash Drawer & Accounts -->
+                            <Button Content="💰 4. Daily Cash Drawer &amp; Accounts" Command="{Binding SwitchTabCommand}" CommandParameter="3">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource WorkspaceTabBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTabCashDrawer}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+                                                <Setter Property="Foreground" Value="#F59E0B"/>
+                                                <Setter Property="BorderBrush" Value="#F59E0B"/>
+                                                <Setter Property="BorderThickness" Value="1.5,1.5,1.5,0"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Quick Cash Drawer Launch on Right -->
+                        <Button HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,0,4"
+                                Command="{Binding OpenCashDrawerCommand}" Style="{StaticResource CounterChipButton}"
+                                Background="#1A2036" BorderBrush="#F59E0B" Foreground="#F59E0B" FontWeight="Bold" Padding="10,3" FontSize="11"
+                                ToolTip="Open Full Daily Cash Drawer, UPI &amp; Accounts Window">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💰 " FontSize="11"/>
+                                <TextBlock Text="Open Cash Drawer Window" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- 2. Status Bar: Live Brother Hardware & Rate Card Quick Strip -->
+                <Border Background="#23232C" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,6">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Spooler + Brother Connection + Live Inks -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Windows Spooler -->
+                            <TextBlock Text="{Binding SpoolerStatusIcon}" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SpoolerStatusText}" FontWeight="SemiBold" FontSize="11" Foreground="White" VerticalAlignment="Center"/>
+                            <Button Content="🔄 Poll Spooler" Command="{Binding PollNowCommand}" 
+                                    Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="6,2" FontSize="10.5"
+                                    ToolTip="Query Windows print queues immediately"/>
+
+                            <Border Width="1" Height="16" Background="#444" Margin="8,0"/>
+
+                            <!-- Brother Device Status -->
+                            <TextBlock Text="{Binding DeviceStatusText}" FontWeight="SemiBold" FontSize="11" Foreground="#38BDF8" VerticalAlignment="Center"/>
+                            
+                            <!-- Smart Auto-Detect IP Button -->
+                            <Button Content="🔍 Auto-Detect IP" Command="{Binding AutoDetectIpCommand}"
+                                    Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="7,2" FontSize="10.5"
+                                    Background="#162938" BorderBrush="#38BDF8" Foreground="#38BDF8"
+                                    ToolTip="Scan network subnets and ARP table to re-discover Brother printer if IP changed over Wi-Fi"/>
+
+                            <Button Content="🔄 Refresh" Command="{Binding RefreshLiveStatusCommand}"
+                                    Style="{StaticResource CounterChipButton}" Margin="4,0,0,0" Padding="6,2" FontSize="10.5"
+                                    ToolTip="Fetch live printer status and ink levels over Wi-Fi"/>
+
+                            <!-- Ink Gauges Strip -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                                <TextBlock Text="Ink: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,3,0"/>
+
+                                <!-- BK -->
+                                <Border Background="#1C1C24" CornerRadius="4" Padding="5,2" Margin="0,0,3,0" BorderBrush="#666" BorderThickness="1"
+                                        ToolTip="Black Ink Tank (BTD60BK)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="7" Height="7" Background="#111" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center" BorderBrush="#888" BorderThickness="1"/>
+                                        <TextBlock Text="{Binding InkBlack, StringFormat='BK:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Cyan -->
+                                <Border Background="#1C1C24" CornerRadius="4" Padding="5,2" Margin="0,0,3,0" BorderBrush="#00BCD4" BorderThickness="1"
+                                        ToolTip="Cyan Ink Tank (BT5000C)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="7" Height="7" Background="#00BCD4" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding InkCyan, StringFormat='C:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="#00BCD4"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Magenta -->
+                                <Border Background="#1C1C24" CornerRadius="4" Padding="5,2" Margin="0,0,3,0" BorderBrush="#E91E63" BorderThickness="1"
+                                        ToolTip="Magenta Ink Tank (BT5000M)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="7" Height="7" Background="#E91E63" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding InkMagenta, StringFormat='M:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="#E91E63"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Yellow -->
+                                <Border Background="#1C1C24" CornerRadius="4" Padding="5,2" Margin="0,0,4,0" BorderBrush="#FFEB3B" BorderThickness="1"
+                                        ToolTip="Yellow Ink Tank (BT5000Y)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="7" Height="7" Background="#FFEB3B" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding InkYellow, StringFormat='Y:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="#FFEB3B"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Calibrated / Refill Button -->
+                                <Button Content="🎛️ Refill / Calibrate" Command="{Binding OpenInkCalibrateModalCommand}"
+                                        Style="{StaticResource CounterChipButton}" Margin="2,0,0,0" Padding="6,2" FontSize="10"
+                                        Background="#262238" BorderBrush="#A78BFA" Foreground="#C4B5FD"
+                                        ToolTip="Calibrate physical tank levels or set to 100% after pouring ink bottles"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Right: Rate Card Badges & Custom Prices Editor Trigger -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Rate Card: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <Button Content="{Binding BwSingleSideRate, StringFormat='⚫ ₹{0:0.##}'}" Click="OpenRateSettings_Click"
+                                    Style="{StaticResource CounterChipButton}" Margin="0,0,3,0" Padding="6,2" FontSize="10" ToolTip="Click to customize B&amp;W print price"/>
+                            <Button Content="{Binding BwDuplexRate, StringFormat='📑 ₹{0:0.##}'}" Click="OpenRateSettings_Click"
+                                    Style="{StaticResource CounterChipButton}" Margin="0,0,3,0" Padding="6,2" FontSize="10" Foreground="#10B981" BorderBrush="#10B981" ToolTip="Click to customize Duplex print price"/>
+                            <Button Content="{Binding ColorSingleSideRate, StringFormat='🌈 ₹{0:0.##}'}" Click="OpenRateSettings_Click"
+                                    Style="{StaticResource CounterChipButton}" Margin="0,0,3,0" Padding="6,2" FontSize="10" Foreground="#00BCD4" BorderBrush="#00BCD4" ToolTip="Click to customize Color print price"/>
+                            <Button Content="{Binding PhotoGlossyRate, StringFormat='📸 ₹{0:0.##}'}" Click="OpenRateSettings_Click"
+                                    Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="6,2" FontSize="10" Foreground="#FF9800" BorderBrush="#FF9800" ToolTip="Click to customize Photo print price"/>
+                            <Button Content="⚙️ Set Rates" Click="OpenRateSettings_Click"
+                                    Style="{StaticResource CounterChipButton}" Margin="2,0,0,0" Padding="8,2" FontSize="10.5"
+                                    Background="#1A2E26" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"
+                                    ToolTip="Customize B&amp;W, Color, Duplex &amp; Photo print rates"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- ── Main Workspace: 4 Integrated Views ── -->
+            <Grid Grid.Row="2">
+                <!-- ════ TAB 0: ACTIVE CUSTOMER BILLING CART (2-Column Layout) ════ -->
+                <Grid Visibility="{Binding IsTabBilling, Converter={StaticResource BoolToVis}}" Margin="14">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Spooler Status Indicator -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding SpoolerStatusIcon}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding SpoolerStatusText}" FontWeight="SemiBold" FontSize="12" Foreground="White" VerticalAlignment="Center"/>
-                        <Button Content="🔄 Poll Spooler Now" Command="{Binding PollNowCommand}" 
-                                Style="{StaticResource CounterChipButton}" Margin="12,0,0,0" Padding="8,3" FontSize="11"
-                                ToolTip="Instantly query Windows print queues for new print jobs"/>
-                        <Button Content="⚙️ Pause/Resume" Command="{Binding ToggleMonitoringCommand}" 
-                                Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="8,3" FontSize="11"
-                                ToolTip="Toggle automatic background print job detection"/>
-                        <Button Content="💰 Cash Drawer &amp; Accounts" Command="{Binding OpenCashDrawerCommand}"
-                                Style="{StaticResource CounterChipButton}" Margin="8,0,0,0" Padding="10,3" FontSize="11"
-                                Background="#1A2036" BorderBrush="#F59E0B" Foreground="#F59E0B" FontWeight="Bold"
-                                ToolTip="Open Daily Cash Drawer, UPI transfers, Borrow &amp; Accounts Manager"/>
-                        <Button Content="🖨️ Printer Meter &amp; Xerox Audit" Command="{Binding OpenPrinterAuditCommand}"
-                                Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="10,3" FontSize="11"
-                                Background="#162638" BorderBrush="#38BDF8" Foreground="#38BDF8" FontWeight="Bold"
-                                ToolTip="Reconcile Brother hardware meter against PC prints and auto-detect physical walk-up Xerox copies"/>
-                    </StackPanel>
-
-                    <!-- Rate Card Badges & Custom Prices Editor Trigger -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="Rate Card: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <Button Content="{Binding BwSingleSideRate, StringFormat='⚫ B&amp;W: ₹{0:0.##}/p'}" Click="OpenRateSettings_Click"
-                                Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" ToolTip="Click to customize B&amp;W print price"/>
-                        <Button Content="{Binding BwDuplexRate, StringFormat='📑 Duplex: ₹{0:0.##}/s'}" Click="OpenRateSettings_Click"
-                                Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" Foreground="#10B981" BorderBrush="#10B981" ToolTip="Click to customize Duplex print price"/>
-                        <Button Content="{Binding ColorSingleSideRate, StringFormat='🌈 Color: ₹{0:0.##}/p'}" Click="OpenRateSettings_Click"
-                                Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" Foreground="#00BCD4" BorderBrush="#00BCD4" ToolTip="Click to customize Color print price"/>
-                        <Button Content="{Binding PhotoGlossyRate, StringFormat='📸 Photo: ₹{0:0.##}'}" Click="OpenRateSettings_Click"
-                                Style="{StaticResource CounterChipButton}" Margin="0,0,6,0" Padding="7,2" FontSize="11" Foreground="#FF9800" BorderBrush="#FF9800" ToolTip="Click to customize Photo print price"/>
-                        <Button Content="⚙️ Set Custom Prices" Click="OpenRateSettings_Click"
-                                Style="{StaticResource CounterChipButton}" Margin="4,0,0,0" Padding="10,3" FontSize="11"
-                                Background="#1A2E26" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"
-                                ToolTip="Customize B&amp;W, Color, Duplex &amp; Photo print rates"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- ── Main Workspace: 2-Column Responsive Layout ── -->
-            <Grid Grid.Row="2" Margin="14">
-                <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="6*" MinWidth="480"/> <!-- Left: Active Customer Billing Station -->
                     <ColumnDefinition Width="12"/> <!-- Splitter / Gap -->
                     <ColumnDefinition Width="5*" MinWidth="400"/> <!-- Right: Daily Sales, History & Rates -->
@@ -666,6 +839,636 @@
                 </Grid>
             </Grid>
 
+            <!-- ════ TAB 1: HARDWARE METER & WALK-UP XEROX AUDIT ════ -->
+                <ScrollViewer Visibility="{Binding IsTabMeterAudit, Converter={StaticResource BoolToVis}}" 
+                              VerticalScrollBarVisibility="Auto" Padding="16,12">
+                    <StackPanel MaxWidth="1100" HorizontalAlignment="Center">
+                        <!-- Top Hardware Info Bar -->
+                        <Border Background="#1C1D2B" CornerRadius="8" Padding="12,10" Margin="0,0,0,12" BorderBrush="#38BDF8" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🖨️ " FontSize="14" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Brother DCP-T530DW" FontWeight="Bold" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBlock Text=" • Dual-Mode USB/Wi-Fi Active" FontWeight="SemiBold" FontSize="12" Foreground="#38BDF8" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="⚡ High-speed printing over USB Spooler + Live ink &amp; meter tracking over Wi-Fi. If IP changes, click Auto-Detect below." 
+                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding PrinterIp, StringFormat='IP: {0}'}" FontWeight="Bold" FontSize="11" Foreground="#38BDF8" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <Button Content="🔍 Auto-Detect IP" Command="{Binding AutoDetectIpCommand}"
+                                            Style="{StaticResource CounterChipButton}" Margin="0,0,6,0" Padding="10,4" FontSize="11"
+                                            Background="#15283C" BorderBrush="#38BDF8" Foreground="#38BDF8" FontWeight="SemiBold"
+                                            ToolTip="Scan Wi-Fi subnets and ARP table to find Brother printer if IP changed"/>
+                                    <Button Content="🔄 Refresh Status" Command="{Binding RefreshLiveStatusCommand}"
+                                            Style="{StaticResource CounterChipButton}" Padding="10,4" FontSize="11"
+                                            ToolTip="Query Brother embedded status page"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Section 1: Physical Meter Reconciliation -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="14" Margin="0,0,0,12"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="📊 PHYSICAL HARDWARE METER RECONCILIATION" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Compares actual paper sheets moved through printer hardware against software PC spooler prints to find unbilled walk-up Xerox copies." 
+                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0,0,0,12"/>
+
+                                <!-- Meter Inputs Grid -->
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Opening Meter (Morning) -->
+                                    <Border Grid.Column="0" Background="#262635" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="🌅 Morning Opening Meter Reading:" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Text="{Binding OpeningMeter, UpdateSourceTrigger=PropertyChanged}" 
+                                                         FontSize="15" FontWeight="Bold" Padding="8,4" VerticalContentAlignment="Center"/>
+                                                <Button Grid.Column="1" Content="💾 Set Morning" Command="{Binding SaveOpeningMeterCommand}" 
+                                                        Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="10,4" Background="#162920" Foreground="#10B981" BorderBrush="#10B981"/>
+                                            </Grid>
+                                            <TextBlock Text="Start of day counter (carried over from yesterday)." FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Closing / Current Meter (Now) -->
+                                    <Border Grid.Column="2" Background="#262635" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="🌙 Current / Closing Meter Reading:" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Text="{Binding CurrentHardwareMeter, UpdateSourceTrigger=PropertyChanged}" 
+                                                         FontSize="15" FontWeight="Bold" Padding="8,4" VerticalContentAlignment="Center"/>
+                                                <Button Grid.Column="1" Content="💾 Set Closing" Command="{Binding SaveClosingMeterCommand}" 
+                                                        Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="10,4" Background="#152636" Foreground="#00BCD4" BorderBrush="#00BCD4"/>
+                                            </Grid>
+                                            <TextBlock Text="Check on LCD: Menu ➔ Machine Info ➔ Page Counter." FontSize="10.5" Foreground="#F59E0B" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Calculation Cards -->
+                                <UniformGrid Columns="4" Rows="1" Margin="0,0,0,12">
+                                    <!-- 1. Hardware Sheets -->
+                                    <Border Background="#1E1E2C" CornerRadius="6" Padding="10,8" Margin="0,0,4,0">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <TextBlock Text="HARDWARE PAGES" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Text="{Binding TotalHardwareSheets}" FontSize="20" FontWeight="Bold" Foreground="White" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Closing - Opening" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 2. PC Prints -->
+                                    <Border Background="#1E1E2C" CornerRadius="6" Padding="10,8" Margin="2,0,2,0">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <TextBlock Text="PC SPOOLER PRINTS" FontSize="10" FontWeight="Bold" Foreground="#00BCD4"/>
+                                            <TextBlock Text="{Binding TotalPcSpoolerPages}" FontSize="20" FontWeight="Bold" Foreground="#00BCD4" Margin="0,2,0,0"/>
+                                            <TextBlock Text="From computer apps" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 3. Physical Xerox Made -->
+                                    <Border Background="#1E1E2C" CornerRadius="6" Padding="10,8" Margin="2,0,2,0">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <TextBlock Text="ACTUAL XEROX" FontSize="10" FontWeight="Bold" Foreground="#10B981"/>
+                                            <TextBlock Text="{Binding ActualPhysicalXerox}" FontSize="20" FontWeight="Bold" Foreground="#10B981" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Machine - PC Prints" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 4. Unrecorded Discrepancy -->
+                                    <Border Background="#1E1E2C" CornerRadius="6" Padding="10,8" Margin="4,0,0,0">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <TextBlock Text="UNRECORDED XEROX" FontSize="10" FontWeight="Bold" Foreground="#F43F5E"/>
+                                            <TextBlock Text="{Binding UnrecordedXeroxCopies}" FontSize="20" FontWeight="Bold" Foreground="#F43F5E" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding UnrecordedXeroxAmount, StringFormat='₹{0:F2}'}" FontSize="10.5" FontWeight="Bold" Foreground="#F43F5E"/>
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+
+                                <!-- Unrecorded Alert & Auto-Add Action -->
+                                <Border Background="#2B1D20" BorderBrush="#F43F5E" BorderThickness="1.5" CornerRadius="6" Padding="12,10"
+                                        Visibility="{Binding HasUnrecordedXerox, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="⚠️ Unrecorded Physical Xerox Copies Detected!" FontWeight="Bold" FontSize="12.5" Foreground="#F43F5E"/>
+                                            <TextBlock Text="{Binding UnrecordedXeroxCopies, StringFormat='The Brother machine produced {0} physical copies that were not recorded in the active register.'}" 
+                                                       FontSize="11" Foreground="White" Margin="0,2,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- Medium Choice -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
+                                            <TextBlock Text="Deposit to: " FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <RadioButton Content="💵 Cash" IsChecked="{Binding SelectedMedium, Converter={StaticResource StringEquals}, ConverterParameter='Cash'}" 
+                                                         Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <RadioButton Content="📱 UPI" IsChecked="{Binding SelectedMedium, Converter={StaticResource StringEquals}, ConverterParameter='UPI'}" 
+                                                         Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="2" Command="{Binding AutoLogMissingXeroxCommand}"
+                                                Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="12" Padding="12,8" BorderThickness="0" Cursor="Hand">
+                                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="⚡ " FontSize="12"/>
+                                                <TextBlock Text="{Binding UnrecordedXeroxAmount, StringFormat='Auto-Add ₹{0:F2} to Cash Drawer &amp; Excel'}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Section 2: Rush-Hour 1-Click Physical Xerox Counter -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="14" Margin="0,0,0,12"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="⚡ RUSH-HOUR 1-CLICK PHYSICAL XEROX COUNTER" FontWeight="Bold" FontSize="12.5" Foreground="#10B981" Margin="0,0,0,4"/>
+                                <TextBlock Text="Customer came for quick Xerox and paid cash? Click any button to instantly log into Cash Drawer &amp; Excel with ZERO typing!" 
+                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0,0,0,10"/>
+
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="1|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
+                                        <TextBlock Text="➕ 1 B&amp;W Xerox (₹2)" FontWeight="Bold" Foreground="White"/>
+                                    </Button>
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="2|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
+                                        <TextBlock Text="➕ 2 B&amp;W Xerox (₹4)" FontWeight="Bold" Foreground="White"/>
+                                    </Button>
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="5|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
+                                        <TextBlock Text="➕ 5 B&amp;W Xerox (₹10)" FontWeight="Bold" Foreground="White"/>
+                                    </Button>
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="10|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
+                                        <TextBlock Text="➕ 10 B&amp;W Xerox (₹20)" FontWeight="Bold" Foreground="White"/>
+                                    </Button>
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="1|true|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#10B981">
+                                        <TextBlock Text="📑 1 Duplex B&amp;W (₹3)" FontWeight="Bold" Foreground="#10B981"/>
+                                    </Button>
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="2|true|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#10B981">
+                                        <TextBlock Text="📑 2 Duplex B&amp;W (₹6)" FontWeight="Bold" Foreground="#10B981"/>
+                                    </Button>
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="1|false|true" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#00BCD4">
+                                        <TextBlock Text="🌈 1 Color Xerox (₹10)" FontWeight="Bold" Foreground="#00BCD4"/>
+                                    </Button>
+                                    <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="2|false|true" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#00BCD4">
+                                        <TextBlock Text="🌈 2 Color Xerox (₹20)" FontWeight="Bold" Foreground="#00BCD4"/>
+                                    </Button>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Section 3: Live Ink Tank Status & Physical Calibration -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="14"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="🎨 " FontSize="14" VerticalAlignment="Center"/>
+                                        <TextBlock Text="BROTHER DCP-T530DW INK TANK SENSORS &amp; PHYSICAL HEALTH" FontWeight="Bold" FontSize="12.5" Foreground="#A78BFA" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Content="⚡ Refill All 100%" Command="{Binding RefillAllTanks100Command}"
+                                                Style="{StaticResource CounterChipButton}" Margin="0,0,6,0" Padding="10,4" FontSize="11"
+                                                Background="#162920" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"
+                                                ToolTip="Instantly mark all 4 tanks as 100% full"/>
+                                        <Button Content="🎛️ Calibrate / Visual Sliders" Command="{Binding OpenInkCalibrateModalCommand}"
+                                                Style="{StaticResource CounterChipButton}" Padding="10,4" FontSize="11"
+                                                Background="#262238" BorderBrush="#A78BFA" Foreground="#C4B5FD" FontWeight="Bold"
+                                                ToolTip="Adjust visual tank levels for Black, Cyan, Magenta, Yellow"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <UniformGrid Grid.Row="1" Columns="4" Rows="1">
+                                    <!-- BK -->
+                                    <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="0,0,4,0" BorderBrush="#666" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="BLACK (BTD60BK)" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <ProgressBar Value="{Binding InkBlack}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="White" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkBlack, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Cyan -->
+                                    <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="2,0,2,0" BorderBrush="#00BCD4" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="CYAN (BT5000C)" FontSize="10.5" FontWeight="Bold" Foreground="#00BCD4"/>
+                                            <ProgressBar Value="{Binding InkCyan}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#00BCD4" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkCyan, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="#00BCD4"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Magenta -->
+                                    <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="2,0,2,0" BorderBrush="#E91E63" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="MAGENTA (BT5000M)" FontSize="10.5" FontWeight="Bold" Foreground="#E91E63"/>
+                                            <ProgressBar Value="{Binding InkMagenta}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#E91E63" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkMagenta, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="#E91E63"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Yellow -->
+                                    <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="4,0,0,0" BorderBrush="#FFEB3B" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="YELLOW (BT5000Y)" FontSize="10.5" FontWeight="Bold" Foreground="#FFEB3B"/>
+                                            <ProgressBar Value="{Binding InkYellow}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#FFEB3B" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkYellow, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="#FFEB3B"/>
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- ════ TAB 2: COMPLETED BILLS & SALES HISTORY ════ -->
+                <Grid Visibility="{Binding IsTabSalesHistory, Converter={StaticResource BoolToVis}}" Margin="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Analytics Cards -->
+                        <RowDefinition Height="Auto"/> <!-- Search & Filter -->
+                        <RowDefinition Height="*"/>    <!-- Full Bills Table -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Daily Analytics Cards -->
+                    <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,10"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="📊 TODAY'S CYBER CAFE SALES &amp; PRINT METRICS" FontWeight="Bold" FontSize="11" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,8"/>
+
+                            <UniformGrid Grid.Row="1" Columns="6" Rows="1">
+                                <!-- Revenue -->
+                                <Border Background="#1A2E26" CornerRadius="6" Padding="8,6" Margin="0,0,3,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="REVENUE" FontSize="10" Foreground="#10B981" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding TodayRevenue, StringFormat='₹{0:F0}'}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Total Pages -->
+                                <Border Background="{StaticResource BackgroundBrush}" CornerRadius="6" Padding="8,6" Margin="3,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="PAGES" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding TodayPages}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Total Sheets -->
+                                <Border Background="{StaticResource BackgroundBrush}" CornerRadius="6" Padding="8,6" Margin="3,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="SHEETS" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding TodaySheets}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Duplex Sheets -->
+                                <Border Background="{StaticResource BackgroundBrush}" CornerRadius="6" Padding="8,6" Margin="3,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="DUPLEX" FontSize="10" Foreground="#10B981" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding TodayDuplexSheets}" FontSize="18" FontWeight="Bold" Foreground="#10B981"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- B&W Pages -->
+                                <Border Background="{StaticResource BackgroundBrush}" CornerRadius="6" Padding="8,6" Margin="3,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="B&amp;W" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding TodayBwPages}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Color Pages -->
+                                <Border Background="{StaticResource BackgroundBrush}" CornerRadius="6" Padding="8,6" Margin="3,0,0,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="COLOR" FontSize="10" Foreground="#00BCD4" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding TodayColorPages}" FontSize="18" FontWeight="Bold" Foreground="#00BCD4"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                        </Grid>
+                    </Border>
+
+                    <!-- Filter & Search Bar -->
+                    <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="10" Margin="0,0,0,10"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox Grid.Column="0" SelectedValue="{Binding HistoryDateFilter}" SelectedValuePath="Content" Width="110" Height="28" Margin="0,0,8,0">
+                                <ComboBoxItem Content="Today" IsSelected="True"/>
+                                <ComboBoxItem Content="Yesterday"/>
+                                <ComboBoxItem Content="Last 7 Days"/>
+                                <ComboBoxItem Content="All Time"/>
+                            </ComboBox>
+
+                            <TextBox Grid.Column="1" Text="{Binding HistorySearchText, UpdateSourceTrigger=PropertyChanged}" 
+                                     Padding="6,3" VerticalContentAlignment="Center" FontSize="12" Margin="0,0,8,0"
+                                     ToolTip="Search by customer name, mobile, document, or bill number"/>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button Command="{Binding ExportExcelCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0,0,5,0"
+                                        Background="#162920" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"
+                                        ToolTip="Export comprehensive finance Excel (.xlsx) spreadsheet">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📊 " FontSize="11"/>
+                                        <TextBlock Text="Excel" FontWeight="Bold" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding ExportCsvCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0,0,5,0"
+                                        ToolTip="Export sales report to CSV">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📥 " FontSize="11"/>
+                                        <TextBlock Text="CSV" FontWeight="SemiBold" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding LinkExcelFileCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="7,4" Margin="0,0,5,0"
+                                        Background="#151A2E" BorderBrush="#38BDF8" Foreground="#38BDF8" FontWeight="SemiBold"
+                                        ToolTip="{Binding AttachedExcelPath, StringFormat='Linked Excel: {0}'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔗 " FontSize="11"/>
+                                        <TextBlock Text="{Binding AttachedExcelName}" MaxWidth="110" TextTrimming="CharacterEllipsis" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SyncExcelNowCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="7,4" Margin="0"
+                                        Background="#152E28" BorderBrush="#10B981" Foreground="#34D399" FontWeight="SemiBold"
+                                        ToolTip="Manually sync all bills and cash ledger into linked Excel workbook">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚡ " FontSize="11"/>
+                                        <TextBlock Text="Sync" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Full Bills List -->
+                    <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="8" 
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding FilteredBills}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#252532" CornerRadius="6" Padding="12,10" Margin="4,3"
+                                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Bill Info -->
+                                                <StackPanel Grid.Column="0">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding BillNumber}" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource AccentBrush}"/>
+                                                        <TextBlock Text=" • " Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding CustomerName}" FontWeight="SemiBold" FontSize="12.5" Foreground="White"/>
+                                                        <TextBlock Text="{Binding CustomerPhone, StringFormat=' ({0})'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5"/>
+                                                    </StackPanel>
+                                                    <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0">
+                                                        <Run Text="{Binding BilledAt, Mode=OneWay, StringFormat='{}{0:dd MMM yyyy • hh:mm tt}'}"/>
+                                                        <Run Text=" • "/>
+                                                        <Run Text="{Binding TotalPages, Mode=OneWay, StringFormat='{}{0} pages'}"/>
+                                                        <Run Text=" ("/>
+                                                        <Run Text="{Binding TotalSheets, Mode=OneWay, StringFormat='{}{0} sheets'}"/>
+                                                        <Run Text=") • Payment: "/>
+                                                        <Run Text="{Binding PaymentMode, Mode=OneWay}" FontWeight="SemiBold" Foreground="White"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+
+                                                <!-- Total Amount -->
+                                                <TextBlock Grid.Column="1" Text="{Binding TotalAmount, StringFormat='₹{0:F2}'}" 
+                                                           FontWeight="Bold" FontSize="16" Foreground="#10B981" 
+                                                           VerticalAlignment="Center" Margin="16,0"/>
+
+                                                <!-- Actions (PDF, WhatsApp, Copy, Delete) -->
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button Content="📄 PDF" Padding="8,4" FontSize="11" Margin="0,0,4,0"
+                                                            Command="{Binding DataContext.SaveBillPdfCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource CounterChipButton}" ToolTip="View &amp; Save PDF Bill receipt"/>
+                                                    <Button Content="📱 WhatsApp" Padding="8,4" FontSize="11" Margin="0,0,4,0"
+                                                            Command="{Binding DataContext.ShareWhatsAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource CounterChipButton}" ToolTip="Share bill on WhatsApp"/>
+                                                    <Button Content="📋 Thermal Slip" Padding="8,4" FontSize="11" Margin="0,0,4,0"
+                                                            Command="{Binding DataContext.CopyReceiptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource CounterChipButton}" ToolTip="Copy thermal receipt slip text"/>
+                                                    <Button Content="🗑️" Width="28" Height="28" Padding="0" FontSize="11"
+                                                            Command="{Binding DataContext.DeleteBillCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent" BorderThickness="0" Foreground="#F87171"
+                                                            Cursor="Hand" ToolTip="Delete bill from history"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <!-- ════ TAB 3: DAILY CASH DRAWER & ACCOUNTS ════ -->
+                <ScrollViewer Visibility="{Binding IsTabCashDrawer, Converter={StaticResource BoolToVis}}" 
+                              VerticalScrollBarVisibility="Auto" Padding="16,12">
+                    <StackPanel MaxWidth="1100" HorizontalAlignment="Center">
+                        <!-- Top Summary Header -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="14,12" Margin="0,0,0,12"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💰 " FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Text="DAILY CASH DRAWER &amp; CYBER CAFE FINANCIAL OVERVIEW" FontWeight="Bold" FontSize="13.5" Foreground="#F59E0B" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="✨ 3-Way Synchronized: Print Counter, Cash Drawer, and attached Excel workbook are 100% connected in real-time."
+                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0,3,0,0"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Command="{Binding RefreshDrawerStatsCommand}" Style="{StaticResource CounterChipButton}" Margin="0,0,6,0" Padding="10,4" FontSize="11" ToolTip="Refresh cash drawer balances">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="🔄 " FontSize="11"/>
+                                            <TextBlock Text="Refresh Stats" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding SyncExcelNowCommand}" Style="{StaticResource CounterChipButton}" Margin="0,0,6,0" Padding="10,4" FontSize="11"
+                                            Background="#152E28" BorderBrush="#10B981" Foreground="#34D399" FontWeight="SemiBold" ToolTip="Sync all sales and cash ledger to Excel">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⚡ " FontSize="11"/>
+                                            <TextBlock Text="Sync Excel" FontWeight="Bold"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding OpenCashDrawerCommand}" Style="{StaticResource CounterChipButton}" Padding="12,5" FontSize="11.5"
+                                            Background="#1A2036" BorderBrush="#F59E0B" Foreground="#F59E0B" FontWeight="Bold"
+                                            ToolTip="Open full-featured Cash Drawer Window for cash in/out, expenses, customer borrow and float setup">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="💰 " FontSize="12"/>
+                                            <TextBlock Text="Launch Cash Drawer Window" FontWeight="Bold"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- 7 Financial KPI Cards -->
+                        <UniformGrid Columns="4" Rows="2" Margin="0,0,0,12">
+                            <!-- 1. Opening Till -->
+                            <Border Background="#1C1D27" CornerRadius="6" Padding="12,10" Margin="0,0,4,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="OPENING FLOAT" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBlock Text="{Binding DrawerOpeningTill, StringFormat='₹{0:F2}'}" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,2,0,0"/>
+                                    <TextBlock Text="Morning till cash" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 2. Cash In Drawer -->
+                            <Border Background="#162920" CornerRadius="6" Padding="12,10" Margin="2,0,2,6" BorderBrush="#10B981" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="CASH IN DRAWER" FontSize="10.5" FontWeight="Bold" Foreground="#10B981"/>
+                                    <TextBlock Text="{Binding DrawerCashBalance, StringFormat='₹{0:F2}'}" FontSize="18" FontWeight="Bold" Foreground="#10B981" Margin="0,2,0,0"/>
+                                    <TextBlock Text="Physical notes in till" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 3. UPI / Online -->
+                            <Border Background="#162538" CornerRadius="6" Padding="12,10" Margin="2,0,2,6" BorderBrush="#38BDF8" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="ONLINE / UPI" FontSize="10.5" FontWeight="Bold" Foreground="#38BDF8"/>
+                                    <TextBlock Text="{Binding DrawerUpiTotal, StringFormat='₹{0:F2}'}" FontSize="18" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,0"/>
+                                    <TextBlock Text="QR &amp; Bank collections" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 4. Today Net -->
+                            <Border Background="#251E38" CornerRadius="6" Padding="12,10" Margin="4,0,0,6" BorderBrush="#A78BFA" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="TOTAL CASH+UPI NET" FontSize="10.5" FontWeight="Bold" Foreground="#A78BFA"/>
+                                    <TextBlock Text="{Binding DrawerTodayNet, StringFormat='₹{0:F2}'}" FontSize="18" FontWeight="Bold" Foreground="#A78BFA" Margin="0,2,0,0"/>
+                                    <TextBlock Text="Cash + UPI combined" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 5. Total Income -->
+                            <Border Background="#1C1D27" CornerRadius="6" Padding="12,10" Margin="0,0,4,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="TOTAL INCOME" FontSize="10.5" FontWeight="Bold" Foreground="#34D399"/>
+                                    <TextBlock Text="{Binding DrawerTotalIncome, StringFormat='₹{0:F2}'}" FontSize="18" FontWeight="Bold" Foreground="#34D399" Margin="0,2,0,0"/>
+                                    <TextBlock Text="Prints, Xerox &amp; Services" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 6. Total Expenses -->
+                            <Border Background="#1C1D27" CornerRadius="6" Padding="12,10" Margin="2,0,2,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="EXPENSES OUT" FontSize="10.5" FontWeight="Bold" Foreground="#F87171"/>
+                                    <TextBlock Text="{Binding DrawerTotalExpense, StringFormat='₹{0:F2}'}" FontSize="18" FontWeight="Bold" Foreground="#F87171" Margin="0,2,0,0"/>
+                                    <TextBlock Text="Shop bills &amp; payouts" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 7. Customer Due -->
+                            <Border Background="#1C1D27" CornerRadius="6" Padding="12,10" Margin="2,0,2,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="CUSTOMER BORROW / DUE" FontSize="10.5" FontWeight="Bold" Foreground="#FBBF24"/>
+                                    <TextBlock Text="{Binding DrawerCustomerDue, StringFormat='₹{0:F2}'}" FontSize="18" FontWeight="Bold" Foreground="#FBBF24" Margin="0,2,0,0"/>
+                                    <TextBlock Text="Unpaid customer balance" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 8. Linked Excel Status -->
+                            <Border Background="#1C1D27" CornerRadius="6" Padding="12,10" Margin="4,0,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="LINKED EXCEL WORKBOOK" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBlock Text="{Binding AttachedExcelName}" FontSize="13" FontWeight="Bold" Foreground="#38BDF8" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Button Content="🔗 Link" Command="{Binding LinkExcelFileCommand}" Style="{StaticResource CounterChipButton}" Padding="6,2" FontSize="10" Margin="0,0,4,0"/>
+                                        <Button Content="📂 Open" Command="{Binding OpenAttachedExcelCommand}" Style="{StaticResource CounterChipButton}" Padding="6,2" FontSize="10"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- Recent Cash Transactions Table -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="14"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <TextBlock Text="📜 TODAY'S REAL-TIME CASH &amp; UPI TRANSACTIONS" FontWeight="Bold" FontSize="12" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Every print bill, Xerox, cash payment or expense appears here instantly" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Border Background="#191923" CornerRadius="6" Padding="4">
+                                    <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding DrawerRecentTransactions}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#222332" CornerRadius="4" Padding="10,6" Margin="2,2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="90"/>
+                                                                <ColumnDefinition Width="80"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="80"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='{}{0:hh:mm:ss tt}'}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="1" Background="#2B2D42" CornerRadius="3" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Category}" FontSize="10.5" FontWeight="Bold" Foreground="White"/>
+                                                            </Border>
+                                                            <TextBlock Grid.Column="2" Text="{Binding Description}" FontSize="11.5" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" Margin="8,0"/>
+                                                            <TextBlock Grid.Column="3" Text="{Binding Medium}" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="4" Text="{Binding Amount, StringFormat='₹{0:F2}'}" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
             <!-- ════ MODAL OVERLAY: CUSTOM PRINT & PHOTOCOPY RATES ════ -->
             <Grid x:Name="RateSettingsModal" Visibility="Collapsed" Background="#D00A0B12" Grid.RowSpan="3" Panel.ZIndex="999">
                 <Border Background="#1A1C2B" BorderBrush="#10B981" BorderThickness="1.5" CornerRadius="12"
@@ -819,6 +1622,152 @@
                                 <Button Content="✅ Save &amp; Apply Rates" Click="CloseRateSettings_Click"
                                         Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="12.5"
                                         Width="180" Height="34" Cursor="Hand" BorderThickness="0">
+                                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ════ MODAL OVERLAY: BROTHER PHYSICAL INK TANK CALIBRATION ════ -->
+            <Grid Visibility="{Binding IsInkCalibrateModalOpen, Converter={StaticResource BoolToVis}}" 
+                  Background="#D00A0B12" Grid.RowSpan="3" Panel.ZIndex="999">
+                <Border Background="#1A1C2B" BorderBrush="#38BDF8" BorderThickness="1.5" CornerRadius="12"
+                        Width="560" MaxHeight="540" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        SnapsToDevicePixels="True">
+                    <Border.Effect>
+                        <DropShadowEffect Color="#000000" BlurRadius="25" ShadowDepth="8" Opacity="0.85"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/> <!-- Header -->
+                            <RowDefinition Height="*"/>    <!-- Body -->
+                            <RowDefinition Height="Auto"/> <!-- Footer Actions -->
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <Border Grid.Row="0" Background="#222538" CornerRadius="10,10,0,0" Padding="16,12" BorderBrush="#2D314A" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🎛️ " FontSize="16" VerticalAlignment="Center"/>
+                                    <TextBlock Text="BROTHER DCP-T530DW — PHYSICAL INK REFILL &amp; CALIBRATION" FontWeight="Bold" FontSize="13" Foreground="#38BDF8" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button Content="✕" HorizontalAlignment="Right" Command="{Binding CloseInkCalibrateModalCommand}"
+                                        Style="{StaticResource StudioCloseButton}" Width="28" Height="28" FontSize="13"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Body -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="18,14">
+                            <StackPanel>
+                                <TextBlock Text="Brother DCP-T530DW uses external ink bottles (BTD60BK / BT5000 C,M,Y) and does not have electronic liquid float sensors. If you refilled your tanks, set the visual ink level below to keep your meter audit 100% accurate without fake or hardcoded numbers."
+                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,14"/>
+
+                                <!-- 1-Click Refill All Button -->
+                                <Border Background="#14261F" BorderBrush="#10B981" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="⚡ Just Poured In Fresh Ink Bottles?" FontWeight="Bold" FontSize="12" Foreground="#10B981"/>
+                                            <TextBlock Text="Click this button to set all 4 tanks (Black, Cyan, Magenta, Yellow) to 100% Full." FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="⚡ Refill All 100%" Command="{Binding RefillAllTanks100Command}"
+                                                Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="12" Padding="14,7" BorderThickness="0" Cursor="Hand">
+                                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 4 Color Sliders -->
+                                <TextBlock Text="Adjust Individual Tank Levels:" FontWeight="Bold" FontSize="11.5" Foreground="White" Margin="0,0,0,8"/>
+
+                                <!-- Black -->
+                                <Border Background="#141520" CornerRadius="6" Padding="10,8" Margin="0,0,0,6" BorderBrush="#555" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Width="10" Height="10" Background="#111" BorderBrush="#888" BorderThickness="1" CornerRadius="2" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Black (BTD60BK)" FontWeight="SemiBold" FontSize="11" Foreground="White" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding CalibBlack}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding CalibBlack, StringFormat='{}{0}%'}" FontWeight="Bold" FontSize="12" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Cyan -->
+                                <Border Background="#141520" CornerRadius="6" Padding="10,8" Margin="0,0,0,6" BorderBrush="#00BCD4" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Width="10" Height="10" Background="#00BCD4" CornerRadius="2" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Cyan (BT5000C)" FontWeight="SemiBold" FontSize="11" Foreground="#00BCD4" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding CalibCyan}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding CalibCyan, StringFormat='{}{0}%'}" FontWeight="Bold" FontSize="12" Foreground="#00BCD4" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Magenta -->
+                                <Border Background="#141520" CornerRadius="6" Padding="10,8" Margin="0,0,0,6" BorderBrush="#E91E63" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Width="10" Height="10" Background="#E91E63" CornerRadius="2" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Magenta (BT5000M)" FontWeight="SemiBold" FontSize="11" Foreground="#E91E63" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding CalibMagenta}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding CalibMagenta, StringFormat='{}{0}%'}" FontWeight="Bold" FontSize="12" Foreground="#E91E63" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Yellow -->
+                                <Border Background="#141520" CornerRadius="6" Padding="10,8" Margin="0,0,0,10" BorderBrush="#FFEB3B" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Width="10" Height="10" Background="#FFEB3B" CornerRadius="2" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Yellow (BT5000Y)" FontWeight="SemiBold" FontSize="11" Foreground="#FFEB3B" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding CalibYellow}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding CalibYellow, StringFormat='{}{0}%'}" FontWeight="Bold" FontSize="12" Foreground="#FFEB3B" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Prefer Visual Level Checkbox -->
+                                <CheckBox IsChecked="{Binding PreferVisualTanks}" Margin="0,4,0,0">
+                                    <TextBlock Text="Prefer visual tank levels over printer ROM chip estimation (Recommended for manual bottle refills)" 
+                                               FontSize="11" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"/>
+                                </CheckBox>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Footer -->
+                        <Border Grid.Row="2" Background="#222538" CornerRadius="0,0,10,10" Padding="16,12" BorderBrush="#2D314A" BorderThickness="0,1,0,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="✕ Cancel" Command="{Binding CloseInkCalibrateModalCommand}" Width="90" Height="34" Margin="0,0,10,0"/>
+                                <Button Content="✅ Save &amp; Apply Calibration" Command="{Binding SaveInkCalibrationCommand}"
+                                        Background="#38BDF8" Foreground="#0B132B" FontWeight="Bold" FontSize="12"
+                                        Width="190" Height="34" Cursor="Hand" BorderThickness="0">
                                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
                                 </Button>
                             </StackPanel>

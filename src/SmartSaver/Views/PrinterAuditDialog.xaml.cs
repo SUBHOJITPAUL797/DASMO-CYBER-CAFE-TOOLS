@@ -5,8 +5,6 @@ namespace SmartSaver.Views;
 
 public partial class PrinterAuditDialog : Window
 {
-    private static PrinterAuditDialog? _activeInstance;
-
     public PrinterAuditDialog()
     {
         InitializeComponent();
@@ -17,19 +15,8 @@ public partial class PrinterAuditDialog : Window
 
     public static void ShowPrinterAudit()
     {
-        if (_activeInstance != null && _activeInstance.IsLoaded)
-        {
-            if (_activeInstance.WindowState == WindowState.Minimized)
-            {
-                _activeInstance.WindowState = WindowState.Normal;
-            }
-            _activeInstance.Activate();
-            return;
-        }
-
-        _activeInstance = new PrinterAuditDialog();
-        _activeInstance.Closed += (_, _) => _activeInstance = null;
-        _activeInstance.Show();
+        // Direct integration: Activate Tab 1 (Hardware Meter & Walk-up Xerox Audit) in unified PrintTrackerStudioWindow
+        PrintTrackerStudioWindow.ShowStudio(initialTab: 1);
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)

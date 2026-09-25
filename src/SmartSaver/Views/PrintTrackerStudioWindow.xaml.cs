@@ -101,7 +101,7 @@ public partial class PrintTrackerStudioWindow : Window
     }
 
 
-    public static void ShowStudio()
+    public static void ShowStudio(int initialTab = 0)
     {
         try
         {
@@ -112,12 +112,14 @@ public partial class PrintTrackerStudioWindow : Window
                 {
                     existing.WindowState = WindowState.Normal;
                 }
+                existing.Vm.SelectedWorkspaceTab = initialTab;
                 existing.Activate();
                 existing.Focus();
                 return;
             }
 
             var win = new PrintTrackerStudioWindow();
+            win.Vm.SelectedWorkspaceTab = initialTab;
             win.Show();
             win.Activate();
             win.Focus();
@@ -162,6 +164,13 @@ public partial class PrintTrackerStudioWindow : Window
             if (RateSettingsModal != null && RateSettingsModal.Visibility == Visibility.Visible)
             {
                 RateSettingsModal.Visibility = Visibility.Collapsed;
+                e.Handled = true;
+                return;
+            }
+
+            if (Vm.IsInkCalibrateModalOpen)
+            {
+                Vm.IsInkCalibrateModalOpen = false;
                 e.Handled = true;
                 return;
             }

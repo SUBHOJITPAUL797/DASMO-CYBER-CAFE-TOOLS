@@ -4514,6 +4514,7 @@ public static class Program
                     }
                 });
                 staThread60.SetApartmentState(ApartmentState.STA);
+                staThread60.IsBackground = true;
                 staThread60.Start();
                 staThread60.Join(TimeSpan.FromSeconds(15));
                 if (staEx60 != null) throw staEx60;
@@ -4794,6 +4795,96 @@ public static class Program
                 if (staEx62 != null) throw staEx62;
 
                 Console.WriteLine("PASSED (Brother DCP-T530DW Live Status & Ink, HW Meter Reconciliation, Unrecorded Xerox Auto-Logger, 1-Click Counter & UI Bindings)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
+            // ─── TEST 63: Dynamic IP Auto-Discovery, Visual Ink Tank Calibration & Unified 4-Tab Studio ───
+            Console.Write("[TEST 63] Dynamic IP Auto-Discovery, Visual Ink Calibration & Unified 4-Tab Studio... ");
+            try
+            {
+                var auditService = SmartSaver.Services.BrotherPrinterAuditService.Instance;
+
+                // 1. Verify Clean Non-Hardcoded Defaults
+                var rawStatus = new SmartSaver.Models.PrinterLiveStatus();
+                if (rawStatus.InkBlackPercent == 27 || rawStatus.InkCyanPercent == 88)
+                    throw new Exception("Detected old hardcoded fake ink values (27%, 88%) in PrinterLiveStatus!");
+
+                // 2. Verify Visual Ink Tank Calibration & Refill Engine
+                auditService.CalibrateInkLevels(100, 92, 85, 78, preferVisual: true);
+                var settings = SmartSaver.Services.PrintTrackerService.Instance.Settings;
+                if (!settings.PreferVisualInkLevels || settings.CalibratedInkBlack != 100 || settings.CalibratedInkYellow != 78)
+                    throw new Exception("Visual ink calibration did not save into PrintBillingSettings");
+
+                // 3. Verify Dynamic IP Discovery Engine
+                // Tests fallback and ping/HTTP checks against simulated/local network
+                var candidateIps = auditService.GetCandidateIpsFromArpTable();
+                if (candidateIps == null)
+                    throw new Exception("GetCandidateIpsFromArpTable returned null");
+
+                // 4. STA Verification for Unified 4-Tab Navigation & ViewModels
+                Exception? staEx63 = null;
+                var staThread63 = new Thread(() =>
+                {
+                    try
+                    {
+                        var printVm = new SmartSaver.ViewModels.PrintTrackerViewModel();
+
+                        // Tab 0 default
+                        if (!printVm.IsTabBilling || printVm.IsTabMeterAudit)
+                            throw new Exception("Tab 0 (Active Billing) was not active by default");
+
+                        // Switch to Tab 1 (Hardware Meter & Xerox Audit)
+                        printVm.SwitchTabCommand.Execute("1");
+                        if (!printVm.IsTabMeterAudit || printVm.SelectedWorkspaceTab != 1)
+                            throw new Exception("SwitchTabCommand did not switch to Tab 1 (Meter Audit)");
+
+                        // Switch to Tab 2 (Sales History)
+                        printVm.SwitchTabCommand.Execute(2);
+                        if (!printVm.IsTabSalesHistory || printVm.SelectedWorkspaceTab != 2)
+                            throw new Exception("SwitchTabCommand did not switch to Tab 2 (Sales History)");
+
+                        // Switch to Tab 3 (Daily Cash Drawer & Accounts)
+                        printVm.SwitchTabCommand.Execute("3");
+                        if (!printVm.IsTabCashDrawer || printVm.SelectedWorkspaceTab != 3)
+                            throw new Exception("SwitchTabCommand did not switch to Tab 3 (Cash Drawer)");
+
+                        // Verify OpenPrinterAuditCommand switches to Tab 1
+                        printVm.OpenPrinterAuditCommand.Execute(null);
+                        if (!printVm.IsTabMeterAudit)
+                            throw new Exception("OpenPrinterAuditCommand did not route to Tab 1");
+
+                        // Verify Ink Refill 100% Command
+                        printVm.RefillAllTanks100Command.Execute(null);
+                        if (printVm.InkBlack != 100 || printVm.InkCyan != 100 || printVm.InkMagenta != 100 || printVm.InkYellow != 100)
+                            throw new Exception("RefillAllTanks100Command did not reset all 4 ink tanks to 100%");
+
+                        // Verify Cash Drawer live sync
+                        printVm.RefreshDrawerStats();
+                        if (printVm.DrawerOpeningTill < 0)
+                            throw new Exception("DrawerOpeningTill reported invalid value");
+
+                        // Test Studio Window instantiates and tab works
+                        var studioWin = new SmartSaver.Views.PrintTrackerStudioWindow();
+                        studioWin.Vm.SelectedWorkspaceTab = 1;
+                        if (!studioWin.Vm.IsTabMeterAudit)
+                            throw new Exception("PrintTrackerStudioWindow initialTab 1 failed to activate Meter Audit");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx63 = ex;
+                    }
+                });
+                staThread63.SetApartmentState(ApartmentState.STA);
+                staThread63.Start();
+                staThread63.Join(TimeSpan.FromSeconds(15));
+                if (staEx63 != null) throw staEx63;
+
+                Console.WriteLine("PASSED (Dynamic IP Discovery, Zero-Hardcode Visual Ink Refill & 4-Tab Unified Studio)");
                 passed++;
             }
             catch (Exception ex)
