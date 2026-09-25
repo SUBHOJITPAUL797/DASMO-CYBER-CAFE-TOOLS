@@ -130,12 +130,34 @@ public class AppUpdateService
                 Log.Debug(ex, "GitHub Releases API unavailable; using Firestore cloud policy fallback.");
             }
 
-            // Determine latest version and download URL
-            string effectiveLatest = !string.IsNullOrWhiteSpace(policy.LatestVersion) ? policy.LatestVersion : gitHubLatest;
-            if (string.IsNullOrWhiteSpace(effectiveLatest)) effectiveLatest = CurrentVersion;
+            // Determine latest version and download URL: Pick the highest version between GitHub and Firestore
+            string effectiveLatest = CurrentVersion;
+            string effectiveDownloadUrl = string.Empty;
+            string effectiveNotes = string.Empty;
 
-            string effectiveDownloadUrl = !string.IsNullOrWhiteSpace(policy.UpdateDownloadUrl) ? policy.UpdateDownloadUrl : gitHubDownloadUrl;
-            string effectiveNotes = !string.IsNullOrWhiteSpace(policy.UpdateChangelog) ? policy.UpdateChangelog : gitHubNotes;
+            bool gitHubIsNewer = !string.IsNullOrWhiteSpace(gitHubLatest) &&
+                (string.IsNullOrWhiteSpace(policy.LatestVersion) || FirebaseCloudAuthService.IsVersionOutdated(policy.LatestVersion, gitHubLatest));
+
+            if (gitHubIsNewer)
+            {
+                effectiveLatest = gitHubLatest;
+                effectiveDownloadUrl = !string.IsNullOrWhiteSpace(gitHubDownloadUrl) ? gitHubDownloadUrl : policy.UpdateDownloadUrl;
+                effectiveNotes = !string.IsNullOrWhiteSpace(gitHubNotes) ? gitHubNotes : policy.UpdateChangelog;
+            }
+            else if (!string.IsNullOrWhiteSpace(policy.LatestVersion))
+            {
+                effectiveLatest = policy.LatestVersion;
+                effectiveDownloadUrl = !string.IsNullOrWhiteSpace(policy.UpdateDownloadUrl) ? policy.UpdateDownloadUrl : gitHubDownloadUrl;
+                effectiveNotes = !string.IsNullOrWhiteSpace(policy.UpdateChangelog) ? policy.UpdateChangelog : gitHubNotes;
+            }
+            else if (!string.IsNullOrWhiteSpace(gitHubLatest))
+            {
+                effectiveLatest = gitHubLatest;
+                effectiveDownloadUrl = gitHubDownloadUrl;
+                effectiveNotes = gitHubNotes;
+            }
+
+            if (string.IsNullOrWhiteSpace(effectiveLatest)) effectiveLatest = CurrentVersion;
 
             result.LatestVersion = effectiveLatest;
             result.DownloadUrl = effectiveDownloadUrl;
