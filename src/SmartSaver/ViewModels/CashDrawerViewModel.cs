@@ -168,6 +168,31 @@ public class CashDrawerViewModel : ViewModelBase
         set => SetProperty(ref _selectedCategoryString, value);
     }
 
+    private bool _isCashMediumSelected = true;
+    public bool IsCashMediumSelected
+    {
+        get => _isCashMediumSelected;
+        set
+        {
+            if (SetProperty(ref _isCashMediumSelected, value))
+            {
+                OnPropertyChanged(nameof(IsOnlineMediumSelected));
+            }
+        }
+    }
+
+    public bool IsOnlineMediumSelected
+    {
+        get => !_isCashMediumSelected;
+        set
+        {
+            if (value)
+            {
+                IsCashMediumSelected = false;
+            }
+        }
+    }
+
     public string[] AvailableCategories { get; } = new[]
     {
         "Customer UPI ➔ Cash Given",
@@ -254,11 +279,22 @@ public class CashDrawerViewModel : ViewModelBase
         {
             if (p is string id)
             {
-                var ask = MessageBox.Show("Has this customer cleared and repaid this amount in Cash?",
-                    "Clear Customer Debt", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                var ask = MessageBox.Show(
+                    "How was this debt cleared / repaid by the customer?\n\n" +
+                    "• Click 'Yes' if repaid in Physical Cash (💵)\n" +
+                    "• Click 'No' if repaid via Online UPI / QR (📱)\n" +
+                    "• Click 'Cancel' to leave as unpaid",
+                    "Clear Customer Debt",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
                 if (ask == MessageBoxResult.Yes)
                 {
                     _service.ClearCustomerDebt(id, PaymentMedium.CashInDrawer);
+                }
+                else if (ask == MessageBoxResult.No)
+                {
+                    _service.ClearCustomerDebt(id, PaymentMedium.OnlineUPI);
                 }
             }
         });
@@ -318,9 +354,10 @@ public class CashDrawerViewModel : ViewModelBase
             double.TryParse(commStr, NumberStyles.Any, CultureInfo.InvariantCulture, out commission);
         }
 
-        string custName = CustomerNameInput.Trim();
-        string custPhone = CustomerPhoneInput.Trim();
-        string desc = DescriptionInput.Trim();
+        string custName = CustomerNameInput?.Trim() ?? "";
+        string custPhone = CustomerPhoneInput?.Trim() ?? "";
+        string desc = DescriptionInput?.Trim() ?? "";
+        var selectedMedium = IsOnlineMediumSelected ? PaymentMedium.OnlineUPI : PaymentMedium.CashInDrawer;
 
         switch (SelectedCategoryString)
         {
@@ -337,35 +374,35 @@ public class CashDrawerViewModel : ViewModelBase
                 break;
 
             case "Print & Xerox Sales":
-                _service.AddTransaction(TransactionDirection.Income, PaymentMedium.CashInDrawer, CashCategory.PrintSales, amt, string.IsNullOrEmpty(desc) ? "Print / Xerox Counter Sale" : desc, custName, custPhone);
+                _service.AddTransaction(TransactionDirection.Income, selectedMedium, CashCategory.PrintSales, amt, string.IsNullOrEmpty(desc) ? "Print / Xerox Counter Sale" : desc, custName, custPhone);
                 break;
 
             case "Online Form Fillup Fee":
-                _service.AddTransaction(TransactionDirection.Income, PaymentMedium.CashInDrawer, CashCategory.OnlineFormFillup, amt, string.IsNullOrEmpty(desc) ? "Online Form / Application Fee" : desc, custName, custPhone);
+                _service.AddTransaction(TransactionDirection.Income, selectedMedium, CashCategory.OnlineFormFillup, amt, string.IsNullOrEmpty(desc) ? "Online Form / Application Fee" : desc, custName, custPhone);
                 break;
 
             case "Lamination & Photos":
-                _service.AddTransaction(TransactionDirection.Income, PaymentMedium.CashInDrawer, CashCategory.LaminationPhotos, amt, string.IsNullOrEmpty(desc) ? "Lamination / Passport Photo" : desc, custName, custPhone);
+                _service.AddTransaction(TransactionDirection.Income, selectedMedium, CashCategory.LaminationPhotos, amt, string.IsNullOrEmpty(desc) ? "Lamination / Passport Photo" : desc, custName, custPhone);
                 break;
 
             case "Owner Investment (Capital)":
-                _service.AddTransaction(TransactionDirection.Income, PaymentMedium.CashInDrawer, CashCategory.OwnerInvestment, amt, string.IsNullOrEmpty(desc) ? "Owner Added Drawer Cash" : desc);
+                _service.AddTransaction(TransactionDirection.Income, selectedMedium, CashCategory.OwnerInvestment, amt, string.IsNullOrEmpty(desc) ? "Owner Added Drawer Cash" : desc);
                 break;
 
             case "Owner Withdrawal (Personal)":
-                _service.AddTransaction(TransactionDirection.Expense, PaymentMedium.CashInDrawer, CashCategory.OwnerWithdrawal, amt, string.IsNullOrEmpty(desc) ? "Owner Personal Withdrawal" : desc);
+                _service.AddTransaction(TransactionDirection.Expense, selectedMedium, CashCategory.OwnerWithdrawal, amt, string.IsNullOrEmpty(desc) ? "Owner Personal Withdrawal" : desc);
                 break;
 
             case "Shop Expense (Paper / Ink)":
-                _service.AddTransaction(TransactionDirection.Expense, PaymentMedium.CashInDrawer, CashCategory.ShopExpensePaperInk, amt, string.IsNullOrEmpty(desc) ? "Paper Ream / Ink Purchase" : desc);
+                _service.AddTransaction(TransactionDirection.Expense, selectedMedium, CashCategory.ShopExpensePaperInk, amt, string.IsNullOrEmpty(desc) ? "Paper Ream / Ink Purchase" : desc);
                 break;
 
             case "Bills / Rent / Electricity":
-                _service.AddTransaction(TransactionDirection.Expense, PaymentMedium.CashInDrawer, CashCategory.ShopExpenseBillsRent, amt, string.IsNullOrEmpty(desc) ? "Bills / Electricity / Internet" : desc);
+                _service.AddTransaction(TransactionDirection.Expense, selectedMedium, CashCategory.ShopExpenseBillsRent, amt, string.IsNullOrEmpty(desc) ? "Bills / Electricity / Internet" : desc);
                 break;
 
             default:
-                _service.AddTransaction(TransactionDirection.Income, PaymentMedium.CashInDrawer, CashCategory.Other, amt, string.IsNullOrEmpty(desc) ? "Counter Transaction" : desc, custName, custPhone);
+                _service.AddTransaction(TransactionDirection.Income, selectedMedium, CashCategory.Other, amt, string.IsNullOrEmpty(desc) ? "Counter Transaction" : desc, custName, custPhone);
                 break;
         }
 
@@ -518,7 +555,13 @@ public class CashDrawerViewModel : ViewModelBase
     private void RefreshAll()
     {
         Transactions.Clear();
-        foreach (var tx in _service.Today.Transactions)
+        List<CashTransaction> snapshot;
+        lock (_service.Today.Transactions)
+        {
+            snapshot = _service.Today.Transactions.ToList();
+        }
+
+        foreach (var tx in snapshot)
         {
             Transactions.Add(new CashTransactionItemViewModel(tx));
         }

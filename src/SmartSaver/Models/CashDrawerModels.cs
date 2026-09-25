@@ -86,24 +86,60 @@ public class DailyCashRegister
 
     // ── Computed Real-time Balances ──
     [JsonIgnore]
-    public double TotalCashIn =>
-        Transactions.Where(t => t.Medium == PaymentMedium.CashInDrawer && t.Direction == TransactionDirection.Income).Sum(t => t.Amount)
-        + Transactions.Where(t => t.Category == CashCategory.CustomerCashBankDeposit).Sum(t => t.Amount);
+    public double TotalCashIn
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Where(t => t.Medium == PaymentMedium.CashInDrawer && t.Direction == TransactionDirection.Income).Sum(t => t.Amount)
+                    + Transactions.Where(t => t.Category == CashCategory.CustomerCashBankDeposit).Sum(t => t.Amount);
+            }
+        }
+    }
 
     [JsonIgnore]
-    public double TotalCashOut =>
-        Transactions.Where(t => t.Medium == PaymentMedium.CashInDrawer && t.Direction == TransactionDirection.Expense).Sum(t => t.Amount)
-        + Transactions.Where(t => t.Category == CashCategory.CustomerUpiCashPayout).Sum(t => t.Amount);
+    public double TotalCashOut
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Where(t => t.Medium == PaymentMedium.CashInDrawer &&
+                                               t.Direction == TransactionDirection.Expense &&
+                                               t.Category != CashCategory.CustomerBorrowCredit).Sum(t => t.Amount)
+                    + Transactions.Where(t => t.Category == CashCategory.CustomerUpiCashPayout).Sum(t => t.Amount);
+            }
+        }
+    }
 
     [JsonIgnore]
-    public double TotalOnlineIn =>
-        Transactions.Where(t => t.Medium == PaymentMedium.OnlineUPI && t.Direction == TransactionDirection.Income).Sum(t => t.Amount)
-        + Transactions.Where(t => t.Category == CashCategory.CustomerUpiCashPayout).Sum(t => t.Amount + t.CommissionFee);
+    public double TotalOnlineIn
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Where(t => t.Medium == PaymentMedium.OnlineUPI && t.Direction == TransactionDirection.Income).Sum(t => t.Amount)
+                    + Transactions.Where(t => t.Category == CashCategory.CustomerUpiCashPayout).Sum(t => t.Amount + t.CommissionFee);
+            }
+        }
+    }
 
     [JsonIgnore]
-    public double TotalOnlineOut =>
-        Transactions.Where(t => t.Medium == PaymentMedium.OnlineUPI && t.Direction == TransactionDirection.Expense).Sum(t => t.Amount)
-        + Transactions.Where(t => t.Category == CashCategory.CustomerCashBankDeposit).Sum(t => t.Amount);
+    public double TotalOnlineOut
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Where(t => t.Medium == PaymentMedium.OnlineUPI &&
+                                               t.Direction == TransactionDirection.Expense &&
+                                               t.Category != CashCategory.CustomerBorrowCredit).Sum(t => t.Amount)
+                    + Transactions.Where(t => t.Category == CashCategory.CustomerCashBankDeposit).Sum(t => t.Amount);
+            }
+        }
+    }
 
     /// <summary>
     /// Exact physical cash money currently sitting in the cash drawer right now.
@@ -118,32 +154,59 @@ public class DailyCashRegister
     public double CurrentOnlineBalance => OpeningOnlineBalance + TotalOnlineIn - TotalOnlineOut;
 
     /// <summary>
-    /// Gross business revenue earned today (excluding capital transfers/investments).
+    /// Gross business revenue earned today (excluding capital investments).
     /// </summary>
     [JsonIgnore]
-    public double TodayTotalRevenue => Transactions.Where(t =>
-        t.Direction == TransactionDirection.Income &&
-        t.Category != CashCategory.OwnerInvestment &&
-        t.Category != CashCategory.CustomerDebtRepaid).Sum(t => t.Amount)
-        + Transactions.Where(t => t.Category == CashCategory.CustomerUpiCashPayout).Sum(t => t.CommissionFee);
+    public double TodayTotalRevenue
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Where(t =>
+                    t.Direction == TransactionDirection.Income &&
+                    t.Category != CashCategory.OwnerInvestment).Sum(t => t.Amount)
+                    + Transactions.Where(t => t.Category == CashCategory.CustomerUpiCashPayout).Sum(t => t.CommissionFee);
+            }
+        }
+    }
 
     /// <summary>
-    /// Total expenses paid today (paper, ink, rent, personal withdrawals).
+    /// Total operational expenses paid today (paper, ink, rent, bills - excluding credit and owner personal drawings).
     /// </summary>
     [JsonIgnore]
-    public double TodayTotalExpenses => Transactions.Where(t =>
-        t.Direction == TransactionDirection.Expense &&
-        t.Category != CashCategory.CustomerBorrowCredit).Sum(t => t.Amount);
+    public double TodayTotalExpenses
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Where(t =>
+                    t.Direction == TransactionDirection.Expense &&
+                    t.Category != CashCategory.CustomerBorrowCredit &&
+                    t.Category != CashCategory.OwnerWithdrawal).Sum(t => t.Amount);
+            }
+        }
+    }
 
     /// <summary>
     /// Outstanding customer debt / borrow / credit balance unpaid today.
     /// </summary>
     [JsonIgnore]
-    public double TotalCustomerUnpaidDebt => Transactions.Where(t =>
-        t.Category == CashCategory.CustomerBorrowCredit && !t.IsCleared).Sum(t => t.Amount);
+    public double TotalCustomerUnpaidDebt
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Where(t =>
+                    t.Category == CashCategory.CustomerBorrowCredit && !t.IsCleared).Sum(t => t.Amount);
+            }
+        }
+    }
 
     /// <summary>
-    /// Net earnings after expenses for today.
+    /// Net earnings after operational expenses for today.
     /// </summary>
     [JsonIgnore]
     public double TodayNetProfit => TodayTotalRevenue - TodayTotalExpenses;
@@ -152,5 +215,14 @@ public class DailyCashRegister
     /// Total extra commission/fees earned today from UPI cashouts and service fees.
     /// </summary>
     [JsonIgnore]
-    public double TodayTotalCommission => Transactions.Sum(t => t.CommissionFee);
+    public double TodayTotalCommission
+    {
+        get
+        {
+            lock (Transactions)
+            {
+                return Transactions.Sum(t => t.CommissionFee);
+            }
+        }
+    }
 }

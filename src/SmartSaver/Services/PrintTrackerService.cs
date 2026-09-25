@@ -553,7 +553,20 @@ public sealed class PrintTrackerService : IDisposable
             string name = string.IsNullOrWhiteSpace(customerName) ? "Walk-in Customer" : customerName.Trim();
             string phone = string.IsNullOrWhiteSpace(customerPhone) ? "" : customerPhone.Trim();
 
-            string billNo = $"BILL-{DateTime.Now:yyyyMMdd}-{CompletedBillSessions.Count + 1:D3}";
+            string todayPrefix = $"BILL-{DateTime.Now:yyyyMMdd}-";
+            int maxSeq = 0;
+            foreach (var b in CompletedBillSessions)
+            {
+                if (b.BillNumber != null && b.BillNumber.StartsWith(todayPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string seqStr = b.BillNumber.Substring(todayPrefix.Length);
+                    if (int.TryParse(seqStr, out int s) && s > maxSeq)
+                    {
+                        maxSeq = s;
+                    }
+                }
+            }
+            string billNo = $"{todayPrefix}{maxSeq + 1:D3}";
             session = new CustomerBillSession
             {
                 SessionId = Guid.NewGuid().ToString("N"),
@@ -584,21 +597,42 @@ public sealed class PrintTrackerService : IDisposable
         // ── Auto-Integrate into Cash Drawer & Daily Finance Register ──
         try
         {
-            var medium = string.Equals(session.PaymentMode, "UPI", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(session.PaymentMode, "Card", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(session.PaymentMode, "Online", StringComparison.OrdinalIgnoreCase)
-                         ? PaymentMedium.OnlineUPI
-                         : PaymentMedium.CashInDrawer;
+            var isDue = session.PaymentMode.Contains("Due", StringComparison.OrdinalIgnoreCase) ||
+                        session.PaymentMode.Contains("Credit", StringComparison.OrdinalIgnoreCase) ||
+                        session.PaymentMode.Contains("Borrow", StringComparison.OrdinalIgnoreCase) ||
+                        session.PaymentMode.Contains("Account", StringComparison.OrdinalIgnoreCase);
 
-            CashDrawerService.Instance.AddTransaction(
-                TransactionDirection.Income,
-                medium,
-                CashCategory.PrintSales,
-                session.TotalAmount,
-                $"Bill #{session.BillNumber} ({session.TotalPages}p / {session.TotalSheets}s) - {session.CustomerName}",
-                session.CustomerName,
-                session.CustomerPhone
-            );
+            var isUpi = session.PaymentMode.Contains("UPI", StringComparison.OrdinalIgnoreCase) ||
+                        session.PaymentMode.Contains("QR", StringComparison.OrdinalIgnoreCase) ||
+                        session.PaymentMode.Contains("Online", StringComparison.OrdinalIgnoreCase) ||
+                        session.PaymentMode.Contains("Card", StringComparison.OrdinalIgnoreCase);
+
+            if (isDue)
+            {
+                CashDrawerService.Instance.RecordCustomerBorrow(
+                    session.TotalAmount,
+                    session.CustomerName,
+                    session.CustomerPhone,
+                    $"Bill #{session.BillNumber} ({session.TotalPages}p / {session.TotalSheets}s) - Due / Khata",
+                    linkedBillNumber: session.BillNumber
+                );
+            }
+            else
+            {
+                var medium = isUpi ? PaymentMedium.OnlineUPI : PaymentMedium.CashInDrawer;
+
+                CashDrawerService.Instance.AddTransaction(
+                    TransactionDirection.Income,
+                    medium,
+                    CashCategory.PrintSales,
+                    session.TotalAmount,
+                    $"Bill #{session.BillNumber} ({session.TotalPages}p / {session.TotalSheets}s) - {session.CustomerName}",
+                    session.CustomerName,
+                    session.CustomerPhone,
+                    commission: 0,
+                    linkedBillNumber: session.BillNumber
+                );
+            }
         }
         catch (Exception ex)
         {
@@ -629,7 +663,7 @@ public sealed class PrintTrackerService : IDisposable
 
     /// <summary>
     /// Permanently deletes a completed customer bill and its associated print jobs from history.
-    /// Also synchronizes with Cash Drawer & Accounts to remove the corresponding financial transaction.
+    /// Also synchronizes with Cash Drawer & Accounts across all days to remove the corresponding financial transaction.
     /// </summary>
     public bool DeleteBill(string sessionId)
     {
@@ -647,16 +681,20 @@ public sealed class PrintTrackerService : IDisposable
             SaveHistory();
         }
 
-        // Also remove from Cash Drawer transactions if found
+        // Also remove from Cash Drawer transactions across all registers if found
         if (!string.IsNullOrEmpty(deletedBillNo))
         {
             try
             {
-                var matchingTx = CashDrawerService.Instance.Today.Transactions
-                    .FirstOrDefault(t => t.Description.Contains(deletedBillNo));
-                if (matchingTx != null)
+                var matchingTxs = CashDrawerService.Instance.AllDays
+                    .SelectMany(r => r.Transactions)
+                    .Where(t => (!string.IsNullOrEmpty(t.LinkedBillNumber) && t.LinkedBillNumber == deletedBillNo) ||
+                                 t.Description.Contains(deletedBillNo))
+                    .ToList();
+
+                foreach (var tx in matchingTxs)
                 {
-                    CashDrawerService.Instance.DeleteTransaction(matchingTx.Id);
+                    CashDrawerService.Instance.DeleteTransaction(tx.Id);
                 }
             }
             catch (Exception ex)

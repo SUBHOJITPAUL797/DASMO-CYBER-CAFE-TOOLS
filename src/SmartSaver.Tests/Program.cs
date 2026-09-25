@@ -4554,6 +4554,47 @@ public static class Program
                 if (matchingTx.CustomerName != "Pooja Sharma")
                     throw new Exception($"Matching transaction customer name mismatch. Expected Pooja Sharma, got: {matchingTx.CustomerName}");
 
+                // 2b. Verify Due / Credit Billing & Debt Preservation
+                double cashBeforeBorrow = drawer.Today.CurrentCashInDrawer;
+                tracker.AddManualJob("College Project Xerox Due", 10, false, false);
+                var dueBillSession = tracker.CompleteCustomerBill("Rahul Das", "9830012345", "Due / Account", "College project prints");
+                
+                var borrowTx = drawer.Today.Transactions.FirstOrDefault(t => t.LinkedBillNumber == dueBillSession.BillNumber);
+                if (borrowTx == null || borrowTx.Category != CashCategory.CustomerBorrowCredit || borrowTx.IsCleared)
+                    throw new Exception("Due / Account bill was not properly recorded as an Uncleared CustomerBorrowCredit transaction");
+                if (Math.Abs(drawer.Today.CurrentCashInDrawer - cashBeforeBorrow) > 0.01)
+                    throw new Exception("CustomerBorrowCredit erroneously deducted physical cash from CashInDrawer!");
+                if (Math.Abs(drawer.Today.TotalCustomerUnpaidDebt - dueBillSession.TotalAmount) > 0.01)
+                    throw new Exception($"TotalCustomerUnpaidDebt mismatch. Expected: {dueBillSession.TotalAmount}, got: {drawer.Today.TotalCustomerUnpaidDebt}");
+
+                // Repay customer debt via Online UPI
+                double onlineBeforeRepay = drawer.Today.CurrentOnlineBalance;
+                bool debtRepaid = drawer.ClearCustomerDebt(borrowTx.Id, PaymentMedium.OnlineUPI);
+                if (!debtRepaid || !borrowTx.IsCleared)
+                    throw new Exception("ClearCustomerDebt failed to clear outstanding customer borrow");
+                if (drawer.Today.TotalCustomerUnpaidDebt > 0.01)
+                    throw new Exception("TotalCustomerUnpaidDebt was not 0 after debt repayment");
+                if (Math.Abs(drawer.Today.CurrentOnlineBalance - (onlineBeforeRepay + dueBillSession.TotalAmount)) > 0.01)
+                    throw new Exception("ClearCustomerDebt via OnlineUPI did not credit CurrentOnlineBalance correctly");
+
+                // 2c. Verify Monotonic Bill Numbering after Bill Deletion
+                tracker.AddManualJob("Bill Seq Test 1", 1, false, false);
+                var billSeq1 = tracker.CompleteCustomerBill("Cust A", "111", "Cash");
+                tracker.AddManualJob("Bill Seq Test 2", 1, false, false);
+                var billSeq2 = tracker.CompleteCustomerBill("Cust B", "222", "UPI / QR Code");
+
+                // Delete first bill in sequence
+                tracker.DeleteBill(billSeq1.SessionId);
+
+                // Add next bill and confirm sequence is monotonic (does NOT reuse Deleted Bill Number)
+                tracker.AddManualJob("Bill Seq Test 3", 1, false, false);
+                var billSeq3 = tracker.CompleteCustomerBill("Cust C", "333", "Cash");
+
+                int seq2 = int.Parse(billSeq2.BillNumber.Substring(billSeq2.BillNumber.LastIndexOf('-') + 1));
+                int seq3 = int.Parse(billSeq3.BillNumber.Substring(billSeq3.BillNumber.LastIndexOf('-') + 1));
+                if (seq3 <= seq2)
+                    throw new Exception($"Bill numbering collision detected! Seq3 ({seq3}) must be strictly greater than Seq2 ({seq2})");
+
                 // Verify DeleteBill removes transaction from Cash Drawer
                 bool billDeleted = tracker.DeleteBill(billedSession.SessionId);
                 if (!billDeleted)

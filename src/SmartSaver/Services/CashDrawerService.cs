@@ -85,7 +85,8 @@ public sealed class CashDrawerService
         string description,
         string customerName = "",
         string customerPhone = "",
-        double commission = 0)
+        double commission = 0,
+        string? linkedBillNumber = null)
     {
         var tx = new CashTransaction
         {
@@ -98,17 +99,21 @@ public sealed class CashDrawerService
             Description = description,
             CustomerName = customerName,
             CustomerPhone = customerPhone,
+            LinkedBillNumber = linkedBillNumber,
             IsCleared = category != CashCategory.CustomerBorrowCredit
         };
 
         lock (_lock)
         {
-            Today.Transactions.Insert(0, tx);
+            lock (Today.Transactions)
+            {
+                Today.Transactions.Insert(0, tx);
+            }
             SaveData();
         }
 
-        Log.Information("Finance Entry added: [{Dir}] {Cat} Rs{Amt} (Medium: {Medium}, Cust: {Cust})",
-            direction, category, tx.Amount, medium, customerName);
+        Log.Information("Finance Entry added: [{Dir}] {Cat} Rs{Amt} (Medium: {Medium}, Cust: {Cust}, Bill: {Bill})",
+            direction, category, tx.Amount, medium, customerName, linkedBillNumber);
 
         OnRegisterChanged?.Invoke();
         PrintTrackerService.Instance.TriggerExcelAutoSync();
@@ -160,7 +165,7 @@ public sealed class CashDrawerService
     /// <summary>
     /// Records a customer taking services on credit / borrow (Khata).
     /// </summary>
-    public CashTransaction RecordCustomerBorrow(double amount, string customerName, string customerPhone, string desc)
+    public CashTransaction RecordCustomerBorrow(double amount, string customerName, string customerPhone, string desc, string? linkedBillNumber = null)
     {
         return AddTransaction(
             TransactionDirection.Expense,
@@ -169,17 +174,26 @@ public sealed class CashDrawerService
             amount,
             string.IsNullOrWhiteSpace(desc) ? $"Credit / Due: {customerName}" : desc,
             customerName,
-            customerPhone);
+            customerPhone,
+            commission: 0,
+            linkedBillNumber: linkedBillNumber);
     }
 
     /// <summary>
     /// Clears a customer's outstanding credit when they return and pay.
+    /// Searches across all historical day registers to support past-day repayments.
     /// </summary>
     public bool ClearCustomerDebt(string transactionId, PaymentMedium receivedVia)
     {
         lock (_lock)
         {
-            var tx = Today.Transactions.FirstOrDefault(t => t.Id == transactionId);
+            CashTransaction? tx = null;
+            foreach (var reg in _registers.Values)
+            {
+                tx = reg.Transactions.FirstOrDefault(t => t.Id == transactionId);
+                if (tx != null) break;
+            }
+
             if (tx == null) return false;
 
             tx.IsCleared = true;
@@ -202,14 +216,29 @@ public sealed class CashDrawerService
         return true;
     }
 
+    /// <summary>
+    /// Deletes a transaction across any historical daily register.
+    /// </summary>
     public bool DeleteTransaction(string transactionId)
     {
         lock (_lock)
         {
-            var tx = Today.Transactions.FirstOrDefault(t => t.Id == transactionId);
-            if (tx == null) return false;
+            bool found = false;
+            foreach (var reg in _registers.Values)
+            {
+                var tx = reg.Transactions.FirstOrDefault(t => t.Id == transactionId);
+                if (tx != null)
+                {
+                    lock (reg.Transactions)
+                    {
+                        reg.Transactions.Remove(tx);
+                    }
+                    found = true;
+                    break;
+                }
+            }
 
-            Today.Transactions.Remove(tx);
+            if (!found) return false;
             SaveData();
         }
 
@@ -226,7 +255,10 @@ public sealed class CashDrawerService
     {
         lock (_lock)
         {
-            Today.Transactions.Clear();
+            lock (Today.Transactions)
+            {
+                Today.Transactions.Clear();
+            }
             SaveData();
         }
 

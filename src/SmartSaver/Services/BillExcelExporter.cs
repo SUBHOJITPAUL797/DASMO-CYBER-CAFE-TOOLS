@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using DocumentFormat.OpenXml;
@@ -21,6 +22,8 @@ namespace SmartSaver.Services;
 /// </summary>
 public static class BillExcelExporter
 {
+    private static readonly object _syncLock = new();
+
     public static void ExportToExcel(
         IEnumerable<CustomerBillSession> bills,
         PrintBillingSettings settings,
@@ -125,31 +128,44 @@ public static class BillExcelExporter
         if (!settings.AutoSyncToExcel || string.IsNullOrWhiteSpace(settings.AttachedExcelPath))
             return false;
 
-        string targetPath = settings.AttachedExcelPath;
-        try
+        lock (_syncLock)
         {
-            string dir = Path.GetDirectoryName(targetPath)!;
-            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-
-            string tempFile = Path.Combine(dir, $".sync_{Guid.NewGuid():N}.xlsx");
-            ExportFullFinanceWorkbook(bills, registers, settings, tempFile);
-
-            if (File.Exists(tempFile))
+            string targetPath = settings.AttachedExcelPath;
+            string? tempFile = null;
+            try
             {
-                File.Move(tempFile, targetPath, overwrite: true);
-                Log.Debug("Auto-Synced full financial ledger to attached Excel: {Path}", targetPath);
-                return true;
+                string? dir = Path.GetDirectoryName(targetPath);
+                if (string.IsNullOrEmpty(dir))
+                    dir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+                tempFile = Path.Combine(dir, $".sync_{Guid.NewGuid():N}.xlsx");
+                ExportFullFinanceWorkbook(bills, registers, settings, tempFile);
+
+                if (File.Exists(tempFile))
+                {
+                    File.Move(tempFile, targetPath, overwrite: true);
+                    Log.Debug("Auto-Synced full financial ledger to attached Excel: {Path}", targetPath);
+                    return true;
+                }
             }
+            catch (IOException ioEx)
+            {
+                Log.Warning("Attached Excel file is open in Excel or locked: {Msg}", ioEx.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to auto-sync to attached Excel: {Path}", targetPath);
+            }
+            finally
+            {
+                if (tempFile != null && File.Exists(tempFile))
+                {
+                    try { File.Delete(tempFile); } catch { }
+                }
+            }
+            return false;
         }
-        catch (IOException ioEx)
-        {
-            Log.Warning("Attached Excel file is open in Excel or locked: {Msg}", ioEx.Message);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Failed to auto-sync to attached Excel: {Path}", targetPath);
-        }
-        return false;
     }
 
     private static void BuildCashDrawerSheet(SheetData data, DailyCashRegister todayReg, PrintBillingSettings settings)
@@ -188,7 +204,13 @@ public static class BillExcelExporter
         double totalIn = 0;
         double totalOut = 0;
 
-        foreach (var tx in todayReg.Transactions)
+        List<CashTransaction> txList;
+        lock (todayReg.Transactions)
+        {
+            txList = todayReg.Transactions.ToList();
+        }
+
+        foreach (var tx in txList)
         {
             if (tx.Direction == TransactionDirection.Income) totalIn += tx.Amount;
             else if (tx.Direction == TransactionDirection.Expense) totalOut += tx.Amount;
@@ -464,7 +486,7 @@ public static class BillExcelExporter
         {
             DataType = CellValues.Number,
             StyleIndex = style,
-            CellValue = new CellValue(val)
+            CellValue = new CellValue(val.ToString(CultureInfo.InvariantCulture))
         };
 
     private static Cell CellMoney(double val, uint style = 0) =>
@@ -472,7 +494,7 @@ public static class BillExcelExporter
         {
             DataType = CellValues.Number,
             StyleIndex = style,
-            CellValue = new CellValue(Math.Round(val, 2))
+            CellValue = new CellValue(Math.Round(val, 2).ToString("0.00", CultureInfo.InvariantCulture))
         };
 
     private static Row CreateRow(uint rowIndex, IEnumerable<Cell> cells)
