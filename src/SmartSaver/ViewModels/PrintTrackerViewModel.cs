@@ -279,7 +279,11 @@ public class PrintTrackerViewModel : ViewModelBase
 
     public ICommand ShareWhatsAppCommand { get; }
     public ICommand CopyReceiptCommand { get; }
+    public ICommand SaveBillPdfCommand { get; }
+    public ICommand DeleteBillCommand { get; }
     public ICommand ExportCsvCommand { get; }
+    public ICommand ExportExcelCommand { get; }
+    public ICommand OpenCashDrawerCommand { get; }
     public ICommand ToggleMonitoringCommand { get; }
     public ICommand PollNowCommand { get; }
 
@@ -471,7 +475,88 @@ public class PrintTrackerViewModel : ViewModelBase
             }
         });
 
+        SaveBillPdfCommand = new RelayCommand(p =>
+        {
+            var session = (p as CustomerBillSession) ?? LastCompletedBill;
+            if (session == null && HasActiveJobs)
+            {
+                session = new CustomerBillSession
+                {
+                    BillNumber = $"DRAFT-{DateTime.Now:HHmmss}",
+                    CustomerName = CustomerName,
+                    CustomerPhone = CustomerPhone,
+                    PaymentMode = PaymentMode,
+                    Jobs = new List<PrintJobRecord>(ActiveJobs)
+                };
+            }
+
+            if (session == null)
+            {
+                MessageBox.Show("No bill selected to generate PDF.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "PDF Document (*.pdf)|*.pdf",
+                    FileName = $"Bill_{session.BillNumber.Replace("-", "_")}.pdf",
+                    InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                };
+
+                if (dialog.ShowDialog() == true)
+                {
+                    string? path = BillPdfGenerator.GenerateBillPdf(session, _tracker.Settings, dialog.FileName);
+                    if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    {
+                        try
+                        {
+                            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                        }
+                        catch { }
+
+                        MessageBox.Show($"✅ PDF Bill created successfully!\n\nFile saved to:\n{path}\n\nYou can send this PDF on WhatsApp or print it.",
+                            "PDF Bill Generated", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Could not generate PDF file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to generate bill PDF");
+                MessageBox.Show($"Error generating PDF: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        });
+
+        DeleteBillCommand = new RelayCommand(p =>
+        {
+            if (p is not CustomerBillSession session) return;
+
+            var confirm = MessageBox.Show(
+                $"Are you sure you want to delete Bill #{session.BillNumber} ({session.CustomerName} — ₹{session.TotalAmount:F2})?\n\nThis will remove it from sales history and update your totals.",
+                "Delete Bill", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (confirm == MessageBoxResult.Yes)
+            {
+                if (_tracker.DeleteBill(session.SessionId))
+                {
+                    if (LastCompletedBill?.SessionId == session.SessionId)
+                    {
+                        LastCompletedBill = null;
+                    }
+                    RefreshAnalytics();
+                    ApplyHistoryFilter();
+                }
+            }
+        });
+
         ExportCsvCommand = new RelayCommand(async _ => await ExportCsvAsync());
+        ExportExcelCommand = new RelayCommand(async _ => await ExportExcelAsync());
+        OpenCashDrawerCommand = new RelayCommand(_ => Views.CashDrawerWindow.ShowCashDrawer());
 
         ToggleMonitoringCommand = new RelayCommand(_ =>
         {
@@ -628,17 +713,68 @@ public class PrintTrackerViewModel : ViewModelBase
         }
     }
 
+    private async Task ExportExcelAsync()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "Excel Spreadsheet (*.xlsx)|*.xlsx",
+                FileName = $"Cyber_Cafe_Finance_{DateTime.Now:yyyyMMdd}.xlsx",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                var bills = _tracker.CompletedBillSessions.ToList();
+                await Task.Run(() => BillExcelExporter.ExportToExcel(bills, _tracker.Settings, dialog.FileName));
+
+                var askOpen = MessageBox.Show(
+                    $"✅ Finance Excel workbook exported successfully!\n\nFile saved to:\n{dialog.FileName}\n\nWould you like to open it now?",
+                    "Excel Exported", MessageBoxButton.YesNo, MessageBoxImage.Information);
+
+                if (askOpen == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to export Excel report");
+            MessageBox.Show($"Failed to export Excel: {ex.Message}", "Export Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private static void RunOnUI(Action action)
     {
-        if (Application.Current?.Dispatcher != null)
+        var app = Application.Current;
+        var dispatcher = app?.Dispatcher;
+        if (dispatcher != null && dispatcher.Thread.IsAlive && !dispatcher.HasShutdownStarted)
         {
-            if (Application.Current.Dispatcher.CheckAccess())
+            if (dispatcher.CheckAccess())
             {
                 action();
             }
             else
             {
-                Application.Current.Dispatcher.Invoke(action);
+                try
+                {
+                    var op = dispatcher.BeginInvoke(action);
+                    var status = op.Wait(TimeSpan.FromMilliseconds(400));
+                    if (status != System.Windows.Threading.DispatcherOperationStatus.Completed)
+                    {
+                        action();
+                    }
+                }
+                catch
+                {
+                    action();
+                }
             }
         }
         else

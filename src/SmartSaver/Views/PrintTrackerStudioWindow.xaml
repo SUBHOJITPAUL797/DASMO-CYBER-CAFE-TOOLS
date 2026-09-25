@@ -19,6 +19,7 @@
     <Window.Resources>
         <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <local:StringEqualsConverter x:Key="StringEquals"/>
+        <local:DoubleStringConverter x:Key="DoubleStr"/>
 
         <Style x:Key="StudioHeaderButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -138,18 +139,22 @@
                         <Button Content="⚙️ Pause/Resume" Command="{Binding ToggleMonitoringCommand}" 
                                 Style="{StaticResource CounterChipButton}" Margin="6,0,0,0" Padding="8,3" FontSize="11"
                                 ToolTip="Toggle automatic background print job detection"/>
+                        <Button Content="💰 Cash Drawer &amp; Accounts" Command="{Binding OpenCashDrawerCommand}"
+                                Style="{StaticResource CounterChipButton}" Margin="8,0,0,0" Padding="10,3" FontSize="11"
+                                Background="#1A2036" BorderBrush="#F59E0B" Foreground="#F59E0B" FontWeight="Bold"
+                                ToolTip="Open Daily Cash Drawer, UPI transfers, Borrow &amp; Accounts Manager"/>
                     </StackPanel>
 
                     <!-- Rate Card Badges & Custom Prices Editor Trigger -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Rate Card: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <Button Content="{Binding BwSingleSideRate, StringFormat='⚫ B&amp;W: ₹{0}/p'}" Click="OpenRateSettings_Click"
+                        <Button Content="{Binding BwSingleSideRate, StringFormat='⚫ B&amp;W: ₹{0:0.##}/p'}" Click="OpenRateSettings_Click"
                                 Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" ToolTip="Click to customize B&amp;W print price"/>
-                        <Button Content="{Binding BwDuplexRate, StringFormat='📑 Duplex: ₹{0}/s'}" Click="OpenRateSettings_Click"
+                        <Button Content="{Binding BwDuplexRate, StringFormat='📑 Duplex: ₹{0:0.##}/s'}" Click="OpenRateSettings_Click"
                                 Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" Foreground="#10B981" BorderBrush="#10B981" ToolTip="Click to customize Duplex print price"/>
-                        <Button Content="{Binding ColorSingleSideRate, StringFormat='🌈 Color: ₹{0}/p'}" Click="OpenRateSettings_Click"
+                        <Button Content="{Binding ColorSingleSideRate, StringFormat='🌈 Color: ₹{0:0.##}/p'}" Click="OpenRateSettings_Click"
                                 Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" Padding="7,2" FontSize="11" Foreground="#00BCD4" BorderBrush="#00BCD4" ToolTip="Click to customize Color print price"/>
-                        <Button Content="{Binding PhotoGlossyRate, StringFormat='📸 Photo: ₹{0}'}" Click="OpenRateSettings_Click"
+                        <Button Content="{Binding PhotoGlossyRate, StringFormat='📸 Photo: ₹{0:0.##}'}" Click="OpenRateSettings_Click"
                                 Style="{StaticResource CounterChipButton}" Margin="0,0,6,0" Padding="7,2" FontSize="11" Foreground="#FF9800" BorderBrush="#FF9800" ToolTip="Click to customize Photo print price"/>
                         <Button Content="⚙️ Set Custom Prices" Click="OpenRateSettings_Click"
                                 Style="{StaticResource CounterChipButton}" Margin="4,0,0,0" Padding="10,3" FontSize="11"
@@ -414,24 +419,35 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="0" Content="✕ Clear Cart" Command="{Binding ClearCartCommand}" 
-                                Style="{StaticResource CounterChipButton}" Padding="10,8" Margin="0,0,6,0"
+                        <Button Grid.Column="0" Content="✕ Clear" Command="{Binding ClearCartCommand}" 
+                                Style="{StaticResource CounterChipButton}" Padding="8,8" Margin="0,0,5,0"
                                 ToolTip="Clear active unbilled jobs"/>
 
-                        <Button Grid.Column="1" Command="{Binding ShareWhatsAppCommand}"
-                                Style="{StaticResource CounterChipButton}" Padding="10,8" Margin="0,0,6,0"
+                        <Button Grid.Column="1" Command="{Binding SaveBillPdfCommand}"
+                                Style="{StaticResource CounterChipButton}" Padding="8,8" Margin="0,0,5,0"
+                                Background="#1A2238" BorderBrush="#00BCD4" Foreground="#00BCD4"
+                                ToolTip="Generate professional PDF bill receipt to view or share">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📄 " FontSize="12"/>
+                                <TextBlock Text="Bill PDF" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="2" Command="{Binding ShareWhatsAppCommand}"
+                                Style="{StaticResource CounterChipButton}" Padding="8,8" Margin="0,0,5,0"
                                 ToolTip="Send bill details to customer WhatsApp">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📱 " FontSize="12"/>
-                                <TextBlock Text="WhatsApp Bill" FontWeight="SemiBold"/>
+                                <TextBlock Text="WhatsApp" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Button>
 
                         <!-- BIG FINISH BILL BUTTON -->
-                        <Button Grid.Column="2" Command="{Binding CompleteBillCommand}"
+                        <Button Grid.Column="3" Command="{Binding CompleteBillCommand}"
                                 Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="13"
                                 Padding="14,10" Cursor="Hand" BorderThickness="0"
                                 ToolTip="Finalizes bill, saves into daily sales history, and clears for next customer! Shortcut: Enter / Space">
@@ -519,14 +535,23 @@
                                      Padding="6,3" VerticalContentAlignment="Center" FontSize="12" Margin="0,0,8,0"
                                      ToolTip="Search by customer name, mobile, document, or bill number"/>
 
-                            <!-- Export CSV & Set Prices Buttons -->
+                            <!-- Export Excel, CSV & Set Prices Buttons -->
                             <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button Command="{Binding ExportExcelCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0,0,5,0"
+                                        Background="#162920" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"
+                                        ToolTip="Export comprehensive finance Excel (.xlsx) spreadsheet">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📊 " FontSize="11"/>
+                                        <TextBlock Text="Excel" FontWeight="Bold" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
                                 <Button Command="{Binding ExportCsvCommand}"
-                                        Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0,0,6,0"
-                                        ToolTip="Export sales report to Excel CSV">
+                                        Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0,0,5,0"
+                                        ToolTip="Export sales report to CSV">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="📥 " FontSize="11"/>
-                                        <TextBlock Text="Excel / CSV" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Text="CSV" FontWeight="SemiBold" FontSize="11"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Content="⚙️ Set Prices" Click="OpenRateSettings_Click"
@@ -587,16 +612,25 @@
                                                                FontWeight="Bold" FontSize="14" Foreground="#10B981" 
                                                                VerticalAlignment="Center" Margin="10,0"/>
 
-                                                    <!-- Actions (WhatsApp & Copy) -->
+                                                    <!-- Actions (PDF, WhatsApp, Copy, Delete) -->
                                                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <Button Content="📱" Width="26" Height="26" Padding="0" FontSize="11"
+                                                        <Button Content="📄" Width="26" Height="26" Padding="0" FontSize="11" Margin="0,0,3,0"
+                                                                Command="{Binding DataContext.SaveBillPdfCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource CounterChipButton}" ToolTip="View &amp; Save PDF Bill receipt"/>
+                                                        <Button Content="📱" Width="26" Height="26" Padding="0" FontSize="11" Margin="0,0,3,0"
                                                                 Command="{Binding DataContext.ShareWhatsAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                 CommandParameter="{Binding}"
                                                                 Style="{StaticResource CounterChipButton}" ToolTip="Share bill on WhatsApp"/>
-                                                        <Button Content="📋" Width="26" Height="26" Padding="0" FontSize="11"
+                                                        <Button Content="📋" Width="26" Height="26" Padding="0" FontSize="11" Margin="0,0,3,0"
                                                                 Command="{Binding DataContext.CopyReceiptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                 CommandParameter="{Binding}"
                                                                 Style="{StaticResource CounterChipButton}" ToolTip="Copy thermal receipt slip text"/>
+                                                        <Button Content="🗑️" Width="26" Height="26" Padding="0" FontSize="11"
+                                                                Command="{Binding DataContext.DeleteBillCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                Background="Transparent" BorderThickness="0" Foreground="#F87171"
+                                                                Cursor="Hand" ToolTip="Delete bill from history"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>
@@ -661,7 +695,7 @@
                                             <TextBlock Text="Rate per single-sided page" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox Text="{Binding BwSingleSideRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBox Text="{Binding BwSingleSideRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
                                                 <TextBlock Text=" / page" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </StackPanel>
@@ -674,7 +708,7 @@
                                             <TextBlock Text="Rate per sheet (2-in-1 replacement)" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox Text="{Binding BwDuplexRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBox Text="{Binding BwDuplexRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
                                                 <TextBlock Text=" / sheet" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </StackPanel>
@@ -687,7 +721,7 @@
                                             <TextBlock Text="Rate per single-sided color page" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#00BCD4" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox Text="{Binding ColorSingleSideRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBox Text="{Binding ColorSingleSideRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
                                                 <TextBlock Text=" / page" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </StackPanel>
@@ -700,7 +734,7 @@
                                             <TextBlock Text="Rate per double-sided color sheet" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#00BCD4" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox Text="{Binding ColorDuplexRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBox Text="{Binding ColorDuplexRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
                                                 <TextBlock Text=" / sheet" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </StackPanel>
@@ -713,7 +747,7 @@
                                             <TextBlock Text="Rate per printed photo sheet" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#FF9800" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox Text="{Binding PhotoGlossyRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBox Text="{Binding PhotoGlossyRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
                                                 <TextBlock Text=" / photo" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </StackPanel>
@@ -726,7 +760,7 @@
                                             <TextBlock Text="Rate per lamination pouch" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox Text="{Binding LaminationRate, UpdateSourceTrigger=PropertyChanged}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBox Text="{Binding LaminationRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
                                                 <TextBlock Text=" / pouch" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </StackPanel>

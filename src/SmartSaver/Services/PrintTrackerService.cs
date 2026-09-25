@@ -602,6 +602,28 @@ public sealed class PrintTrackerService : IDisposable
         OnActiveCartChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Permanently deletes a completed customer bill and its associated print jobs from history.
+    /// </summary>
+    public bool DeleteBill(string sessionId)
+    {
+        lock (_lock)
+        {
+            var bill = CompletedBillSessions.FirstOrDefault(b => b.SessionId == sessionId);
+            if (bill == null) return false;
+
+            CompletedBillSessions.Remove(bill);
+            AllJobHistory.RemoveAll(j => j.BillSessionId == sessionId);
+
+            SaveBills();
+            SaveHistory();
+        }
+
+        Log.Information("Customer bill {SessionId} permanently deleted", sessionId);
+        OnHistoryUpdated?.Invoke();
+        return true;
+    }
+
     #endregion
 
     #region Bill Formatting & Sharing

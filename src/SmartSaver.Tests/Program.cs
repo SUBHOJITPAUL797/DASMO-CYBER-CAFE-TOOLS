@@ -4386,6 +4386,137 @@ public static class Program
                 failed++;
             }
 
+            // ── TEST 60: Decimal Rates (₹2.5), PDF Invoices, Excel Export, Delete Bill & Cash Drawer (v1.5.11) ──
+            Console.Write("[TEST 60] Decimal Rates (₹2.5), PDF Bill Generator, Excel Export, Delete Bill & Cash Drawer Accounts (v1.5.11)... ");
+            try
+            {
+                // 1. Test DoubleStringConverter decimal parsing
+                var conv = new SmartSaver.Converters.DoubleStringConverter();
+                var parsed2_5 = conv.ConvertBack("2.5", typeof(double), null, System.Globalization.CultureInfo.InvariantCulture);
+                if (parsed2_5 is not double dVal || Math.Abs(dVal - 2.5) > 0.001)
+                    throw new Exception($"DoubleStringConverter failed to parse '2.5', got {parsed2_5}");
+
+                var partialDot = conv.ConvertBack("2.", typeof(double), null, System.Globalization.CultureInfo.InvariantCulture);
+                if (partialDot != System.Windows.Data.Binding.DoNothing)
+                    throw new Exception("DoubleStringConverter should return Binding.DoNothing for trailing dot");
+
+                // 2. Test Customer Bill & PDF Generation
+                var testSession = new CustomerBillSession
+                {
+                    BillNumber = "BILL-TEST-2026-001",
+                    CustomerName = "Subhojit Paul",
+                    CustomerPhone = "+919876543210",
+                    PaymentMode = "UPI",
+                    Notes = "Urgent admit card prints",
+                    Jobs = new List<PrintJobRecord>
+                    {
+                        new PrintJobRecord
+                        {
+                            DocumentName = "Exam_Admit_Card.pdf",
+                            Pages = 2,
+                            Copies = 1,
+                            IsDuplex = true,
+                            IsColor = false,
+                            RatePerUnit = 2.5,
+                            TotalCost = 2.5
+                        },
+                        new PrintJobRecord
+                        {
+                            DocumentName = "Photo_ID_Card.pdf",
+                            Pages = 1,
+                            Copies = 2,
+                            IsDuplex = false,
+                            IsColor = true,
+                            RatePerUnit = 10.0,
+                            TotalCost = 20.0
+                        }
+                    }
+                };
+
+                var testPdfPath = Path.Combine(testDir, "Test_Bill.pdf");
+                var generatedPdf = SmartSaver.Services.BillPdfGenerator.GenerateBillPdf(testSession, new PrintBillingSettings(), testPdfPath);
+                if (string.IsNullOrEmpty(generatedPdf) || !File.Exists(testPdfPath) || new FileInfo(testPdfPath).Length < 1000)
+                    throw new Exception("BillPdfGenerator failed to create valid PDF file");
+
+                // 3. Test Excel Export (OpenXml)
+                var testXlsxPath = Path.Combine(testDir, "Test_Finance.xlsx");
+                SmartSaver.Services.BillExcelExporter.ExportToExcel(new[] { testSession }, new PrintBillingSettings(), testXlsxPath);
+                if (!File.Exists(testXlsxPath) || new FileInfo(testXlsxPath).Length < 1000)
+                    throw new Exception("BillExcelExporter failed to create valid Excel .xlsx workbook");
+
+                // 4. Test Cash Drawer & Finance Service
+                var drawerService = SmartSaver.Services.CashDrawerService.Instance;
+                drawerService.SetOpeningBalances(1500.0, 5000.0);
+
+                // Add UPI cashout (customer transferred UPI, cafe gave cash)
+                drawerService.RecordCustomerUpiCashout(500.0, 10.0, "Amit Kumar", "9876543210", "UPI cash withdrawal");
+
+                // Add customer borrow
+                var borrowTx = drawerService.RecordCustomerBorrow(120.0, "Rahul Sen", "9123456780", "Print due");
+
+                // Verify live balances
+                if (Math.Abs(drawerService.Today.OpeningCashInDrawer - 1500.0) > 0.01)
+                    throw new Exception("CashDrawer opening float mismatch");
+
+                if (drawerService.Today.TotalCustomerUnpaidDebt < 120.0)
+                    throw new Exception("Unpaid debt calculation mismatch");
+
+                // Clear borrow
+                drawerService.ClearCustomerDebt(borrowTx.Id, PaymentMedium.CashInDrawer);
+                if (drawerService.Today.TotalCustomerUnpaidDebt > 0.01)
+                    throw new Exception("Debt clearing failed");
+
+                // 5. Test Delete Bill
+                var tracker = SmartSaver.Services.PrintTrackerService.Instance;
+                tracker.AddManualJob("Test Print For Delete", 1, false, false);
+                var createdBill = tracker.CompleteCustomerBill("Delete Test Cust", "0000000000", "Cash", "For deletion");
+                int beforeDeleteCount = tracker.CompletedBillSessions.Count;
+                bool deleted = tracker.DeleteBill(createdBill.SessionId);
+                if (!deleted || tracker.CompletedBillSessions.Count != beforeDeleteCount - 1)
+                    throw new Exception("DeleteBill failed to remove bill from session list");
+
+                // 6. Test CashDrawerViewModel data binding and live metrics on STA thread
+                Exception? staEx60 = null;
+                var staThread60 = new Thread(() =>
+                {
+                    try
+                    {
+                        var cashVm = new SmartSaver.ViewModels.CashDrawerViewModel();
+                        if (string.IsNullOrEmpty(cashVm.CashInDrawerDisplay) || !cashVm.CashInDrawerDisplay.Contains("₹"))
+                            throw new Exception("CashInDrawerDisplay was invalid or missing ₹ symbol");
+                        if (string.IsNullOrEmpty(cashVm.OnlineBalanceDisplay) || !cashVm.OnlineBalanceDisplay.Contains("₹"))
+                            throw new Exception("OnlineBalanceDisplay was invalid or missing ₹ symbol");
+                        if (cashVm.Transactions.Count == 0)
+                            throw new Exception("CashDrawerViewModel failed to expose transaction collection");
+
+                        // Test preset category shortcuts
+                        cashVm.QuickUpiPayoutShortcutCommand.Execute(null);
+                        if (cashVm.SelectedCategoryString != "Customer UPI ➔ Cash Given")
+                            throw new Exception("QuickUpiPayoutShortcutCommand failed to select category");
+
+                        cashVm.QuickBorrowShortcutCommand.Execute(null);
+                        if (cashVm.SelectedCategoryString != "Customer Borrow / Credit (Due)")
+                            throw new Exception("QuickBorrowShortcutCommand failed to select category");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx60 = ex;
+                    }
+                });
+                staThread60.SetApartmentState(ApartmentState.STA);
+                staThread60.Start();
+                staThread60.Join(TimeSpan.FromSeconds(15));
+                if (staEx60 != null) throw staEx60;
+
+                Console.WriteLine("PASSED (Decimal ₹2.5 Rates, High-Fidelity PDF Invoices, Multi-Tab OpenXml Finance Excel, Delete Bill & Cash Drawer System)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");
