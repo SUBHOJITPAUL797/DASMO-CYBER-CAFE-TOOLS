@@ -202,14 +202,8 @@
             </Grid>
 
             <!-- Footer / Developer Info -->
-            <StackPanel Grid.Row="4" Margin="0,10,0,0" HorizontalAlignment="Center">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <TextBlock Text="Admin Contact: " FontSize="11" Foreground="#64748B"/>
-                    <TextBlock Text="subhojitpaul26042004@gmail.com" FontSize="11" Foreground="#38BDF8" Cursor="Hand" TextDecorations="Underline" MouseDown="EmailContact_MouseDown"/>
-                    <TextBlock Text=" • " FontSize="11" Foreground="#64748B" Margin="4,0,4,0"/>
-                    <TextBlock Text="+91 8927408840" FontSize="11" Foreground="#38BDF8" Cursor="Hand" TextDecorations="Underline" MouseDown="PhoneContact_MouseDown"/>
-                </StackPanel>
-                <TextBlock Text="DASMO Cyber Cafe Suite • Cloud Security Protocol" FontSize="10" Foreground="#475569" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+            <StackPanel Grid.Row="4" Margin="0,12,0,0" HorizontalAlignment="Center">
+                <TextBlock Text="DASMO Cyber Cafe Suite • Cloud Security Protocol" FontSize="10" Foreground="#475569" HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>
     </Border>
