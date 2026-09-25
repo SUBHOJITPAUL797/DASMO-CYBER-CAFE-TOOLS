@@ -4517,6 +4517,128 @@ public static class Program
                 failed++;
             }
 
+            // -------------------------------------------------------------
+            // TEST 61: DASHBOARD CARD 13, CLEAR JOURNAL, BILL-CASH INTEGRATION & 4-TAB EXCEL AUTO-SYNC
+            // -------------------------------------------------------------
+            Console.Write("Test 61: Dashboard Card 13, Clear Journal, Cash Drawer Integration & 4-Tab Excel Sync... ");
+            try
+            {
+                var drawer = SmartSaver.Services.CashDrawerService.Instance;
+                var tracker = SmartSaver.Services.PrintTrackerService.Instance;
+
+                // 1. Verify Cash Drawer Opening Balances & Clear Journal logic
+                drawer.SetOpeningBalances(2500.0, 7500.0);
+                drawer.AddTransaction(TransactionDirection.Income, PaymentMedium.CashInDrawer, CashCategory.PrintSales, 250.0, "Manual Xerox sale", "Ramesh");
+                drawer.AddTransaction(TransactionDirection.Expense, PaymentMedium.CashInDrawer, CashCategory.ShopExpensePaperInk, 120.0, "JK Paper Ream");
+
+                if (drawer.Today.Transactions.Count < 2)
+                    throw new Exception("CashDrawerService failed to record transactions");
+
+                // Execute ClearTodayTransactions
+                drawer.ClearTodayTransactions();
+                if (drawer.Today.Transactions.Count != 0)
+                    throw new Exception("ClearTodayTransactions did not empty the transaction list");
+                if (Math.Abs(drawer.Today.OpeningCashInDrawer - 2500.0) > 0.01 || Math.Abs(drawer.Today.OpeningOnlineBalance - 7500.0) > 0.01)
+                    throw new Exception("ClearTodayTransactions corrupted opening float balances");
+
+                // 2. Seamless Billing & Xerox Integration Test
+                tracker.AddManualJob("Aadhaar Card Xerox Color", 2, true, true);
+                var billedSession = tracker.CompleteCustomerBill("Pooja Sharma", "9876501234", "Cash", "Aadhaar Card Xerox");
+
+                // Verify automatic reflection into Cash Drawer
+                var matchingTx = drawer.Today.Transactions.FirstOrDefault(t => t.Description.Contains(billedSession.BillNumber));
+                if (matchingTx == null)
+                    throw new Exception("CompleteCustomerBill did not automatically record income in CashDrawerService");
+                if (Math.Abs(matchingTx.Amount - billedSession.TotalAmount) > 0.01)
+                    throw new Exception($"Matching cash drawer transaction amount mismatch. Expected: {billedSession.TotalAmount}, got: {matchingTx.Amount}");
+                if (matchingTx.CustomerName != "Pooja Sharma")
+                    throw new Exception($"Matching transaction customer name mismatch. Expected Pooja Sharma, got: {matchingTx.CustomerName}");
+
+                // Verify DeleteBill removes transaction from Cash Drawer
+                bool billDeleted = tracker.DeleteBill(billedSession.SessionId);
+                if (!billDeleted)
+                    throw new Exception("DeleteBill returned false");
+                var afterDeleteTx = drawer.Today.Transactions.FirstOrDefault(t => t.Description.Contains(billedSession.BillNumber));
+                if (afterDeleteTx != null)
+                    throw new Exception("DeleteBill failed to remove corresponding transaction from CashDrawerService");
+
+                // 3. Test 4-Tab Excel AutoSync Engine
+                var testExcelPath = Path.Combine(testDir, "AutoSync_Cyber_Cafe_Accounts.xlsx");
+                var testSettings = new PrintBillingSettings
+                {
+                    AttachedExcelPath = testExcelPath,
+                    AutoSyncToExcel = true,
+                    ShopName = "DASMO CYBER CAFE"
+                };
+
+                // Add a sample bill and sample transactions for the workbook
+                tracker.AddManualJob("Online Form Print", 5, false, false);
+                var syncBill = tracker.CompleteCustomerBill("Arun Roy", "9123456789", "UPI", "College form");
+                drawer.RecordCustomerUpiCashout(200.0, 10.0, "Bikram", "9988776655", "Cashout");
+
+                bool syncSuccess = SmartSaver.Services.BillExcelExporter.AutoSyncAttachedExcel(
+                    testSettings,
+                    tracker.CompletedBillSessions.ToList(),
+                    drawer.AllDays.ToList());
+
+                if (!syncSuccess || !File.Exists(testExcelPath) || new FileInfo(testExcelPath).Length < 2000)
+                    throw new Exception("AutoSyncAttachedExcel failed to generate valid Excel workbook");
+
+                // Verify the 4 sheets exist in the OpenXml package
+                using (var doc = DocumentFormat.OpenXml.Packaging.SpreadsheetDocument.Open(testExcelPath, false))
+                {
+                    var sheets = doc.WorkbookPart?.Workbook?.Sheets?.Elements<DocumentFormat.OpenXml.Spreadsheet.Sheet>().ToList();
+                    if (sheets == null || sheets.Count < 4)
+                        throw new Exception($"Expected 4 sheets in Excel workbook, but found {sheets?.Count ?? 0}");
+
+                    var sheetNames = sheets.Select(s => s.Name?.Value).ToList();
+                    if (!sheetNames.Contains("Cash Drawer & Accounts"))
+                        throw new Exception("Missing 'Cash Drawer & Accounts' sheet in auto-synced workbook");
+                    if (!sheetNames.Contains("Billing Summary"))
+                        throw new Exception("Missing 'Billing Summary' sheet in auto-synced workbook");
+                    if (!sheetNames.Contains("Itemized Register"))
+                        throw new Exception("Missing 'Itemized Register' sheet in auto-synced workbook");
+                    if (!sheetNames.Contains("Daily Finance KPIs"))
+                        throw new Exception("Missing 'Daily Finance KPIs' sheet in auto-synced workbook");
+                }
+
+                // 4. Test ViewModels in STA thread
+                Exception? staEx61 = null;
+                var staThread61 = new Thread(() =>
+                {
+                    try
+                    {
+                        var mainVm = new SmartSaver.ViewModels.MainViewModel();
+                        if (mainVm.OpenCashDrawerCommand == null)
+                            throw new Exception("MainViewModel.OpenCashDrawerCommand is null");
+
+                        var printVm = new SmartSaver.ViewModels.PrintTrackerViewModel();
+                        if (printVm.LinkExcelFileCommand == null || printVm.SyncExcelNowCommand == null || printVm.OpenAttachedExcelCommand == null)
+                            throw new Exception("PrintTrackerViewModel Excel commands are null");
+
+                        var cashVm = new SmartSaver.ViewModels.CashDrawerViewModel();
+                        if (cashVm.ClearTodayJournalCommand == null || cashVm.LinkExcelFileCommand == null || cashVm.SyncExcelNowCommand == null)
+                            throw new Exception("CashDrawerViewModel commands are null");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx61 = ex;
+                    }
+                });
+                staThread61.SetApartmentState(ApartmentState.STA);
+                staThread61.Start();
+                staThread61.Join(TimeSpan.FromSeconds(15));
+                if (staEx61 != null) throw staEx61;
+
+                Console.WriteLine("PASSED (Seamless Billing-Cash Drawer Integration, Clear Today's Journal, 4-Tab Structured Excel Auto-Sync, and Full Command Bindings)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

@@ -74,6 +74,7 @@ public sealed class CashDrawerService
             SaveData();
         }
         OnRegisterChanged?.Invoke();
+        PrintTrackerService.Instance.TriggerExcelAutoSync();
     }
 
     public CashTransaction AddTransaction(
@@ -110,6 +111,7 @@ public sealed class CashDrawerService
             direction, category, tx.Amount, medium, customerName);
 
         OnRegisterChanged?.Invoke();
+        PrintTrackerService.Instance.TriggerExcelAutoSync();
         return tx;
     }
 
@@ -196,6 +198,7 @@ public sealed class CashDrawerService
         }
 
         OnRegisterChanged?.Invoke();
+        PrintTrackerService.Instance.TriggerExcelAutoSync();
         return true;
     }
 
@@ -211,7 +214,24 @@ public sealed class CashDrawerService
         }
 
         OnRegisterChanged?.Invoke();
+        PrintTrackerService.Instance.TriggerExcelAutoSync();
         return true;
+    }
+
+    /// <summary>
+    /// Permanently clears/deletes all transactions for today with safety precautions.
+    /// Opening float remains intact.
+    /// </summary>
+    public void ClearTodayTransactions()
+    {
+        lock (_lock)
+        {
+            Today.Transactions.Clear();
+            SaveData();
+        }
+
+        OnRegisterChanged?.Invoke();
+        PrintTrackerService.Instance.TriggerExcelAutoSync();
     }
 
     private void EnsureTodayRegister()

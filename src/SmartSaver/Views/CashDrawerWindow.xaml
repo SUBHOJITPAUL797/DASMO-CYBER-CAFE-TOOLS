@@ -93,6 +93,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="44"/>  <!-- Window Chrome Header -->
                 <RowDefinition Height="Auto"/> <!-- Top KPI Realtime Counters -->
+                <RowDefinition Height="Auto"/> <!-- Linked Excel Auto-Sync Bar -->
                 <RowDefinition Height="*"/>    <!-- Main Body Workspace -->
             </Grid.RowDefinitions>
 
@@ -190,8 +191,62 @@
                 </UniformGrid>
             </Border>
 
-            <!-- ── ROW 2: Main Workspace ──────────────────────────────────── -->
-            <Grid Grid.Row="2" Margin="14">
+            <!-- ── ROW 2: Linked Excel Spreadsheet Auto-Sync Bar ──────────── -->
+            <Border Grid.Row="2" Background="#141824" BorderBrush="#252A3D" BorderThickness="0,0,0,1" Padding="14,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Status and File Name -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="📊" FontSize="15" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="LINKED EXCEL WORKBOOK:" FontSize="10.5" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Border Background="#1E2338" CornerRadius="4" Padding="8,4" BorderBrush="#38BDF8" BorderThickness="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding AttachedExcelName}" FontSize="11" FontWeight="SemiBold" Foreground="White"
+                                       ToolTip="{Binding AttachedExcelPath}"/>
+                        </Border>
+
+                        <!-- Auto-Sync Checkbox Toggle -->
+                        <CheckBox Content="⚡ Auto-Sync Every Bill &amp; Entry" IsChecked="{Binding AutoSyncToExcel}"
+                                  Foreground="#6EE7B7" FontWeight="SemiBold" FontSize="11" Margin="16,0,0,0" VerticalAlignment="Center"
+                                  ToolTip="When enabled, every print bill, photocopy, Xerox, cash in/out, and UPI transfer instantly updates your Excel file"/>
+                    </StackPanel>
+
+                    <!-- Right: Action Buttons -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Link / Attach Excel -->
+                        <Button Content="📂 Link / Attach Excel" Command="{Binding LinkExcelFileCommand}"
+                                Style="{StaticResource ChipShortcutBtn}" Background="#152E28" Foreground="#34D399" BorderBrush="#10B981"
+                                Margin="0,0,8,0" Padding="10,5" FontSize="11" FontWeight="SemiBold"
+                                ToolTip="Select or create an .xlsx file on your computer to auto-sync all records"/>
+
+                        <!-- Sync Now -->
+                        <Button Content="⚡ Sync Now" Command="{Binding SyncExcelNowCommand}"
+                                Style="{StaticResource ChipShortcutBtn}" Background="#1E293B" Foreground="#38BDF8" BorderBrush="#0284C7"
+                                Margin="0,0,8,0" Padding="10,5" FontSize="11" FontWeight="SemiBold"
+                                ToolTip="Manually trigger immediate synchronization to your linked Excel sheet"/>
+
+                        <!-- Open Excel -->
+                        <Button Content="↗️ Open in Excel" Command="{Binding OpenAttachedExcelCommand}"
+                                Style="{StaticResource ChipShortcutBtn}" Background="#1E293B" Foreground="#FBBF24" BorderBrush="#D97706"
+                                Margin="0,0,8,0" Padding="10,5" FontSize="11" FontWeight="SemiBold"
+                                IsEnabled="{Binding HasAttachedExcel}"
+                                ToolTip="Open the linked Excel workbook in Microsoft Excel / LibreOffice"/>
+
+                        <!-- Export Full Workbook -->
+                        <Button Content="📥 Export Full Workbook..." Command="{Binding ExportFullExcelCommand}"
+                                Style="{StaticResource ChipShortcutBtn}" Background="#2E1C38" Foreground="#E879F9" BorderBrush="#A855F7"
+                                Padding="10,5" FontSize="11" FontWeight="SemiBold"
+                                ToolTip="Export all 4 structured sheets (Cash Drawer, Billing Summary, Itemized Register, Daily Finance KPIs) to a new file"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ── ROW 3: Main Workspace ──────────────────────────────────── -->
+            <Grid Grid.Row="3" Margin="14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="380"/>
                     <ColumnDefinition Width="12"/>
@@ -286,10 +341,27 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Margin="0,0,0,10">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="📜 TODAY'S FINANCIAL JOURNAL" FontWeight="Bold" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
                             <TextBlock Text=" • Live real-time ledger" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                         </StackPanel>
+                        <Button Grid.Column="1" Content="🗑️ Clear Today's Journal"
+                                Command="{Binding ClearTodayJournalCommand}"
+                                ToolTip="Permanently clear and reset all today's cash &amp; UPI transactions (Warning dialog will confirm)"
+                                Background="#361717" Foreground="#FCA5A5" BorderBrush="#EF4444" BorderThickness="1"
+                                Padding="10,4" FontSize="11" FontWeight="SemiBold" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </Grid>
 
                     <Border Grid.Row="1" Background="#181A28" CornerRadius="10" BorderBrush="#282D42" BorderThickness="1">

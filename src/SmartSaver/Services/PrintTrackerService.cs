@@ -581,11 +581,36 @@ public sealed class PrintTrackerService : IDisposable
             SaveHistory();
         }
 
+        // ── Auto-Integrate into Cash Drawer & Daily Finance Register ──
+        try
+        {
+            var medium = string.Equals(session.PaymentMode, "UPI", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(session.PaymentMode, "Card", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(session.PaymentMode, "Online", StringComparison.OrdinalIgnoreCase)
+                         ? PaymentMedium.OnlineUPI
+                         : PaymentMedium.CashInDrawer;
+
+            CashDrawerService.Instance.AddTransaction(
+                TransactionDirection.Income,
+                medium,
+                CashCategory.PrintSales,
+                session.TotalAmount,
+                $"Bill #{session.BillNumber} ({session.TotalPages}p / {session.TotalSheets}s) - {session.CustomerName}",
+                session.CustomerName,
+                session.CustomerPhone
+            );
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to auto-record bill #{BillNo} into Cash Drawer", session.BillNumber);
+        }
+
         Log.Information("Customer Bill finalized: {BillNo} - {Name} -> {Items} items, ₹{Total:F2}",
             session.BillNumber, session.CustomerName, session.Jobs.Count, session.TotalAmount);
 
         OnActiveCartChanged?.Invoke();
         OnHistoryUpdated?.Invoke();
+        TriggerExcelAutoSync();
 
         return session;
     }
@@ -604,14 +629,17 @@ public sealed class PrintTrackerService : IDisposable
 
     /// <summary>
     /// Permanently deletes a completed customer bill and its associated print jobs from history.
+    /// Also synchronizes with Cash Drawer & Accounts to remove the corresponding financial transaction.
     /// </summary>
     public bool DeleteBill(string sessionId)
     {
+        string? deletedBillNo = null;
         lock (_lock)
         {
             var bill = CompletedBillSessions.FirstOrDefault(b => b.SessionId == sessionId);
             if (bill == null) return false;
 
+            deletedBillNo = bill.BillNumber;
             CompletedBillSessions.Remove(bill);
             AllJobHistory.RemoveAll(j => j.BillSessionId == sessionId);
 
@@ -619,9 +647,52 @@ public sealed class PrintTrackerService : IDisposable
             SaveHistory();
         }
 
+        // Also remove from Cash Drawer transactions if found
+        if (!string.IsNullOrEmpty(deletedBillNo))
+        {
+            try
+            {
+                var matchingTx = CashDrawerService.Instance.Today.Transactions
+                    .FirstOrDefault(t => t.Description.Contains(deletedBillNo));
+                if (matchingTx != null)
+                {
+                    CashDrawerService.Instance.DeleteTransaction(matchingTx.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to auto-remove matching transaction for bill {BillNo} from Cash Drawer", deletedBillNo);
+            }
+        }
+
         Log.Information("Customer bill {SessionId} permanently deleted", sessionId);
         OnHistoryUpdated?.Invoke();
+        TriggerExcelAutoSync();
         return true;
+    }
+
+    /// <summary>
+    /// Automatically synchronizes all sales and cash drawer records to the user's attached Excel spreadsheet.
+    /// Runs asynchronously in the background so the UI is never blocked.
+    /// </summary>
+    public void TriggerExcelAutoSync()
+    {
+        if (Settings.AutoSyncToExcel && !string.IsNullOrWhiteSpace(Settings.AttachedExcelPath))
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    var bills = CompletedBillSessions.ToList();
+                    var registers = CashDrawerService.Instance.AllDays.ToList();
+                    BillExcelExporter.AutoSyncAttachedExcel(Settings, bills, registers);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Background auto-sync to Excel failed");
+                }
+            });
+        }
     }
 
     #endregion

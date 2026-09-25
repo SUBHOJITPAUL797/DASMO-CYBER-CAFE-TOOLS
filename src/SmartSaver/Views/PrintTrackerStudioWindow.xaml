@@ -554,6 +554,24 @@
                                         <TextBlock Text="CSV" FontWeight="SemiBold" FontSize="11"/>
                                     </StackPanel>
                                 </Button>
+                                <Button Command="{Binding LinkExcelFileCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="7,4" Margin="0,0,5,0"
+                                        Background="#151A2E" BorderBrush="#38BDF8" Foreground="#38BDF8" FontWeight="SemiBold"
+                                        ToolTip="{Binding AttachedExcelPath, StringFormat='Linked Excel: {0} (Click to link or attach .xlsx workbook)'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔗 " FontSize="11"/>
+                                        <TextBlock Text="{Binding AttachedExcelName}" MaxWidth="110" TextTrimming="CharacterEllipsis" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SyncExcelNowCommand}"
+                                        Style="{StaticResource CounterChipButton}" Padding="7,4" Margin="0,0,5,0"
+                                        Background="#152E28" BorderBrush="#10B981" Foreground="#34D399" FontWeight="SemiBold"
+                                        ToolTip="Manually sync all bills and cash drawer ledger into linked Excel workbook">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚡ " FontSize="11"/>
+                                        <TextBlock Text="Sync" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
                                 <Button Content="⚙️ Set Prices" Click="OpenRateSettings_Click"
                                         Style="{StaticResource CounterChipButton}" Padding="8,4" Margin="0"
                                         Background="#1A2E26" BorderBrush="#10B981" Foreground="#10B981" FontWeight="Bold"

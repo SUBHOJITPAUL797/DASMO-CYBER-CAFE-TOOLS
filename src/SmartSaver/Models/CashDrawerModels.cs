@@ -147,4 +147,10 @@ public class DailyCashRegister
     /// </summary>
     [JsonIgnore]
     public double TodayNetProfit => TodayTotalRevenue - TodayTotalExpenses;
+
+    /// <summary>
+    /// Total extra commission/fees earned today from UPI cashouts and service fees.
+    /// </summary>
+    [JsonIgnore]
+    public double TodayTotalCommission => Transactions.Sum(t => t.CommissionFee);
 }

@@ -183,13 +183,47 @@ public class CashDrawerViewModel : ViewModelBase
         "Other"
     };
 
+    // ── Linked Excel Spreadsheet Properties ──
+    public string AttachedExcelPath
+    {
+        get => PrintTrackerService.Instance.Settings.AttachedExcelPath;
+        set
+        {
+            PrintTrackerService.Instance.UpdateSettings(s => s.AttachedExcelPath = value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(AttachedExcelName));
+            OnPropertyChanged(nameof(HasAttachedExcel));
+        }
+    }
+
+    public string AttachedExcelName => string.IsNullOrWhiteSpace(AttachedExcelPath)
+        ? "No Excel Workbook Attached (Click to Link)"
+        : Path.GetFileName(AttachedExcelPath);
+
+    public bool HasAttachedExcel => !string.IsNullOrWhiteSpace(AttachedExcelPath);
+
+    public bool AutoSyncToExcel
+    {
+        get => PrintTrackerService.Instance.Settings.AutoSyncToExcel;
+        set
+        {
+            PrintTrackerService.Instance.UpdateSettings(s => s.AutoSyncToExcel = value);
+            OnPropertyChanged();
+        }
+    }
+
     // ── Commands ──
     public ICommand AddTransactionCommand { get; }
     public ICommand SaveOpeningBalancesCommand { get; }
     public ICommand DeleteTransactionCommand { get; }
     public ICommand ClearDebtCommand { get; }
+    public ICommand ClearTodayJournalCommand { get; }
     public ICommand QuickUpiPayoutShortcutCommand { get; }
     public ICommand QuickBorrowShortcutCommand { get; }
+    public ICommand LinkExcelFileCommand { get; }
+    public ICommand SyncExcelNowCommand { get; }
+    public ICommand OpenAttachedExcelCommand { get; }
+    public ICommand ExportFullExcelCommand { get; }
 
     public CashDrawerViewModel()
     {
@@ -229,6 +263,25 @@ public class CashDrawerViewModel : ViewModelBase
             }
         });
 
+        ClearTodayJournalCommand = new RelayCommand(_ =>
+        {
+            var result = MessageBox.Show(
+                "⚠️ WARNING: CLEAR TODAY'S FINANCIAL JOURNAL\n\n" +
+                "Are you sure you want to permanently delete ALL financial entries recorded for today?\n\n" +
+                "• All cash in/out, UPI payouts, and customer debt entries for today will be erased.\n" +
+                "• Opening cash float and online balances will remain intact.\n\n" +
+                "This action CANNOT be undone. Do you wish to continue?",
+                "Clear Today's Financial Journal",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                _service.ClearTodayTransactions();
+                MessageBox.Show("✅ Today's financial journal has been cleared.", "Journal Cleared", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        });
+
         QuickUpiPayoutShortcutCommand = new RelayCommand(_ =>
         {
             SelectedCategoryString = "Customer UPI ➔ Cash Given";
@@ -240,6 +293,11 @@ public class CashDrawerViewModel : ViewModelBase
             SelectedCategoryString = "Customer Borrow / Credit (Due)";
             DescriptionInput = "Due / Khata borrowed";
         });
+
+        LinkExcelFileCommand = new RelayCommand(_ => ExecuteLinkExcelFile());
+        SyncExcelNowCommand = new RelayCommand(_ => ExecuteSyncExcelNow());
+        OpenAttachedExcelCommand = new RelayCommand(_ => ExecuteOpenAttachedExcel());
+        ExportFullExcelCommand = new RelayCommand(_ => ExecuteExportFullExcel());
 
         RefreshAll();
     }
@@ -330,6 +388,131 @@ public class CashDrawerViewModel : ViewModelBase
         _service.SetOpeningBalances(c, o);
         MessageBox.Show($"✅ Opening balances saved!\n\nCash Float in Drawer: ₹{c:F2}\nOnline/Bank Balance: ₹{o:F2}",
             "Opening Balances Updated", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void ExecuteLinkExcelFile()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Select or Create Linked Excel Accounts Workbook",
+                Filter = "Excel Spreadsheet (*.xlsx)|*.xlsx",
+                FileName = string.IsNullOrWhiteSpace(AttachedExcelPath)
+                    ? $"Cyber_Cafe_Accounts_{DateTime.Now:yyyy}.xlsx"
+                    : Path.GetFileName(AttachedExcelPath),
+                InitialDirectory = string.IsNullOrWhiteSpace(AttachedExcelPath)
+                    ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                    : Path.GetDirectoryName(AttachedExcelPath)
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                AttachedExcelPath = dialog.FileName;
+                AutoSyncToExcel = true;
+
+                // Sync immediately
+                PrintTrackerService.Instance.TriggerExcelAutoSync();
+
+                MessageBox.Show(
+                    $"✅ Excel Workbook Linked Successfully!\n\nFile:\n{dialog.FileName}\n\nAuto-Sync is now active. All bills, photocopies, cashouts, and cash transactions will automatically reflect into this spreadsheet.",
+                    "Excel Auto-Sync Connected", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to link Excel file");
+            MessageBox.Show($"Failed to link Excel file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExecuteSyncExcelNow()
+    {
+        if (string.IsNullOrWhiteSpace(AttachedExcelPath))
+        {
+            ExecuteLinkExcelFile();
+            return;
+        }
+
+        try
+        {
+            var bills = PrintTrackerService.Instance.CompletedBillSessions.ToList();
+            var regs = CashDrawerService.Instance.AllDays.ToList();
+            bool ok = BillExcelExporter.AutoSyncAttachedExcel(PrintTrackerService.Instance.Settings, bills, regs);
+
+            if (ok)
+            {
+                MessageBox.Show(
+                    $"✅ All accounts & bills synced successfully to:\n{AttachedExcelPath}",
+                    "Sync Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"⚠️ Could not write to Excel file.\nPlease verify the file is not currently open and locked by another application.",
+                    "Sync Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Manual Excel sync failed");
+            MessageBox.Show($"Sync error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExecuteOpenAttachedExcel()
+    {
+        if (string.IsNullOrWhiteSpace(AttachedExcelPath) || !File.Exists(AttachedExcelPath))
+        {
+            ExecuteSyncExcelNow();
+            if (string.IsNullOrWhiteSpace(AttachedExcelPath) || !File.Exists(AttachedExcelPath))
+                return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AttachedExcelPath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to open Excel file: {Path}", AttachedExcelPath);
+            MessageBox.Show($"Could not open file:\n{ex.Message}", "Open Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExecuteExportFullExcel()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export Comprehensive Cyber Cafe Finance Workbook",
+                Filter = "Excel Spreadsheet (*.xlsx)|*.xlsx",
+                FileName = $"Cyber_Cafe_Full_Finance_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                var bills = PrintTrackerService.Instance.CompletedBillSessions.ToList();
+                var regs = CashDrawerService.Instance.AllDays.ToList();
+                BillExcelExporter.ExportFullFinanceWorkbook(bills, regs, PrintTrackerService.Instance.Settings, dialog.FileName);
+
+                var ask = MessageBox.Show(
+                    $"✅ Full Finance Excel Workbook exported!\n\nFile:\n{dialog.FileName}\n\nWould you like to open it now?",
+                    "Export Successful", MessageBoxButton.YesNo, MessageBoxImage.Information);
+
+                if (ask == MessageBoxResult.Yes)
+                {
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true }); } catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to export full finance Excel workbook");
+            MessageBox.Show($"Export error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void RefreshAll()

@@ -287,6 +287,39 @@ public class PrintTrackerViewModel : ViewModelBase
     public ICommand ToggleMonitoringCommand { get; }
     public ICommand PollNowCommand { get; }
 
+    // ── Linked Excel Spreadsheet Auto-Sync ──
+    public string AttachedExcelPath
+    {
+        get => _tracker.Settings.AttachedExcelPath;
+        set
+        {
+            _tracker.UpdateSettings(s => s.AttachedExcelPath = value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(AttachedExcelName));
+            OnPropertyChanged(nameof(HasAttachedExcel));
+        }
+    }
+
+    public string AttachedExcelName => string.IsNullOrWhiteSpace(AttachedExcelPath)
+        ? "No Excel Linked"
+        : Path.GetFileName(AttachedExcelPath);
+
+    public bool HasAttachedExcel => !string.IsNullOrWhiteSpace(AttachedExcelPath);
+
+    public bool AutoSyncToExcel
+    {
+        get => _tracker.Settings.AutoSyncToExcel;
+        set
+        {
+            _tracker.UpdateSettings(s => s.AutoSyncToExcel = value);
+            OnPropertyChanged();
+        }
+    }
+
+    public ICommand LinkExcelFileCommand { get; }
+    public ICommand SyncExcelNowCommand { get; }
+    public ICommand OpenAttachedExcelCommand { get; }
+
     public PrintTrackerViewModel()
     {
         // Populate installed printers
@@ -558,6 +591,10 @@ public class PrintTrackerViewModel : ViewModelBase
         ExportExcelCommand = new RelayCommand(async _ => await ExportExcelAsync());
         OpenCashDrawerCommand = new RelayCommand(_ => Views.CashDrawerWindow.ShowCashDrawer());
 
+        LinkExcelFileCommand = new RelayCommand(_ => ExecuteLinkExcelFile());
+        SyncExcelNowCommand = new RelayCommand(_ => ExecuteSyncExcelNow());
+        OpenAttachedExcelCommand = new RelayCommand(_ => ExecuteOpenAttachedExcel());
+
         ToggleMonitoringCommand = new RelayCommand(_ =>
         {
             AutoMonitoringEnabled = !AutoMonitoringEnabled;
@@ -747,6 +784,95 @@ public class PrintTrackerViewModel : ViewModelBase
         {
             Log.Error(ex, "Failed to export Excel report");
             MessageBox.Show($"Failed to export Excel: {ex.Message}", "Export Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExecuteLinkExcelFile()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Select or Create Linked Excel Accounts Workbook",
+                Filter = "Excel Spreadsheet (*.xlsx)|*.xlsx",
+                FileName = string.IsNullOrWhiteSpace(AttachedExcelPath)
+                    ? $"Cyber_Cafe_Accounts_{DateTime.Now:yyyy}.xlsx"
+                    : Path.GetFileName(AttachedExcelPath),
+                InitialDirectory = string.IsNullOrWhiteSpace(AttachedExcelPath)
+                    ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                    : Path.GetDirectoryName(AttachedExcelPath)
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                AttachedExcelPath = dialog.FileName;
+                AutoSyncToExcel = true;
+
+                // Sync immediately
+                _tracker.TriggerExcelAutoSync();
+
+                MessageBox.Show(
+                    $"✅ Excel Workbook Linked Successfully!\n\nFile:\n{dialog.FileName}\n\nAuto-Sync is now active. All bills, photocopies, cashouts, and cash transactions will automatically reflect into this spreadsheet.",
+                    "Excel Auto-Sync Connected", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to link Excel file in PrintTrackerViewModel");
+            MessageBox.Show($"Failed to link Excel file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExecuteSyncExcelNow()
+    {
+        if (string.IsNullOrWhiteSpace(AttachedExcelPath))
+        {
+            ExecuteLinkExcelFile();
+            return;
+        }
+
+        try
+        {
+            var bills = _tracker.CompletedBillSessions.ToList();
+            var regs = CashDrawerService.Instance.AllDays.ToList();
+            bool ok = BillExcelExporter.AutoSyncAttachedExcel(_tracker.Settings, bills, regs);
+
+            if (ok)
+            {
+                MessageBox.Show(
+                    $"✅ All accounts & bills synced successfully to:\n{AttachedExcelPath}",
+                    "Sync Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"⚠️ Could not write to Excel file.\nPlease verify the file is not currently open and locked by another application.",
+                    "Sync Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Manual Excel sync failed in PrintTrackerViewModel");
+            MessageBox.Show($"Sync error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExecuteOpenAttachedExcel()
+    {
+        if (string.IsNullOrWhiteSpace(AttachedExcelPath) || !File.Exists(AttachedExcelPath))
+        {
+            ExecuteLinkExcelFile();
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(AttachedExcelPath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to open attached Excel file {Path}", AttachedExcelPath);
+            MessageBox.Show($"Could not open Excel file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

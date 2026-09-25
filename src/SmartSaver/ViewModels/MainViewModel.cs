@@ -139,6 +139,7 @@ public class MainViewModel : ViewModelBase
     public ICommand OpenPassportStudioCommand { get; }
     public ICommand OpenPdfEditorCommand { get; }
     public ICommand OpenPrintTrackerStudioCommand { get; }
+    public ICommand OpenCashDrawerCommand { get; }
     public ICommand OpenCompressDialogCommand { get; }
     public ICommand SelectToolFileCommand { get; }
     public ICommand ToggleSidebarCommand { get; }
@@ -537,6 +538,7 @@ public class MainViewModel : ViewModelBase
         OpenPassportStudioCommand = new RelayCommand(_ => PassportStudioDialog.ShowStudio());
         OpenPdfEditorCommand = new RelayCommand(p => ShowPdfEditor(p?.ToString()));
         OpenPrintTrackerStudioCommand = new RelayCommand(_ => PrintTrackerStudioWindow.ShowStudio());
+        OpenCashDrawerCommand = new RelayCommand(_ => CashDrawerWindow.ShowCashDrawer());
         OpenCompressDialogCommand = new RelayCommand(_ => RequestOpenCompressDialog?.Invoke());
         SelectToolFileCommand = new RelayCommand(param => BrowseFileForCurrentTool(param?.ToString()));
 

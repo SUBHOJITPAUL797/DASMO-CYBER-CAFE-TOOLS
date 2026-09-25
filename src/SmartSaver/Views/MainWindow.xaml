@@ -487,6 +487,13 @@
                                     </StackPanel>
                                 </Button>
 
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenCashDrawerCommand}" ToolTip="💰 Cash Drawer &amp; Daily Finance Manager (Live Till &amp; Accounts)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💰" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Cash Drawer &amp; Accounts" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
                                 <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenStackerCommand}" ToolTip="A4 Document Stacker">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="📄" Margin="0,0,10,0" FontSize="14"/>
@@ -753,6 +760,21 @@
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                             <TextBlock Text="Auto Print Counter &amp; Rush Billing" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
                                             <TextBlock Text="Live Brother DCP-T530DW print counter, auto duplex (2-in-1 replacement), instant customer cart &amp; thermal/WhatsApp billing." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                                <!-- Card 13: Cash Drawer & Daily Accounts Manager -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenCashDrawerCommand}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="💰" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                            <TextBlock Text="Cash Drawer &amp; Daily Accounts" FontSize="14" FontWeight="Bold" Foreground="#F59E0B"/>
+                                            <TextBlock Text="Real-time till float, UPI &amp; cash in/out, customer credit (khata), auto-sync with attached Excel workbook." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>

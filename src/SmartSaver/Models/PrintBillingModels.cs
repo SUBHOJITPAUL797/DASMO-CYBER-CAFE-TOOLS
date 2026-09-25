@@ -175,4 +175,8 @@ public class PrintBillingSettings
     public string ShopPhone { get; set; } = "+91 8927408840";
     public string ShopAddress { get; set; } = "Cyber Cafe & Digital Service Point";
     public string BillFooterNote { get; set; } = "Thank you for visiting! Please visit again.";
+
+    // ── Linked Excel Spreadsheet Integration ──
+    public string AttachedExcelPath { get; set; } = string.Empty;
+    public bool AutoSyncToExcel { get; set; } = true;
 }
