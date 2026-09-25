@@ -22,6 +22,12 @@ public static class Program
         Console.WriteLine();
 
         FirebaseCloudAuthService.BypassForTests = true;
+        string preflightSandbox = Path.Combine(Path.GetTempPath(), "DASMO_Test_Sandbox_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(preflightSandbox);
+        CashDrawerService.ResetForTesting(preflightSandbox);
+        PrintTrackerService.ResetForTesting(preflightSandbox);
+        BrotherPrinterAuditService.ResetForTesting(preflightSandbox);
+        OutputHistoryService.ResetForTesting(preflightSandbox);
         NotificationService.EnsureNotificationBranding();
 
         if (args.Length > 0 && args[0] == "TEST_TOAST")
@@ -200,6 +206,10 @@ public static class Program
         string testDir = Path.Combine(Path.GetTempPath(), "DASMO_Comprehensive_Tests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(testDir);
         PdfDraftService.Instance.DraftsFolder = Path.Combine(testDir, "Drafts");
+        CashDrawerService.ResetForTesting(Path.Combine(testDir, "CashDrawer"));
+        PrintTrackerService.ResetForTesting(Path.Combine(testDir, "PrintTracker"));
+        BrotherPrinterAuditService.ResetForTesting(Path.Combine(testDir, "PrinterAudit"));
+        OutputHistoryService.ResetForTesting(Path.Combine(testDir, "OutputHistory"));
 
         try
         {

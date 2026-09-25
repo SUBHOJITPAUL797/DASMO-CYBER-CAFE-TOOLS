@@ -20,8 +20,16 @@ namespace SmartSaver.Services;
 /// </summary>
 public sealed class BrotherPrinterAuditService
 {
-    private static readonly Lazy<BrotherPrinterAuditService> _instance = new(() => new BrotherPrinterAuditService());
+    private static Lazy<BrotherPrinterAuditService> _instance = new(() => new BrotherPrinterAuditService());
     public static BrotherPrinterAuditService Instance => _instance.Value;
+
+    public static string? CustomDataDirectory { get; set; }
+
+    public static void ResetForTesting(string? testDir = null)
+    {
+        CustomDataDirectory = testDir;
+        _instance = new Lazy<BrotherPrinterAuditService>(() => new BrotherPrinterAuditService(testDir));
+    }
 
     private readonly object _lock = new();
     private readonly HttpClient _http;
@@ -32,13 +40,26 @@ public sealed class BrotherPrinterAuditService
 
     public event Action? OnAuditUpdated;
 
-    private BrotherPrinterAuditService()
+    private BrotherPrinterAuditService(string? customDir = null)
     {
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
         _http.DefaultRequestHeaders.Add("User-Agent", "DASMO-CyberCafe-PrinterAudit/1.5");
 
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string dataDir = Path.Combine(appData, "DASMO CYBER CAFE TOOLS");
+        string? targetDir = customDir ?? CustomDataDirectory;
+        if (targetDir == null)
+        {
+            try
+            {
+                var procName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+                if (procName.Contains("Test", StringComparison.OrdinalIgnoreCase))
+                {
+                    targetDir = Path.Combine(Path.GetTempPath(), "DasmoTestSandbox_" + procName);
+                }
+            }
+            catch { }
+        }
+
+        string dataDir = targetDir ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DASMO CYBER CAFE TOOLS");
         Directory.CreateDirectory(dataDir);
         _storageFilePath = Path.Combine(dataDir, "printer_daily_meters.json");
 

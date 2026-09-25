@@ -93,7 +93,7 @@ public class DailyCashRegister
             lock (Transactions)
             {
                 return Transactions.Where(t => t.Medium == PaymentMedium.CashInDrawer && t.Direction == TransactionDirection.Income).Sum(t => t.Amount)
-                    + Transactions.Where(t => t.Category == CashCategory.CustomerCashBankDeposit).Sum(t => t.Amount);
+                    + Transactions.Where(t => t.Category == CashCategory.CustomerCashBankDeposit).Sum(t => t.Amount + t.CommissionFee);
             }
         }
     }
@@ -166,7 +166,7 @@ public class DailyCashRegister
                 return Transactions.Where(t =>
                     t.Direction == TransactionDirection.Income &&
                     t.Category != CashCategory.OwnerInvestment).Sum(t => t.Amount)
-                    + Transactions.Where(t => t.Category == CashCategory.CustomerUpiCashPayout).Sum(t => t.CommissionFee);
+                    + Transactions.Where(t => t.Direction == TransactionDirection.Transfer).Sum(t => t.CommissionFee);
             }
         }
     }

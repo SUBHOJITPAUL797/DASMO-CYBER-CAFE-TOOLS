@@ -26,23 +26,45 @@ public class HistoryRecord
 
 public class OutputHistoryService
 {
-    private static readonly Lazy<OutputHistoryService> _instance = new(() => new OutputHistoryService());
+    private static Lazy<OutputHistoryService> _instance = new(() => new OutputHistoryService());
     public static OutputHistoryService Instance => _instance.Value;
+
+    public static string? CustomDataDirectory { get; set; }
+
+    public static void ResetForTesting(string? testDir = null)
+    {
+        CustomDataDirectory = testDir;
+        _instance = new Lazy<OutputHistoryService>(() => new OutputHistoryService(testDir));
+    }
 
     private readonly string _historyFilePath;
     private readonly object _lock = new();
     public ObservableCollection<HistoryRecord> Records { get; } = new();
     public event Action? OnRecordAdded;
 
-    private OutputHistoryService()
+    private OutputHistoryService(string? customDir = null)
     {
+        string? targetDir = customDir ?? CustomDataDirectory;
+        if (targetDir == null)
+        {
+            try
+            {
+                var procName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+                if (procName.Contains("Test", StringComparison.OrdinalIgnoreCase))
+                {
+                    targetDir = Path.Combine(Path.GetTempPath(), "DasmoTestSandbox_" + procName);
+                }
+            }
+            catch { }
+        }
+
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string folder = Path.Combine(appData, "DASMO CYBER CAFE TOOLS");
+        string folder = targetDir ?? Path.Combine(appData, "DASMO CYBER CAFE TOOLS");
         Directory.CreateDirectory(folder);
         _historyFilePath = Path.Combine(folder, "history.json");
 
-        // Migration check from older folders
-        if (!File.Exists(_historyFilePath))
+        // Migration check from older folders (only in production mode)
+        if (targetDir == null && !File.Exists(_historyFilePath))
         {
             string oldCompressorPath = Path.Combine(appData, "DASMO CYBER COMPRESSOR", "history.json");
             string legacyPath = Path.Combine(appData, "SmartSaver", "history.json");

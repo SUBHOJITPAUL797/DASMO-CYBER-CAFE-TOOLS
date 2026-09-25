@@ -21,8 +21,16 @@ namespace SmartSaver.Services;
 /// </summary>
 public sealed class PrintTrackerService : IDisposable
 {
-    private static readonly Lazy<PrintTrackerService> _instance = new(() => new PrintTrackerService());
+    private static Lazy<PrintTrackerService> _instance = new(() => new PrintTrackerService());
     public static PrintTrackerService Instance => _instance.Value;
+
+    public static string? CustomDataDirectory { get; set; }
+
+    public static void ResetForTesting(string? testDir = null)
+    {
+        CustomDataDirectory = testDir;
+        _instance = new Lazy<PrintTrackerService>(() => new PrintTrackerService(testDir));
+    }
 
     private readonly string _settingsFilePath;
     private readonly string _historyFilePath;
@@ -67,10 +75,23 @@ public sealed class PrintTrackerService : IDisposable
     /// </summary>
     public event Action? OnHistoryUpdated;
 
-    private PrintTrackerService()
+    private PrintTrackerService(string? customDir = null)
     {
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string dataDir = Path.Combine(appData, "DASMO CYBER CAFE TOOLS");
+        string? targetDir = customDir ?? CustomDataDirectory;
+        if (targetDir == null)
+        {
+            try
+            {
+                var procName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+                if (procName.Contains("Test", StringComparison.OrdinalIgnoreCase))
+                {
+                    targetDir = Path.Combine(Path.GetTempPath(), "DasmoTestSandbox_" + procName);
+                }
+            }
+            catch { }
+        }
+
+        string dataDir = targetDir ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DASMO CYBER CAFE TOOLS");
         Directory.CreateDirectory(dataDir);
 
         _settingsFilePath = Path.Combine(dataDir, "print_billing_settings.json");
@@ -79,6 +100,7 @@ public sealed class PrintTrackerService : IDisposable
 
         LoadSettings();
         LoadHistory();
+        PurgeTestArtifacts();
     }
 
     #region Lifecycle & Background Monitoring
@@ -960,6 +982,57 @@ public sealed class PrintTrackerService : IDisposable
         catch (Exception ex)
         {
             Log.Warning(ex, "Failed to load print history");
+        }
+    }
+
+    private void PurgeTestArtifacts()
+    {
+        lock (_lock)
+        {
+            try
+            {
+                var testCustomerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "Rajesh Sharma", "Pooja Sharma", "Rahul Das", "Rahul Sen", "Amit Kumar",
+                    "Cust A", "Cust B", "Cust C", "Arun Roy", "Delete Test Cust",
+                    "Rush Customer", "Walk-in Xerox", "Subhojit Paul", "Bikram"
+                };
+
+                int billsBefore = CompletedBillSessions.Count;
+                CompletedBillSessions.RemoveAll(b =>
+                    testCustomerNames.Contains(b.CustomerName) ||
+                    b.Notes.Contains("College project prints", StringComparison.OrdinalIgnoreCase) ||
+                    b.Notes.Contains("College form", StringComparison.OrdinalIgnoreCase) ||
+                    b.Notes.Contains("Urgent admit card prints", StringComparison.OrdinalIgnoreCase));
+
+                int jobsBefore = AllJobHistory.Count;
+                AllJobHistory.RemoveAll(j =>
+                    testCustomerNames.Contains(j.CustomerName) ||
+                    j.DocumentName.Contains("Bill Seq Test", StringComparison.OrdinalIgnoreCase) ||
+                    j.DocumentName.Contains("College Project Xerox Due", StringComparison.OrdinalIgnoreCase) ||
+                    j.DocumentName.Contains("Online Form Print", StringComparison.OrdinalIgnoreCase) ||
+                    j.DocumentName.Contains("Quick B&W Xerox × 5", StringComparison.OrdinalIgnoreCase) ||
+                    j.DocumentName.Contains("Physical Xerox Meter Audit Reconciliation", StringComparison.OrdinalIgnoreCase) ||
+                    j.DocumentName.Contains("Exam_Admit_Card", StringComparison.OrdinalIgnoreCase) ||
+                    j.DocumentName.Contains("Photo_ID_Card", StringComparison.OrdinalIgnoreCase) ||
+                    j.DocumentName.Contains("Test Print For Delete", StringComparison.OrdinalIgnoreCase));
+
+                if (CompletedBillSessions.Count != billsBefore)
+                {
+                    SaveBills();
+                    Log.Information("Purged test bills from completed bill history");
+                }
+
+                if (AllJobHistory.Count != jobsBefore)
+                {
+                    SaveHistory();
+                    Log.Information("Purged test jobs from print job history");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to purge test artifacts from print tracker");
+            }
         }
     }
 

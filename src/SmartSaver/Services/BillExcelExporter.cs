@@ -61,7 +61,9 @@ public static class BillExcelExporter
 
         var billList = bills.OrderBy(b => b.BilledAt).ToList();
         var regList = registers.OrderByDescending(r => r.Date).ToList();
-        var todayReg = CashDrawerService.Instance.Today;
+        var todayReg = regList.FirstOrDefault(r => r.DateKey == DateTime.Today.ToString("yyyy-MM-dd"))
+                       ?? regList.FirstOrDefault()
+                       ?? CashDrawerService.Instance.Today;
 
         uint sheetId = 1;
 
@@ -351,11 +353,14 @@ public static class BillExcelExporter
         {
             CellText("TOTALS", 12),
             CellText($"{txList.Count} Total Entries", 12),
-            CellEmpty(12),
-            CellEmpty(12),
-            CellMoney(totalIn - totalOut, 13),
+            CellText($"Revenue: ₹ {todayReg.TodayTotalRevenue:N2}", 12),
+            CellText("Net Profit:", 12),
+            CellMoney(todayReg.TodayNetProfit, 13),
             CellMoney(todayReg.TodayTotalCommission, 13),
-            CellEmpty(12), CellEmpty(12), CellEmpty(12), CellEmpty(12)
+            CellText($"Expenses: ₹ {todayReg.TodayTotalExpenses:N2}", 12),
+            CellText($"Due: ₹ {todayReg.TotalCustomerUnpaidDebt:N2}", 12),
+            CellText($"Cash: ₹ {todayReg.CurrentCashInDrawer:N2} | Bank: ₹ {todayReg.CurrentOnlineBalance:N2}", 12),
+            CellText(todayReg.TotalCustomerUnpaidDebt > 0 ? "UNPAID DUE" : "BALANCED", 12)
         }, 26.0));
 
         return cols;
