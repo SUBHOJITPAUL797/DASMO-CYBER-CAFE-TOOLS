@@ -4870,9 +4870,16 @@ public static class Program
 
                         // Test Studio Window instantiates and tab works
                         var studioWin = new SmartSaver.Views.PrintTrackerStudioWindow();
+                        studioWin.ApplyTemplate();
                         studioWin.Vm.SelectedWorkspaceTab = 1;
                         if (!studioWin.Vm.IsTabMeterAudit)
                             throw new Exception("PrintTrackerStudioWindow initialTab 1 failed to activate Meter Audit");
+
+                        // Also verify CashDrawerWindow instantiates cleanly
+                        var cashDrawerWin = new SmartSaver.Views.CashDrawerWindow();
+                        cashDrawerWin.ApplyTemplate();
+                        if (cashDrawerWin.Vm == null)
+                            throw new Exception("CashDrawerWindow Vm was null");
                     }
                     catch (Exception ex)
                     {

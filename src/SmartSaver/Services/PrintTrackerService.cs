@@ -971,11 +971,24 @@ public sealed class PrintTrackerService : IDisposable
             if (File.Exists(_billsFilePath))
             {
                 string json = File.ReadAllText(_billsFilePath);
-                var bills = JsonSerializer.Deserialize<List<CustomerBillSession>>(json);
-                if (bills != null)
+                if (!string.IsNullOrWhiteSpace(json))
                 {
-                    CompletedBillSessions.Clear();
-                    CompletedBillSessions.AddRange(bills);
+                    List<CustomerBillSession>? bills = null;
+                    if (json.TrimStart().StartsWith("["))
+                    {
+                        bills = JsonSerializer.Deserialize<List<CustomerBillSession>>(json);
+                    }
+                    else if (json.TrimStart().StartsWith("{"))
+                    {
+                        var single = JsonSerializer.Deserialize<CustomerBillSession>(json);
+                        if (single != null) bills = new List<CustomerBillSession> { single };
+                    }
+
+                    if (bills != null)
+                    {
+                        CompletedBillSessions.Clear();
+                        CompletedBillSessions.AddRange(bills);
+                    }
                 }
             }
         }

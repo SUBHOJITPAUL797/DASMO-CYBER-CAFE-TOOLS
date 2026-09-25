@@ -540,7 +540,7 @@ public class MainViewModel : ViewModelBase
         OpenPdfEditorCommand = new RelayCommand(p => ShowPdfEditor(p?.ToString()));
         OpenPrintTrackerStudioCommand = new RelayCommand(_ => PrintTrackerStudioWindow.ShowStudio());
         OpenCashDrawerCommand = new RelayCommand(_ => CashDrawerWindow.ShowCashDrawer());
-        OpenPrinterAuditCommand = new RelayCommand(_ => PrinterAuditDialog.ShowPrinterAudit());
+        OpenPrinterAuditCommand = new RelayCommand(_ => PrintTrackerStudioWindow.ShowStudio(1));
         OpenCompressDialogCommand = new RelayCommand(_ => RequestOpenCompressDialog?.Invoke());
         SelectToolFileCommand = new RelayCommand(param => BrowseFileForCurrentTool(param?.ToString()));
 

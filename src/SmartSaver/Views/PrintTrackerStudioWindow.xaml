@@ -138,7 +138,7 @@
                     <TextBlock Text="DASMO CYBER CAFE" FontWeight="Bold" FontSize="14" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
                     <TextBlock Text=" — Automatic Print Counter, Meter &amp; Customer Billing Studio" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
                     <Border Background="#10B981" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="ALL-IN-ONE V1.5.17" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="ALL-IN-ONE V1.5.18" FontSize="10" FontWeight="Bold" Foreground="White"/>
                     </Border>
                 </StackPanel>
 
@@ -280,7 +280,7 @@
                                         ToolTip="Black Ink Tank (BTD60BK)">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Width="7" Height="7" Background="#111" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center" BorderBrush="#888" BorderThickness="1"/>
-                                        <TextBlock Text="{Binding InkBlack, StringFormat='BK:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="{Binding InkBlack, StringFormat='BK:{0}%', Mode=OneWay}" FontSize="10" FontWeight="Bold" Foreground="White"/>
                                     </StackPanel>
                                 </Border>
 
@@ -289,7 +289,7 @@
                                         ToolTip="Cyan Ink Tank (BT5000C)">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Width="7" Height="7" Background="#00BCD4" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding InkCyan, StringFormat='C:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="#00BCD4"/>
+                                        <TextBlock Text="{Binding InkCyan, StringFormat='C:{0}%', Mode=OneWay}" FontSize="10" FontWeight="Bold" Foreground="#00BCD4"/>
                                     </StackPanel>
                                 </Border>
 
@@ -298,7 +298,7 @@
                                         ToolTip="Magenta Ink Tank (BT5000M)">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Width="7" Height="7" Background="#E91E63" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding InkMagenta, StringFormat='M:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="#E91E63"/>
+                                        <TextBlock Text="{Binding InkMagenta, StringFormat='M:{0}%', Mode=OneWay}" FontSize="10" FontWeight="Bold" Foreground="#E91E63"/>
                                     </StackPanel>
                                 </Border>
 
@@ -307,7 +307,7 @@
                                         ToolTip="Yellow Ink Tank (BT5000Y)">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Width="7" Height="7" Background="#FFEB3B" CornerRadius="2" Margin="0,0,3,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding InkYellow, StringFormat='Y:{0}%'}" FontSize="10" FontWeight="Bold" Foreground="#FFEB3B"/>
+                                        <TextBlock Text="{Binding InkYellow, StringFormat='Y:{0}%', Mode=OneWay}" FontSize="10" FontWeight="Bold" Foreground="#FFEB3B"/>
                                     </StackPanel>
                                 </Border>
 
@@ -1070,32 +1070,32 @@
                                     <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="0,0,4,0" BorderBrush="#666" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="BLACK (BTD60BK)" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                            <ProgressBar Value="{Binding InkBlack}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="White" Background="#2A2A38" BorderThickness="0"/>
-                                            <TextBlock Text="{Binding InkBlack, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                            <ProgressBar Value="{Binding InkBlack, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="White" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkBlack, StringFormat='{}{0}%', Mode=OneWay}" FontSize="18" FontWeight="Bold" Foreground="White"/>
                                         </StackPanel>
                                     </Border>
                                     <!-- Cyan -->
                                     <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="2,0,2,0" BorderBrush="#00BCD4" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="CYAN (BT5000C)" FontSize="10.5" FontWeight="Bold" Foreground="#00BCD4"/>
-                                            <ProgressBar Value="{Binding InkCyan}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#00BCD4" Background="#2A2A38" BorderThickness="0"/>
-                                            <TextBlock Text="{Binding InkCyan, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="#00BCD4"/>
+                                            <ProgressBar Value="{Binding InkCyan, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#00BCD4" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkCyan, StringFormat='{}{0}%', Mode=OneWay}" FontSize="18" FontWeight="Bold" Foreground="#00BCD4"/>
                                         </StackPanel>
                                     </Border>
                                     <!-- Magenta -->
                                     <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="2,0,2,0" BorderBrush="#E91E63" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="MAGENTA (BT5000M)" FontSize="10.5" FontWeight="Bold" Foreground="#E91E63"/>
-                                            <ProgressBar Value="{Binding InkMagenta}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#E91E63" Background="#2A2A38" BorderThickness="0"/>
-                                            <TextBlock Text="{Binding InkMagenta, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="#E91E63"/>
+                                            <ProgressBar Value="{Binding InkMagenta, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#E91E63" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkMagenta, StringFormat='{}{0}%', Mode=OneWay}" FontSize="18" FontWeight="Bold" Foreground="#E91E63"/>
                                         </StackPanel>
                                     </Border>
                                     <!-- Yellow -->
                                     <Border Background="#1C1D27" CornerRadius="6" Padding="12" Margin="4,0,0,0" BorderBrush="#FFEB3B" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="YELLOW (BT5000Y)" FontSize="10.5" FontWeight="Bold" Foreground="#FFEB3B"/>
-                                            <ProgressBar Value="{Binding InkYellow}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#FFEB3B" Background="#2A2A38" BorderThickness="0"/>
-                                            <TextBlock Text="{Binding InkYellow, StringFormat='{}{0}%'}" FontSize="18" FontWeight="Bold" Foreground="#FFEB3B"/>
+                                            <ProgressBar Value="{Binding InkYellow, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" Margin="0,8,0,6" Foreground="#FFEB3B" Background="#2A2A38" BorderThickness="0"/>
+                                            <TextBlock Text="{Binding InkYellow, StringFormat='{}{0}%', Mode=OneWay}" FontSize="18" FontWeight="Bold" Foreground="#FFEB3B"/>
                                         </StackPanel>
                                     </Border>
                                 </UniformGrid>

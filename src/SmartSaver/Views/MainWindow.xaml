@@ -756,7 +756,7 @@
                                     </Grid>
                                 </Button>
 
-                                <!-- Card 12: Print Counter & Rush-Hour Billing Studio -->
+                                <!-- Card 12: Print Counter, Meter Reconciliation & Rush Billing Studio -->
                                 <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -766,7 +766,7 @@
                                         <TextBlock Text="🖨️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                             <TextBlock Text="Auto Print Counter, Meter &amp; Billing" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
-                                            <TextBlock Text="Live Brother DCP-T530DW print counter, hardware meter &amp; walk-up Xerox reconciliation, real-time Wi-Fi ink levels, and instant customer billing." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                            <TextBlock Text="Brother DCP-T530DW live print counter, hardware meter &amp; walk-up Xerox audit, real-time Wi-Fi ink levels, and instant customer billing." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
@@ -782,21 +782,6 @@
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                             <TextBlock Text="Cash Drawer &amp; Daily Accounts" FontSize="14" FontWeight="Bold" Foreground="#F59E0B"/>
                                             <TextBlock Text="Real-time till float, UPI &amp; cash in/out, customer credit (khata), auto-sync with attached Excel workbook." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 14: Brother Meter & Physical Xerox Audit -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPrinterAuditCommand}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="📊" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Printer Meter &amp; Xerox Audit" FontSize="14" FontWeight="Bold" Foreground="#38BDF8"/>
-                                            <TextBlock Text="Brother DCP-T530DW live Wi-Fi ink &amp; status, USB/Wi-Fi meter reconciliation, and physical walk-up Xerox detector." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>

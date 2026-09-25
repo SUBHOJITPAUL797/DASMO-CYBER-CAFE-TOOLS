@@ -33,10 +33,26 @@ public class PrinterAuditViewModel : ViewModelBase
         ? $"🟢 {LiveStatus.DeviceStatus} (Wi-Fi Online @ {LiveStatus.IpAddress})"
         : $"🔌 USB Mode Active (Wi-Fi Standby @ {PrinterIp})";
 
-    public int InkBlack => LiveStatus.InkBlackPercent;
-    public int InkCyan => LiveStatus.InkCyanPercent;
-    public int InkMagenta => LiveStatus.InkMagentaPercent;
-    public int InkYellow => LiveStatus.InkYellowPercent;
+    public int InkBlack
+    {
+        get => LiveStatus.InkBlackPercent;
+        set { /* Defensive setter to prevent WPF TwoWay binding exceptions */ }
+    }
+    public int InkCyan
+    {
+        get => LiveStatus.InkCyanPercent;
+        set { /* Defensive setter to prevent WPF TwoWay binding exceptions */ }
+    }
+    public int InkMagenta
+    {
+        get => LiveStatus.InkMagentaPercent;
+        set { /* Defensive setter to prevent WPF TwoWay binding exceptions */ }
+    }
+    public int InkYellow
+    {
+        get => LiveStatus.InkYellowPercent;
+        set { /* Defensive setter to prevent WPF TwoWay binding exceptions */ }
+    }
 
     // ── Meter Audit Fields ──
     private int _openingMeter;

@@ -119,6 +119,20 @@ public sealed class BrotherPrinterAuditService
                     Log.Error(ex, "Failed to load printer meter records");
                 }
             }
+
+            try
+            {
+                var s = PrintTrackerService.Instance?.Settings;
+                if (s != null && s.PreferVisualInkLevels)
+                {
+                    LiveStatus.InkBlackPercent = s.CalibratedInkBlack;
+                    LiveStatus.InkCyanPercent = s.CalibratedInkCyan;
+                    LiveStatus.InkMagentaPercent = s.CalibratedInkMagenta;
+                    LiveStatus.InkYellowPercent = s.CalibratedInkYellow;
+                    LiveStatus.IsCalibratedByVisualCheck = true;
+                }
+            }
+            catch { }
         }
     }
 
