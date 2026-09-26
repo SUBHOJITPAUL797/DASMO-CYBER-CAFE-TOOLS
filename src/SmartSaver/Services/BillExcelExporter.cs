@@ -237,6 +237,14 @@ public static class BillExcelExporter
         data.Append(CreateRow(r++, CreateMergedBannerCells($"Live Cyber Cafe Accounts Ledger  •  Current Date: {DateTime.Now:dd/MM/yyyy hh:mm tt}", 16, 10), 20.0));
         mergeCells.Append(new MergeCell { Reference = "A2:J2" });
 
+        double totalAllTimeDebt = CashDrawerService.Instance.AllDays.Sum(d =>
+        {
+            lock (d.Transactions)
+            {
+                return d.Transactions.Where(t => t.Category == CashCategory.CustomerBorrowCredit && !t.IsCleared).Sum(t => t.Amount);
+            }
+        });
+
         // Row 3: KPI Card Labels
         data.Append(CreateRow(r++, new[]
         {
@@ -259,7 +267,7 @@ public static class BillExcelExporter
             CellText($"₹ {todayReg.CurrentOnlineBalance:N2}", 20), CellEmpty(20),
             CellText($"₹ {todayReg.TodayNetProfit:N2}", 22), CellEmpty(22),
             CellText($"₹ {todayReg.TodayTotalRevenue:N2}", 24), CellEmpty(24),
-            CellText($"₹ {todayReg.TotalCustomerUnpaidDebt:N2}", 26), CellEmpty(26)
+            CellText($"₹ {totalAllTimeDebt:N2}", 26), CellEmpty(26)
         }, 26.0));
         mergeCells.Append(new MergeCell { Reference = "A4:B4" });
         mergeCells.Append(new MergeCell { Reference = "C4:D4" });
@@ -348,19 +356,22 @@ public static class BillExcelExporter
             zebra = !zebra;
         }
 
+        double totalTurnover = txList.Sum(t => t.Amount);
+        double totalComm = txList.Sum(t => t.CommissionFee);
+
         // Totals Row
         data.Append(CreateRow(r++, new[]
         {
             CellText("TOTALS", 12),
             CellText($"{txList.Count} Total Entries", 12),
             CellText($"Revenue: ₹ {todayReg.TodayTotalRevenue:N2}", 12),
-            CellText("Net Profit:", 12),
-            CellMoney(todayReg.TodayNetProfit, 13),
-            CellMoney(todayReg.TodayTotalCommission, 13),
+            CellText("Turnover / Comm:", 12),
+            CellMoney(totalTurnover, 13),
+            CellMoney(totalComm, 13),
             CellText($"Expenses: ₹ {todayReg.TodayTotalExpenses:N2}", 12),
-            CellText($"Due: ₹ {todayReg.TotalCustomerUnpaidDebt:N2}", 12),
+            CellText($"Due: ₹ {totalAllTimeDebt:N2}", 12),
             CellText($"Cash: ₹ {todayReg.CurrentCashInDrawer:N2} | Bank: ₹ {todayReg.CurrentOnlineBalance:N2}", 12),
-            CellText(todayReg.TotalCustomerUnpaidDebt > 0 ? "UNPAID DUE" : "BALANCED", 12)
+            CellText(totalAllTimeDebt > 0 ? "UNPAID DUE" : "BALANCED", 12)
         }, 26.0));
 
         return cols;
@@ -653,14 +664,16 @@ public static class BillExcelExporter
             zebra = !zebra;
         }
 
+        var latestReg = registers.OrderByDescending(r => r.Date).FirstOrDefault() ?? CashDrawerService.Instance.Today;
+
         // Totals Row
         data.Append(CreateRow(r++, new[]
         {
             CellText("TOTALS", 12),
             CellText($"{registers.Count} Days", 12),
             CellEmpty(12),
-            CellEmpty(12),
-            CellEmpty(12),
+            CellMoney(latestReg.CurrentCashInDrawer, 13),
+            CellMoney(latestReg.CurrentOnlineBalance, 13),
             CellMoney(sumRevenue, 13),
             CellMoney(sumExpenses, 13),
             CellMoney(sumProfit, 13),

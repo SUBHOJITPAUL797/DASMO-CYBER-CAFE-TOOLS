@@ -217,6 +217,7 @@ public sealed class CashDrawerService
             }
 
             if (tx == null) return false;
+            if (tx.IsCleared) return false; // Already cleared, prevent double-crediting
 
             tx.IsCleared = true;
 

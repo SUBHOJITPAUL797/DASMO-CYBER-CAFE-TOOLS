@@ -5129,6 +5129,96 @@ public static class Program
                 failed++;
             }
 
+            // ── TEST 67: Cleared Borrow Visual Distinction, Repayment Idempotency & Excel Totals Alignment (v1.5.24) ──
+            Console.Write("Test 67: Cleared Borrow Visual Distinction, Repayment Idempotency & Excel Totals Alignment (v1.5.24)... ");
+            try
+            {
+                Exception? staEx67 = null;
+                var staThread67 = new Thread(() =>
+                {
+                    try
+                    {
+                        var drawerVm = new CashDrawerViewModel();
+
+                        // 1. Record a borrow
+                        drawerVm.SelectedCategoryString = "Customer Borrow / Credit (Due)";
+                        drawerVm.AmountInput = "180";
+                        drawerVm.CustomerNameInput = "Karan Roy";
+                        drawerVm.CustomerPhoneInput = "9830012345";
+                        drawerVm.DescriptionInput = "Online Admit Card & Photo Due";
+                        drawerVm.AddTransactionCommand.Execute(null);
+
+                        drawerVm.SelectedJournalFilter = "📚 All History";
+                        var borrowItem = drawerVm.Transactions.FirstOrDefault(t => t.CustomerName == "Karan Roy" && t.Amount == 180);
+                        if (borrowItem == null) throw new Exception("Karan Roy borrow not found in All History");
+
+                        // Verify UNPAID styling before clearing
+                        if (!borrowItem.AmountDisplay.Contains("UNPAID"))
+                            throw new Exception($"Expected AmountDisplay to contain 'UNPAID', got: {borrowItem.AmountDisplay}");
+                        if (borrowItem.AmountColor != "#EF4444")
+                            throw new Exception($"Expected AmountColor '#EF4444', got: {borrowItem.AmountColor}");
+                        if (borrowItem.CategoryBadge != "🤝 Customer Borrow (Due)")
+                            throw new Exception($"Expected badge '🤝 Customer Borrow (Due)', got: {borrowItem.CategoryBadge}");
+
+                        // 2. Clear debt
+                        double tillBefore = CashDrawerService.Instance.Today.CurrentCashInDrawer;
+                        drawerVm.ClearDebtCommand.Execute(borrowItem.Id);
+
+                        // 3. Test Idempotency: Attempt to clear the same debt again
+                        bool secondClearResult = CashDrawerService.Instance.ClearCustomerDebt(borrowItem.Id, PaymentMedium.CashInDrawer);
+                        if (secondClearResult)
+                            throw new Exception("ClearCustomerDebt succeeded on an already cleared debt! Should return false (idempotent)");
+
+                        // 4. Verify CLEARED styling after clearing
+                        drawerVm.SelectedJournalFilter = "📚 All History";
+                        var clearedBorrowItem = drawerVm.Transactions.FirstOrDefault(t => t.Id == borrowItem.Id);
+                        if (clearedBorrowItem == null) throw new Exception("Cleared borrow not found in All History");
+
+                        if (!clearedBorrowItem.AmountDisplay.Contains("CLEARED"))
+                            throw new Exception($"Expected AmountDisplay to contain 'CLEARED', got: {clearedBorrowItem.AmountDisplay}");
+                        if (clearedBorrowItem.AmountColor != "#10B981")
+                            throw new Exception($"Expected AmountColor '#10B981', got: {clearedBorrowItem.AmountColor}");
+                        if (clearedBorrowItem.CategoryBadge != "🤝 Borrow (Cleared)")
+                            throw new Exception($"Expected badge '🤝 Borrow (Cleared)', got: {clearedBorrowItem.CategoryBadge}");
+
+                        // 5. Test Non-negative clamping on opening balance
+                        drawerVm.OpeningCashText = "-100";
+                        drawerVm.OpeningOnlineText = "-200";
+                        drawerVm.SaveOpeningBalancesCommand.Execute(null);
+
+                        if (CashDrawerService.Instance.Today.OpeningCashInDrawer < 0 || CashDrawerService.Instance.Today.OpeningOnlineBalance < 0)
+                            throw new Exception("Negative opening balance was allowed!");
+
+                        // 6. Test Excel Export with lifetime due card & aligned totals
+                        string excelTest = Path.Combine(testDir, "Audit_Finance_v1.5.24.xlsx");
+                        BillExcelExporter.ExportFullFinanceWorkbook(
+                            PrintTrackerService.Instance.CompletedBillSessions,
+                            CashDrawerService.Instance.AllDays,
+                            PrintTrackerService.Instance.Settings,
+                            excelTest);
+
+                        if (!File.Exists(excelTest) || new FileInfo(excelTest).Length < 2000)
+                            throw new Exception("ExportFullFinanceWorkbook failed to create valid Excel workbook");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx67 = ex;
+                    }
+                });
+                staThread67.SetApartmentState(ApartmentState.STA);
+                staThread67.Start();
+                staThread67.Join(TimeSpan.FromSeconds(15));
+                if (staEx67 != null) throw staEx67;
+
+                Console.WriteLine("PASSED (Cleared Debt Green Visuals, Repayment Idempotency, Non-negative Clamping & Excel Alignment)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

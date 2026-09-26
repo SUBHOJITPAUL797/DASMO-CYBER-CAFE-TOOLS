@@ -39,7 +39,7 @@ public class CashTransactionItemViewModel
     {
         CashCategory.CustomerUpiCashPayout    => "📱 ➔ 💵 UPI to Cashout",
         CashCategory.CustomerCashBankDeposit  => "💵 ➔ 📱 Cash to Online",
-        CashCategory.CustomerBorrowCredit     => "🤝 Customer Borrow (Due)",
+        CashCategory.CustomerBorrowCredit     => _tx.IsCleared ? "🤝 Borrow (Cleared)" : "🤝 Customer Borrow (Due)",
         CashCategory.CustomerDebtRepaid       => "✅ Debt Cleared",
         CashCategory.PrintSales               => "🖨️ Print Sales",
         CashCategory.XeroxPhotocopy           => "📄 Xerox / Photocopy",
@@ -56,7 +56,7 @@ public class CashTransactionItemViewModel
     {
         CashCategory.CustomerUpiCashPayout    => "#00BCD4", // Cyan
         CashCategory.CustomerCashBankDeposit  => "#3B82F6", // Blue
-        CashCategory.CustomerBorrowCredit     => "#EF4444", // Red warning
+        CashCategory.CustomerBorrowCredit     => _tx.IsCleared ? "#059669" : "#EF4444", // Green if cleared, red if unpaid
         CashCategory.CustomerDebtRepaid       => "#10B981", // Emerald
         CashCategory.PrintSales or CashCategory.XeroxPhotocopy => "#10B981",
         CashCategory.OnlineFormFillup         => "#8B5CF6", // Purple
@@ -76,7 +76,7 @@ public class CashTransactionItemViewModel
             }
             if (_tx.Category == CashCategory.CustomerBorrowCredit)
             {
-                return $"₹{_tx.Amount:F2} UNPAID";
+                return _tx.IsCleared ? $"₹{_tx.Amount:F2} CLEARED" : $"₹{_tx.Amount:F2} UNPAID";
             }
             string sign = _tx.Direction == TransactionDirection.Income ? "+" : "-";
             return $"{sign} ₹{_tx.Amount:F2}";
@@ -85,7 +85,7 @@ public class CashTransactionItemViewModel
 
     public string AmountColor => _tx.Category switch
     {
-        CashCategory.CustomerBorrowCredit => "#EF4444",
+        CashCategory.CustomerBorrowCredit => _tx.IsCleared ? "#10B981" : "#EF4444",
         CashCategory.CustomerUpiCashPayout => "#38BDF8",
         _ => _tx.Direction == TransactionDirection.Income ? "#10B981" : "#F87171"
     };
@@ -587,8 +587,8 @@ public class CashDrawerViewModel : ViewModelBase
         string cStr = OpeningCashText?.Trim().Replace(',', '.') ?? "0";
         string oStr = OpeningOnlineText?.Trim().Replace(',', '.') ?? "0";
 
-        double c = double.TryParse(cStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var cv) ? cv : 0;
-        double o = double.TryParse(oStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var ov) ? ov : 0;
+        double c = double.TryParse(cStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var cv) ? Math.Max(0, cv) : 0;
+        double o = double.TryParse(oStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var ov) ? Math.Max(0, ov) : 0;
 
         _service.SetOpeningBalances(c, o);
         MessageBox.Show($"✅ Opening balances saved!\n\nCash Float in Drawer: ₹{c:F2}\nOnline/Bank Balance: ₹{o:F2}",
@@ -794,6 +794,10 @@ public class CashDrawerViewModel : ViewModelBase
         OnPropertyChanged(nameof(ExpensesLabel));
         OnPropertyChanged(nameof(NetProfitLabel));
         OnPropertyChanged(nameof(UnpaidDebtLabel));
+        _openingCashText = _service.Today.OpeningCashInDrawer.ToString("G", CultureInfo.InvariantCulture);
+        _openingOnlineText = _service.Today.OpeningOnlineBalance.ToString("G", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(OpeningCashText));
+        OnPropertyChanged(nameof(OpeningOnlineText));
         OnPropertyChanged(nameof(CashInToday));
         OnPropertyChanged(nameof(CashOutToday));
         OnPropertyChanged(nameof(OnlineInToday));
