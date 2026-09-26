@@ -552,7 +552,7 @@ public class CashDrawerViewModel : ViewModelBase
         }
     }
 
-    private void RefreshAll()
+    public void RefreshAll()
     {
         Transactions.Clear();
         List<CashTransaction> snapshot;

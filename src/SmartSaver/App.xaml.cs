@@ -332,7 +332,7 @@ public partial class App : System.Windows.Application
                 status == CloudAuthStatus.PendingApproval || 
                 status == CloudAuthStatus.DeviceMismatch || 
                 status == CloudAuthStatus.Expired || 
-                status == CloudAuthStatus.NotLoggedIn)
+                (status == CloudAuthStatus.NotLoggedIn && FirebaseCloudAuthService.Instance.CurrentStatus != CloudAuthStatus.Approved))
             {
                 Dispatcher.Invoke(() =>
                 {

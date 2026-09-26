@@ -20,6 +20,7 @@ public class PrintTrackerViewModel : ViewModelBase
     private readonly PrintTrackerService _tracker = PrintTrackerService.Instance;
     private readonly BrotherPrinterAuditService _auditService = BrotherPrinterAuditService.Instance;
     private readonly CashDrawerService _cashDrawer = CashDrawerService.Instance;
+    public CashDrawerViewModel CashDrawerVm { get; } = new CashDrawerViewModel();
 
     // ── Workspace Navigation Tabs ──
     // 0 = Active Customer Billing Cart
@@ -39,7 +40,11 @@ public class PrintTrackerViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsTabSalesHistory));
                 OnPropertyChanged(nameof(IsTabCashDrawer));
                 if (value == 1) RecalculateMeterAudit();
-                if (value == 3) RefreshDrawerStats();
+                if (value == 3)
+                {
+                    RefreshDrawerStats();
+                    CashDrawerVm.RefreshAll();
+                }
             }
         }
     }

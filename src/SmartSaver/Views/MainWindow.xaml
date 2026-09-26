@@ -480,24 +480,10 @@
 
                                 <Separator Background="{StaticResource BorderBrush}" Margin="12,4"/>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}" ToolTip="🖨️ Cyber Cafe Print Counter &amp; Rush-Hour Billing Studio">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}" ToolTip="🖨️ Print Counter, Hardware Meter, Billing &amp; Cash Accounts Studio">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="🖨️" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Print Counter &amp; Billing" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenCashDrawerCommand}" ToolTip="💰 Cash Drawer &amp; Daily Finance Manager (Live Till &amp; Accounts)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="💰" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Cash Drawer &amp; Accounts" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenPrinterAuditCommand}" ToolTip="📊 Brother Hardware Meter &amp; Physical Xerox Audit">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📊" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Printer Meter &amp; Xerox" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                        <TextBlock Text="Print Counter &amp; Accounts" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
@@ -756,7 +742,7 @@
                                     </Grid>
                                 </Button>
 
-                                <!-- Card 12: Print Counter, Meter Reconciliation & Rush Billing Studio -->
+                                <!-- Card 12: Unified All-in-One Studio: Print Counter, Meter Audit, Billing & Cash Accounts -->
                                 <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -765,23 +751,8 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="🖨️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Auto Print Counter, Meter &amp; Billing" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
-                                            <TextBlock Text="Brother DCP-T530DW live print counter, hardware meter &amp; walk-up Xerox audit, real-time Wi-Fi ink levels, and instant customer billing." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 13: Cash Drawer & Daily Accounts Manager -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenCashDrawerCommand}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="💰" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Cash Drawer &amp; Daily Accounts" FontSize="14" FontWeight="Bold" Foreground="#F59E0B"/>
-                                            <TextBlock Text="Real-time till float, UPI &amp; cash in/out, customer credit (khata), auto-sync with attached Excel workbook." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                            <TextBlock Text="Auto Print Counter, Meter &amp; Cash Accounts" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
+                                            <TextBlock Text="Brother DCP-T530DW live print counter, Wi-Fi hardware meter &amp; Xerox audit, real-time ink levels, billing, and daily cash drawer accounts." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>

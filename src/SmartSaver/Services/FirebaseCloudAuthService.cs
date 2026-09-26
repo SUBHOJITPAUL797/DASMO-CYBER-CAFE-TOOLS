@@ -368,8 +368,12 @@ public class FirebaseCloudAuthService
             return CurrentStatus;
         }
 
-        CurrentStatus = CloudAuthStatus.Loading;
-        OnAuthStateChanged?.Invoke(CurrentStatus, null);
+        // Only set status to Loading and notify UI if not already Approved (prevents background sync from disrupting UI)
+        if (CurrentStatus != CloudAuthStatus.Approved)
+        {
+            CurrentStatus = CloudAuthStatus.Loading;
+            OnAuthStateChanged?.Invoke(CurrentStatus, null);
+        }
 
         var specs = HardwareIdService.GetComputerSpecs();
         string currentHwId = specs.DeviceId;
@@ -600,6 +604,15 @@ public class FirebaseCloudAuthService
                 string err = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 Log.Error("Firestore Login Error {Code}: {Error}", response.StatusCode, err);
                 LastErrorMessage = $"Cloud License Error ({response.StatusCode}): {err}";
+
+                // Server temporary error (5xx) -> maintain approved session if valid offline
+                if ((int)response.StatusCode >= 500 && CurrentUser != null && (CurrentUser.IsApproved || isSuperAdmin))
+                {
+                    Log.Warning("Firestore 5xx server error. Maintaining approved offline session.");
+                    CurrentStatus = CloudAuthStatus.Approved;
+                    return CurrentStatus;
+                }
+
                 CurrentStatus = CloudAuthStatus.NotLoggedIn;
                 OnAuthStateChanged?.Invoke(CurrentStatus, null);
                 return CurrentStatus;
@@ -609,6 +622,23 @@ public class FirebaseCloudAuthService
         {
             Log.Error(ex, "Exception connecting to Firestore for user: {Email}", normalized);
             LastErrorMessage = $"Network/Connection Error: {ex.Message}";
+
+            // Offline Grace Protection: If user is already approved and offline grace has not expired, PRESERVE Approved status!
+            if (CurrentUser != null && (CurrentUser.IsApproved || string.Equals(CurrentUser.Status, "approved", StringComparison.OrdinalIgnoreCase) || isSuperAdmin))
+            {
+                long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                bool offlineGraceExpired = !isSuperAdmin && 
+                    CurrentUser.LastOnlineVerifiedTimestamp > 0 && 
+                    (nowMs - CurrentUser.LastOnlineVerifiedTimestamp > 7L * 24 * 60 * 60 * 1000);
+
+                if (!offlineGraceExpired)
+                {
+                    Log.Information("Offline mode active: Preserving approved session for {Email} despite network drop.", normalized);
+                    CurrentStatus = CloudAuthStatus.Approved;
+                    return CurrentStatus;
+                }
+            }
+
             CurrentStatus = CloudAuthStatus.NotLoggedIn;
             OnAuthStateChanged?.Invoke(CurrentStatus, null);
             return CurrentStatus;

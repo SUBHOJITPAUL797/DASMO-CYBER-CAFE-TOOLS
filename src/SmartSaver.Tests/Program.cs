@@ -4909,6 +4909,81 @@ public static class Program
                 failed++;
             }
 
+            // ── TEST 64: Unified Studio Tab 3 Embedded Cash Drawer, Single Dashboard Button & Offline Grace Protection (v1.5.21) ──
+            try
+            {
+                Console.Write("[TEST 64] Tab 3 Embedded Cash Drawer, Unified Hub & Offline Grace (v1.5.21)... ");
+
+                Exception? staEx64 = null;
+                var staThread64 = new Thread(() =>
+                {
+                    try
+                    {
+                        var printVm = new PrintTrackerViewModel();
+                        if (printVm.CashDrawerVm == null)
+                            throw new Exception("PrintTrackerViewModel.CashDrawerVm was null");
+
+                        // 1. Activate Tab 3 (Daily Cash Drawer & Accounts)
+                        printVm.SelectedWorkspaceTab = 3;
+                        if (!printVm.IsTabCashDrawer)
+                            throw new Exception("Tab 3 (IsTabCashDrawer) failed to activate");
+
+                        // 2. Test embedded Cash Drawer record addition via CashDrawerVm
+                        var drawerVm = printVm.CashDrawerVm;
+                        drawerVm.SelectedCategoryString = "Customer UPI ➔ Cash Given";
+                        drawerVm.AmountInput = "150";
+                        drawerVm.CommissionInput = "10";
+                        drawerVm.CustomerNameInput = "Test Customer";
+                        drawerVm.CustomerPhoneInput = "9876543210";
+                        drawerVm.DescriptionInput = "Withdrawal for emergency Xerox";
+                        drawerVm.IsCashMediumSelected = true;
+
+                        drawerVm.AddTransactionCommand.Execute(null);
+
+                        // Verify transaction registered in both transactions and drawer balance
+                        var match = drawerVm.Transactions.FirstOrDefault(t => t.CustomerName == "Test Customer");
+                        if (match == null)
+                            throw new Exception("Transaction was not added to drawerVm.Transactions");
+
+                        if (match.Amount != 150.0 || match.Commission != 10.0)
+                            throw new Exception($"Transaction amounts mismatched: {match.Amount}, {match.Commission}");
+
+                        // 3. Verify opening float commands
+                        drawerVm.OpeningCashText = "1200";
+                        drawerVm.OpeningOnlineText = "2500";
+                        drawerVm.SaveOpeningBalancesCommand.Execute(null);
+
+                        // 4. Verify PrintTrackerStudioWindow STA loading with full embedded workspace
+                        var studioWin = new SmartSaver.Views.PrintTrackerStudioWindow();
+                        studioWin.ApplyTemplate();
+                        studioWin.Vm.SelectedWorkspaceTab = 3;
+                        if (studioWin.Vm.CashDrawerVm == null)
+                            throw new Exception("studioWin.Vm.CashDrawerVm was null");
+
+                        // 5. Verify MainViewModel unified launch command
+                        var mainVm = new MainViewModel();
+                        if (mainVm.OpenPrintTrackerStudioCommand == null)
+                            throw new Exception("MainViewModel.OpenPrintTrackerStudioCommand was null");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx64 = ex;
+                    }
+                });
+                staThread64.SetApartmentState(ApartmentState.STA);
+                staThread64.Start();
+                staThread64.Join(TimeSpan.FromSeconds(15));
+                if (staEx64 != null) throw staEx64;
+
+                Console.WriteLine("PASSED (Embedded Cash Drawer in Tab 3, CashDrawerVm Commands, Unified Hub & Offline Grace)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

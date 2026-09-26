@@ -114,6 +114,67 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="FormInputText" TargetType="TextBox" BasedOn="{StaticResource BaseControlStyle}">
+            <Setter Property="Background" Value="#1A1C29"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#2D314A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="PrimaryActionBtn" TargetType="Button">
+            <Setter Property="Background" Value="#10B981"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#059669"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ChipShortcutBtn" TargetType="Button">
+            <Setter Property="Background" Value="#1E2235"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="BorderBrush" Value="#333852"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2A304A"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Border x:Name="RootBorder" x:FieldModifier="public" Background="{StaticResource BackgroundBrush}" 
@@ -1342,12 +1403,12 @@
                                             <TextBlock Text="Sync Excel" FontWeight="Bold"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button Command="{Binding OpenCashDrawerCommand}" Style="{StaticResource CounterChipButton}" Padding="12,5" FontSize="11.5"
+                                    <Button Command="{Binding OpenCashDrawerCommand}" Style="{StaticResource CounterChipButton}" Padding="10,4" FontSize="11"
                                             Background="#1A2036" BorderBrush="#F59E0B" Foreground="#F59E0B" FontWeight="Bold"
-                                            ToolTip="Open full-featured Cash Drawer Window for cash in/out, expenses, customer borrow and float setup">
+                                            ToolTip="Pop-out Cash Drawer into an independent floating desktop window">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="💰 " FontSize="12"/>
-                                            <TextBlock Text="Launch Cash Drawer Window" FontWeight="Bold"/>
+                                            <TextBlock Text="🖥️ " FontSize="11"/>
+                                            <TextBlock Text="Pop-out Separate Window" FontWeight="SemiBold"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -1432,36 +1493,190 @@
                             </Border>
                         </UniformGrid>
 
-                        <!-- Recent Cash Transactions Table -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="14"
-                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,8">
-                                    <TextBlock Text="📜 TODAY'S REAL-TIME CASH &amp; UPI TRANSACTIONS" FontWeight="Bold" FontSize="12" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Every print bill, Xerox, cash payment or expense appears here instantly" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <!-- ════ FULL 2-COLUMN CASH DRAWER WORKSPACE ════ -->
+                        <Grid x:Name="CashDrawerWorkspaceGrid" DataContext="{Binding CashDrawerVm}" Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="380"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- LEFT COLUMN: Quick Entry, Add Transaction & Opening Balances -->
+                            <StackPanel Grid.Column="0">
+                                <!-- Quick Action Card -->
+                                <Border Background="#181A28" CornerRadius="8" BorderBrush="#282D42" BorderThickness="1" Padding="14" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="⚡ QUICK ENTRY SHORTCUTS" FontWeight="Bold" FontSize="11" Foreground="#00BCD4" Margin="0,0,0,8"/>
+                                        <WrapPanel Margin="0,0,0,4">
+                                            <Button Content="📱 Customer UPI ➔ Cash Given" Command="{Binding QuickUpiPayoutShortcutCommand}"
+                                                    Style="{StaticResource ChipShortcutBtn}" Margin="0,0,6,6"/>
+                                            <Button Content="🤝 Customer Borrow (Due)" Command="{Binding QuickBorrowShortcutCommand}"
+                                                    Style="{StaticResource ChipShortcutBtn}" Margin="0,0,6,6"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Add Transaction Form -->
+                                <Border Background="#181A28" CornerRadius="8" BorderBrush="#282D42" BorderThickness="1" Padding="14" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="➕ ADD CASH / BANK TRANSACTION" FontWeight="Bold" FontSize="12.5" Foreground="#10B981" Margin="0,0,0,10"/>
+
+                                        <!-- Category -->
+                                        <TextBlock Text="Category / Transaction Type:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                        <ComboBox ItemsSource="{Binding AvailableCategories}" SelectedItem="{Binding SelectedCategoryString}"
+                                                  Margin="0,0,0,10" Padding="8,6" FontSize="12" Background="#1A1C29" Foreground="White" BorderBrush="#2D314A"/>
+
+                                        <!-- Payment Medium (Cash vs Online UPI) -->
+                                        <TextBlock Text="Paid Through (Payment Medium):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <RadioButton Content="💵 Cash in Till" IsChecked="{Binding IsCashMediumSelected}" Foreground="White" FontSize="11.5" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                                            <RadioButton Content="📱 Online / UPI" IsChecked="{Binding IsOnlineMediumSelected}" Foreground="#38BDF8" FontSize="11.5" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Amount (Large) -->
+                                        <TextBlock Text="Amount (₹):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="₹" FontSize="18" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <TextBox Grid.Column="1" Text="{Binding AmountInput, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource FormInputText}" FontSize="16" FontWeight="Bold" Foreground="#34D399" Margin="0"/>
+                                        </Grid>
+
+                                        <!-- Commission Fee (if UPI Cashout) -->
+                                        <TextBlock Text="Extra Commission / Fee (Optional ₹):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding CommissionInput, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FormInputText}"
+                                                 ToolTip="E.g. ₹10 extra charge earned by cafe for giving physical cash"/>
+
+                                        <!-- Customer / Person Name -->
+                                        <TextBlock Text="Customer / Person Name (Optional):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding CustomerNameInput, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FormInputText}"/>
+
+                                        <!-- Customer Phone -->
+                                        <TextBlock Text="Mobile Number (Optional):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding CustomerPhoneInput, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FormInputText}"/>
+
+                                        <!-- Description / Remarks -->
+                                        <TextBlock Text="Description / Notes:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding DescriptionInput, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FormInputText}"/>
+
+                                        <!-- Submit Button -->
+                                        <Button Content="💾 RECORD ENTRY NOW" Command="{Binding AddTransactionCommand}"
+                                                Style="{StaticResource PrimaryActionBtn}" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Opening Balances Setup Card -->
+                                <Border Background="#161824" CornerRadius="8" BorderBrush="#F59E0B" BorderThickness="1" Padding="14">
+                                    <StackPanel>
+                                        <TextBlock Text="🏦 OPENING BALANCES (Start of Day Float)" FontWeight="Bold" FontSize="11.5" Foreground="#F59E0B" Margin="0,0,0,6"/>
+                                        <TextBlock Text="Set opening float at start of morning. Carry-forward applies automatically." FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+
+                                        <TextBlock Text="Cash in Drawer Float (₹):" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding OpeningCashText, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Style="{StaticResource FormInputText}" Margin="0,0,0,8"/>
+
+                                        <TextBlock Text="Online / Bank / UPI Float (₹):" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding OpeningOnlineText, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Style="{StaticResource FormInputText}" Margin="0,0,0,10"/>
+
+                                        <Button Content="💾 Save Starting Balances" Command="{Binding SaveOpeningBalancesCommand}"
+                                                Style="{StaticResource ChipShortcutBtn}" Foreground="#F59E0B" BorderBrush="#F59E0B" Padding="10,6" HorizontalAlignment="Right"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- RIGHT COLUMN: Transactions Feed -->
+                            <Grid Grid.Column="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="📜 TODAY'S FINANCIAL JOURNAL" FontWeight="Bold" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBlock Text=" • Live real-time ledger" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="🗑️ Clear Today's Journal"
+                                            Command="{Binding ClearTodayJournalCommand}"
+                                            ToolTip="Permanently clear and reset all today's cash &amp; UPI transactions (Warning dialog will confirm)"
+                                            Background="#361717" Foreground="#FCA5A5" BorderBrush="#EF4444" BorderThickness="1"
+                                            Padding="10,4" FontSize="11" FontWeight="SemiBold" Cursor="Hand">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
                                 </Grid>
 
-                                <Border Background="#191923" CornerRadius="6" Padding="4">
-                                    <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
-                                        <ItemsControl ItemsSource="{Binding DrawerRecentTransactions}">
+                                <Border Grid.Row="1" Background="#181A28" CornerRadius="8" BorderBrush="#282D42" BorderThickness="1">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                                        <ItemsControl ItemsSource="{Binding Transactions}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Background="#222332" CornerRadius="4" Padding="10,6" Margin="2,2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                    <Border BorderBrush="#24273A" BorderThickness="0,0,0,1" Padding="12,9">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="90"/>
-                                                                <ColumnDefinition Width="80"/>
+                                                                <ColumnDefinition Width="Auto"/>
                                                                 <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="80"/>
-                                                                <ColumnDefinition Width="100"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='{}{0:hh:mm:ss tt}'}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                                                            <Border Grid.Column="1" Background="#2B2D42" CornerRadius="3" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding Category}" FontSize="10.5" FontWeight="Bold" Foreground="White"/>
-                                                            </Border>
-                                                            <TextBlock Grid.Column="2" Text="{Binding Description}" FontSize="11.5" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" Margin="8,0"/>
-                                                            <TextBlock Grid.Column="3" Text="{Binding Medium}" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                            <TextBlock Grid.Column="4" Text="{Binding Amount, StringFormat='₹{0:F2}'}" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
+                                                            <!-- Time -->
+                                                            <TextBlock Grid.Column="0" Text="{Binding TimeFormatted}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       VerticalAlignment="Center" Width="65"/>
+
+                                                            <!-- Description & Badge -->
+                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0">
+                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                                                    <Border Background="{Binding BadgeColor}" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
+                                                                        <TextBlock Text="{Binding CategoryBadge}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                                                    </Border>
+                                                                    <TextBlock Text="{Binding MediumDisplay}" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                                </StackPanel>
+
+                                                                <TextBlock Text="{Binding Description}" FontSize="12" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                                    <TextBlock Text="{Binding CustomerName, StringFormat='Customer: {0}'}" FontSize="11" Foreground="#94A3B8"
+                                                                               Visibility="{Binding CustomerName.Length, Converter={StaticResource BoolToVis}}"/>
+                                                                    <TextBlock Text="{Binding CustomerPhone, StringFormat=' • 📞 {0}'}" FontSize="11" Foreground="#64748B"
+                                                                               Visibility="{Binding CustomerPhone.Length, Converter={StaticResource BoolToVis}}"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+
+                                                            <!-- Amount -->
+                                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="14,0">
+                                                                <TextBlock Text="{Binding AmountDisplay}" FontSize="14" FontWeight="Bold" Foreground="{Binding AmountColor}" HorizontalAlignment="Right"/>
+                                                            </StackPanel>
+
+                                                            <!-- Actions -->
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <!-- Repaid button (for debt) -->
+                                                                <Button Content="✅ Cleared"
+                                                                        Command="{Binding DataContext.ClearDebtCommand, ElementName=CashDrawerWorkspaceGrid}"
+                                                                        CommandParameter="{Binding Id}"
+                                                                        Style="{StaticResource ChipShortcutBtn}" Background="#064E3B" Foreground="#34D399" BorderBrush="#10B981"
+                                                                        Margin="0,0,6,0" Padding="8,3" FontSize="11"
+                                                                        Visibility="{Binding IsCleared, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}"/>
+
+                                                                <!-- Delete button -->
+                                                                <Button Content="🗑️"
+                                                                        Command="{Binding DataContext.DeleteTransactionCommand, ElementName=CashDrawerWorkspaceGrid}"
+                                                                        CommandParameter="{Binding Id}"
+                                                                        Background="Transparent" BorderThickness="0" Foreground="#F87171"
+                                                                        FontSize="12" Cursor="Hand" Width="28" Height="28"
+                                                                        ToolTip="Delete entry"/>
+                                                            </StackPanel>
                                                         </Grid>
                                                     </Border>
                                                 </DataTemplate>
@@ -1469,8 +1684,8 @@
                                         </ItemsControl>
                                     </ScrollViewer>
                                 </Border>
-                            </StackPanel>
-                        </Border>
+                            </Grid>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
