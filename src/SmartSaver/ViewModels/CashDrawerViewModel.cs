@@ -97,13 +97,139 @@ public class CashDrawerViewModel : ViewModelBase
 {
     private readonly CashDrawerService _service = CashDrawerService.Instance;
 
-    // ── Metric Displays ──
+    // ── Dynamic Metric Displays (Filtered by Period) ──
     public string CashInDrawerDisplay => $"₹{_service.Today.CurrentCashInDrawer:F2}";
     public string OnlineBalanceDisplay => $"₹{_service.Today.CurrentOnlineBalance:F2}";
-    public string TodayRevenueDisplay => $"₹{_service.Today.TodayTotalRevenue:F2}";
-    public string TodayExpensesDisplay => $"₹{_service.Today.TodayTotalExpenses:F2}";
-    public string TodayNetProfitDisplay => $"₹{_service.Today.TodayNetProfit:F2}";
-    public string UnpaidDebtDisplay => $"₹{_service.Today.TotalCustomerUnpaidDebt:F2}";
+
+    public string RevenueLabel => SelectedJournalFilter switch
+    {
+        var s when s.Contains("Yesterday") => "📊 YESTERDAY EARNINGS",
+        var s when s.Contains("7 Days")    => "📊 7-DAY EARNINGS",
+        var s when s.Contains("All")       => "📊 ALL-TIME EARNINGS",
+        var s when s.Contains("Khata")     => "📊 TOTAL UNPAID DUE",
+        _                                  => "📊 TODAY'S EARNINGS"
+    };
+
+    public string ExpensesLabel => SelectedJournalFilter switch
+    {
+        var s when s.Contains("Yesterday") => "💸 YESTERDAY EXPENSES",
+        var s when s.Contains("7 Days")    => "💸 7-DAY EXPENSES",
+        var s when s.Contains("All")       => "💸 ALL-TIME EXPENSES",
+        var s when s.Contains("Khata")     => "💸 REPAID DEBT TOTAL",
+        _                                  => "💸 TODAY'S EXPENSES"
+    };
+
+    public string NetProfitLabel => SelectedJournalFilter switch
+    {
+        var s when s.Contains("Yesterday") => "✨ YESTERDAY NET PROFIT",
+        var s when s.Contains("7 Days")    => "✨ 7-DAY NET PROFIT",
+        var s when s.Contains("All")       => "✨ ALL-TIME NET PROFIT",
+        var s when s.Contains("Khata")     => "✨ NET OUTSTANDING",
+        _                                  => "✨ NET PROFIT TODAY"
+    };
+
+    public string UnpaidDebtLabel => SelectedJournalFilter switch
+    {
+        var s when s.Contains("Yesterday") => "🤝 YESTERDAY BORROW",
+        var s when s.Contains("Khata")     => "🤝 TOTAL KHATA DUE",
+        _                                  => "🤝 TOTAL PENDING DUE"
+    };
+
+    public string TodayRevenueDisplay
+    {
+        get
+        {
+            if (SelectedJournalFilter.Contains("Yesterday"))
+            {
+                string yesterdayKey = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+                var reg = _service.AllDays.FirstOrDefault(r => r.DateKey == yesterdayKey);
+                return $"₹{(reg?.TodayTotalRevenue ?? 0):F2}";
+            }
+            if (SelectedJournalFilter.Contains("7 Days"))
+            {
+                DateTime cutoff = DateTime.Today.AddDays(-7).Date;
+                double rev = _service.AllDays.Where(r => r.Date.Date >= cutoff).Sum(r => r.TodayTotalRevenue);
+                return $"₹{rev:F2}";
+            }
+            if (SelectedJournalFilter.Contains("All"))
+            {
+                double rev = _service.AllDays.Sum(r => r.TodayTotalRevenue);
+                return $"₹{rev:F2}";
+            }
+            return $"₹{_service.Today.TodayTotalRevenue:F2}";
+        }
+    }
+
+    public string TodayExpensesDisplay
+    {
+        get
+        {
+            if (SelectedJournalFilter.Contains("Yesterday"))
+            {
+                string yesterdayKey = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+                var reg = _service.AllDays.FirstOrDefault(r => r.DateKey == yesterdayKey);
+                return $"₹{(reg?.TodayTotalExpenses ?? 0):F2}";
+            }
+            if (SelectedJournalFilter.Contains("7 Days"))
+            {
+                DateTime cutoff = DateTime.Today.AddDays(-7).Date;
+                double exp = _service.AllDays.Where(r => r.Date.Date >= cutoff).Sum(r => r.TodayTotalExpenses);
+                return $"₹{exp:F2}";
+            }
+            if (SelectedJournalFilter.Contains("All"))
+            {
+                double exp = _service.AllDays.Sum(r => r.TodayTotalExpenses);
+                return $"₹{exp:F2}";
+            }
+            return $"₹{_service.Today.TodayTotalExpenses:F2}";
+        }
+    }
+
+    public string TodayNetProfitDisplay
+    {
+        get
+        {
+            if (SelectedJournalFilter.Contains("Yesterday"))
+            {
+                string yesterdayKey = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+                var reg = _service.AllDays.FirstOrDefault(r => r.DateKey == yesterdayKey);
+                return $"₹{(reg?.TodayNetProfit ?? 0):F2}";
+            }
+            if (SelectedJournalFilter.Contains("7 Days"))
+            {
+                DateTime cutoff = DateTime.Today.AddDays(-7).Date;
+                double net = _service.AllDays.Where(r => r.Date.Date >= cutoff).Sum(r => r.TodayNetProfit);
+                return $"₹{net:F2}";
+            }
+            if (SelectedJournalFilter.Contains("All"))
+            {
+                double net = _service.AllDays.Sum(r => r.TodayNetProfit);
+                return $"₹{net:F2}";
+            }
+            return $"₹{_service.Today.TodayNetProfit:F2}";
+        }
+    }
+
+    public string UnpaidDebtDisplay
+    {
+        get
+        {
+            if (SelectedJournalFilter.Contains("Yesterday"))
+            {
+                string yesterdayKey = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+                var reg = _service.AllDays.FirstOrDefault(r => r.DateKey == yesterdayKey);
+                return $"₹{(reg?.TotalCustomerUnpaidDebt ?? 0):F2}";
+            }
+            double allTimeUnpaid = _service.AllDays.Sum(d =>
+            {
+                lock (d.Transactions)
+                {
+                    return d.Transactions.Where(t => t.Category == CashCategory.CustomerBorrowCredit && !t.IsCleared).Sum(t => t.Amount);
+                }
+            });
+            return $"₹{allTimeUnpaid:F2}";
+        }
+    }
 
     public double CashInToday => _service.Today.TotalCashIn;
     public double CashOutToday => _service.Today.TotalCashOut;
@@ -118,7 +244,8 @@ public class CashDrawerViewModel : ViewModelBase
         "📅 Today Only",
         "⏮️ Yesterday",
         "📆 Past 7 Days",
-        "📚 All History"
+        "📚 All History",
+        "🤝 Unpaid Borrows (Khata Book)"
     };
 
     private string _selectedJournalFilter = "📅 Today Only";
@@ -386,6 +513,20 @@ public class CashDrawerViewModel : ViewModelBase
         string desc = DescriptionInput?.Trim() ?? "";
         var selectedMedium = IsOnlineMediumSelected ? PaymentMedium.OnlineUPI : PaymentMedium.CashInDrawer;
 
+        if (SelectedCategoryString == "Customer Borrow / Credit (Due)")
+        {
+            if (string.IsNullOrWhiteSpace(custName))
+            {
+                ShowMessage(
+                    "⚠️ Customer Name is MANDATORY for Borrows / Udhar (Khata)!\n\n" +
+                    "Please enter the Customer's Name so you know who borrowed the money and from whom to collect later.",
+                    "Customer Name Required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+        }
+
         switch (SelectedCategoryString)
         {
             case "Customer UPI ➔ Cash Given":
@@ -584,7 +725,18 @@ public class CashDrawerViewModel : ViewModelBase
         Transactions.Clear();
         List<CashTransaction> snapshot = new();
 
-        if (SelectedJournalFilter.Contains("Today"))
+        if (SelectedJournalFilter.Contains("Khata") || SelectedJournalFilter.Contains("Unpaid"))
+        {
+            foreach (var reg in _service.AllDays)
+            {
+                lock (reg.Transactions)
+                {
+                    snapshot.AddRange(reg.Transactions.Where(t => t.Category == CashCategory.CustomerBorrowCredit && !t.IsCleared));
+                }
+            }
+            snapshot = snapshot.OrderByDescending(t => t.Timestamp).ToList();
+        }
+        else if (SelectedJournalFilter.Contains("Today"))
         {
             lock (_service.Today.Transactions)
             {
@@ -638,6 +790,10 @@ public class CashDrawerViewModel : ViewModelBase
         OnPropertyChanged(nameof(TodayExpensesDisplay));
         OnPropertyChanged(nameof(TodayNetProfitDisplay));
         OnPropertyChanged(nameof(UnpaidDebtDisplay));
+        OnPropertyChanged(nameof(RevenueLabel));
+        OnPropertyChanged(nameof(ExpensesLabel));
+        OnPropertyChanged(nameof(NetProfitLabel));
+        OnPropertyChanged(nameof(UnpaidDebtLabel));
         OnPropertyChanged(nameof(CashInToday));
         OnPropertyChanged(nameof(CashOutToday));
         OnPropertyChanged(nameof(OnlineInToday));

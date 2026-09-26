@@ -222,7 +222,13 @@ public class PrintTrackerViewModel : ViewModelBase
     public double DrawerUpiTotal => _cashDrawer.Today.CurrentOnlineBalance;
     public double DrawerTotalIncome => _cashDrawer.Today.TodayTotalRevenue;
     public double DrawerTotalExpense => _cashDrawer.Today.TodayTotalExpenses;
-    public double DrawerCustomerDue => _cashDrawer.Today.TotalCustomerUnpaidDebt;
+    public double DrawerCustomerDue => _cashDrawer.AllDays.Sum(d =>
+    {
+        lock (d.Transactions)
+        {
+            return d.Transactions.Where(t => t.Category == CashCategory.CustomerBorrowCredit && !t.IsCleared).Sum(t => t.Amount);
+        }
+    });
     public double DrawerTodayNet => _cashDrawer.Today.TodayNetProfit;
     public ObservableCollection<CashTransaction> DrawerRecentTransactions { get; } = new();
 
@@ -1094,6 +1100,22 @@ public class PrintTrackerViewModel : ViewModelBase
     private void FinishBill()
     {
         if (!HasActiveJobs) return;
+
+        bool isDue = PaymentMode.Contains("Due", StringComparison.OrdinalIgnoreCase) ||
+                     PaymentMode.Contains("Credit", StringComparison.OrdinalIgnoreCase) ||
+                     PaymentMode.Contains("Borrow", StringComparison.OrdinalIgnoreCase) ||
+                     PaymentMode.Contains("Account", StringComparison.OrdinalIgnoreCase);
+
+        if (isDue && (string.IsNullOrWhiteSpace(CustomerName) || CustomerName.Trim().Equals("Walk-in Customer", StringComparison.OrdinalIgnoreCase)))
+        {
+            ShowMessage(
+                "⚠️ Customer Name is MANDATORY when Payment Mode is Due / Credit (Borrow)!\n\n" +
+                "Please enter the Customer's Name so their Khata record can be tracked and collected.",
+                "Customer Name Required",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
 
         var bill = _tracker.CompleteCustomerBill(CustomerName, CustomerPhone, PaymentMode, BillNotes);
         LastCompletedBill = bill;

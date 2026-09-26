@@ -4997,8 +4997,8 @@ public static class Program
                         var drawerVm = new CashDrawerViewModel();
 
                         // 1. Verify Journal Filter options
-                        if (drawerVm.JournalFilterOptions == null || drawerVm.JournalFilterOptions.Length != 4)
-                            throw new Exception("JournalFilterOptions does not have 4 filter options");
+                        if (drawerVm.JournalFilterOptions == null || drawerVm.JournalFilterOptions.Length < 5)
+                            throw new Exception("JournalFilterOptions does not have at least 5 filter options");
 
                         // 2. Add an entry in today's register
                         drawerVm.SelectedCategoryString = "Customer Borrow / Credit (Due)";
@@ -5037,6 +5037,90 @@ public static class Program
                 if (staEx65 != null) throw staEx65;
 
                 Console.WriteLine("PASSED (Multi-Day Historical Retention, Filter Options & Safe Clear Protection)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
+            // ── TEST 66: Mandatory Customer Name for Borrows, Khata Book Ledger & Automated Repayment Income (v1.5.23) ──
+            Console.Write("Test 66: Mandatory Customer Name for Borrows, Khata Book Ledger & Automated Repayment Income (v1.5.23)... ");
+            try
+            {
+                Exception? staEx66 = null;
+                var staThread66 = new Thread(() =>
+                {
+                    try
+                    {
+                        var drawerVm = new CashDrawerViewModel();
+
+                        // 1. Mandatory customer name validation for borrow
+                        drawerVm.SelectedCategoryString = "Customer Borrow / Credit (Due)";
+                        drawerVm.AmountInput = "350";
+                        drawerVm.CustomerNameInput = "   "; // empty/whitespace
+                        drawerVm.DescriptionInput = "Attempt borrow without name";
+                        int countBefore = drawerVm.Transactions.Count;
+                        drawerVm.AddTransactionCommand.Execute(null);
+
+                        if (drawerVm.Transactions.Count != countBefore)
+                            throw new Exception("Transaction was added despite empty customer name for borrow!");
+
+                        // 2. Add valid borrow with customer name
+                        drawerVm.CustomerNameInput = "Rajesh Verma";
+                        drawerVm.CustomerPhoneInput = "9876543210";
+                        drawerVm.DescriptionInput = "Passport photo & print due";
+                        drawerVm.AddTransactionCommand.Execute(null);
+
+                        // 3. Switch to Khata Book filter
+                        drawerVm.SelectedJournalFilter = "🤝 Unpaid Borrows (Khata Book)";
+                        var rajeshTx = drawerVm.Transactions.FirstOrDefault(t => t.CustomerName == "Rajesh Verma" && t.Amount == 350);
+                        if (rajeshTx == null)
+                            throw new Exception("Rajesh Verma borrow not found in Khata Book filter!");
+
+                        // 4. Verify DrawerCustomerDue in PrintTrackerViewModel aggregates across all days
+                        var printVm = new SmartSaver.ViewModels.PrintTrackerViewModel();
+                        if (printVm.DrawerCustomerDue < 350)
+                            throw new Exception($"PrintTrackerViewModel.DrawerCustomerDue is {printVm.DrawerCustomerDue}, expected at least 350!");
+
+                        // 5. Clear debt via ClearDebtCommand (Repayment in Cash)
+                        double drawerCashBefore = CashDrawerService.Instance.Today.CurrentCashInDrawer;
+                        drawerVm.ClearDebtCommand.Execute(rajeshTx.Id);
+
+                        // 6. Verify debt is removed from Khata Book
+                        drawerVm.RefreshAll();
+                        var checkKhata = drawerVm.Transactions.FirstOrDefault(t => t.CustomerName == "Rajesh Verma" && t.Amount == 350 && !t.IsCleared);
+                        if (checkKhata != null)
+                            throw new Exception("Debt entry was still present as unpaid in Khata Book after clearing!");
+
+                        // 7. Verify cash drawer balance increased by ₹350
+                        double drawerCashAfter = CashDrawerService.Instance.Today.CurrentCashInDrawer;
+                        if (Math.Abs(drawerCashAfter - (drawerCashBefore + 350)) > 0.01)
+                            throw new Exception($"Cash in drawer did not increase by ₹350 upon repayment! Before: {drawerCashBefore}, After: {drawerCashAfter}");
+
+                        // 8. Verify PrintTrackerViewModel blocks FinishBill on Due/Borrow with default 'Walk-in Customer'
+                        printVm.ActiveJobs.Add(new PrintJobRecord { DocumentName = "Test.pdf", Pages = 2, Copies = 1, Timestamp = DateTimeOffset.Now });
+                        printVm.PaymentMode = "Due / Credit";
+                        printVm.CustomerName = "Walk-in Customer";
+                        printVm.CompleteBillCommand.Execute(null);
+
+                        if (printVm.ActiveJobs.Count == 0)
+                            throw new Exception("Print bill was completed on Due mode with default 'Walk-in Customer'!");
+
+                        printVm.ActiveJobs.Clear();
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx66 = ex;
+                    }
+                });
+                staThread66.SetApartmentState(ApartmentState.STA);
+                staThread66.Start();
+                staThread66.Join(TimeSpan.FromSeconds(15));
+                if (staEx66 != null) throw staEx66;
+
+                Console.WriteLine("PASSED (Mandatory Customer Name Enforced, Khata Book View, Auto-Repayment Income & Safe Billing Validation)");
                 passed++;
             }
             catch (Exception ex)

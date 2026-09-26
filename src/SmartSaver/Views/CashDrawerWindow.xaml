@@ -156,7 +156,7 @@
                     <!-- 3. Today's Gross Revenue -->
                     <Border Style="{StaticResource MetricCardBorder}" Background="#1F2815" BorderBrush="#84CC16">
                         <StackPanel>
-                            <TextBlock Text="📊 TODAY'S EARNINGS" FontSize="10" FontWeight="Bold" Foreground="#A3E635"/>
+                            <TextBlock Text="{Binding RevenueLabel, FallbackValue='📊 TODAY\'S EARNINGS'}" FontSize="10" FontWeight="Bold" Foreground="#A3E635"/>
                             <TextBlock Text="{Binding TodayRevenueDisplay}" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,2,0,0"/>
                             <TextBlock Text="Sales &amp; services" FontSize="9.5" Foreground="#BEF264"/>
                         </StackPanel>
@@ -165,7 +165,7 @@
                     <!-- 4. Today's Expenses -->
                     <Border Style="{StaticResource MetricCardBorder}" Background="#2B1414" BorderBrush="#EF4444">
                         <StackPanel>
-                            <TextBlock Text="💸 TODAY'S EXPENSES" FontSize="10" FontWeight="Bold" Foreground="#F87171"/>
+                            <TextBlock Text="{Binding ExpensesLabel, FallbackValue='💸 TODAY\'S EXPENSES'}" FontSize="10" FontWeight="Bold" Foreground="#F87171"/>
                             <TextBlock Text="{Binding TodayExpensesDisplay}" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,2,0,0"/>
                             <TextBlock Text="Stock, bills, withdrawal" FontSize="9.5" Foreground="#FCA5A5"/>
                         </StackPanel>
@@ -174,7 +174,7 @@
                     <!-- 5. Net Profit Today -->
                     <Border Style="{StaticResource MetricCardBorder}" Background="#241B3B" BorderBrush="#8B5CF6">
                         <StackPanel>
-                            <TextBlock Text="✨ NET PROFIT TODAY" FontSize="10" FontWeight="Bold" Foreground="#C084FC"/>
+                            <TextBlock Text="{Binding NetProfitLabel, FallbackValue='✨ NET PROFIT TODAY'}" FontSize="10" FontWeight="Bold" Foreground="#C084FC"/>
                             <TextBlock Text="{Binding TodayNetProfitDisplay}" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,2,0,0"/>
                             <TextBlock Text="Revenue minus expenses" FontSize="9.5" Foreground="#DDD6FE"/>
                         </StackPanel>
@@ -183,7 +183,7 @@
                     <!-- 6. Customer Unpaid Debt (Khata) -->
                     <Border Style="{StaticResource MetricCardBorder}" Background="#29180C" BorderBrush="#F59E0B">
                         <StackPanel>
-                            <TextBlock Text="🤝 CUSTOMER BORROW" FontSize="10" FontWeight="Bold" Foreground="#FBBF24"/>
+                            <TextBlock Text="{Binding UnpaidDebtLabel, FallbackValue='🤝 CUSTOMER BORROW'}" FontSize="10" FontWeight="Bold" Foreground="#FBBF24"/>
                             <TextBlock Text="{Binding UnpaidDebtDisplay}" FontSize="18" FontWeight="Bold" Foreground="#FCD34D" Margin="0,2,0,0"/>
                             <TextBlock Text="Pending credit / khata" FontSize="9.5" Foreground="#FDE68A"/>
                         </StackPanel>
