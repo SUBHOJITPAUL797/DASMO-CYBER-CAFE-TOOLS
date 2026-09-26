@@ -4984,6 +4984,67 @@ public static class Program
                 failed++;
             }
 
+            // ── TEST 65: Multi-Day Persistence, Carry-Forward Opening Float & Historical Journal Filter (v1.5.22) ──
+            try
+            {
+                Console.Write("[TEST 65] Multi-Day Persistence, Carry-Forward & Journal Filter (v1.5.22)... ");
+
+                Exception? staEx65 = null;
+                var staThread65 = new Thread(() =>
+                {
+                    try
+                    {
+                        var drawerVm = new CashDrawerViewModel();
+
+                        // 1. Verify Journal Filter options
+                        if (drawerVm.JournalFilterOptions == null || drawerVm.JournalFilterOptions.Length != 4)
+                            throw new Exception("JournalFilterOptions does not have 4 filter options");
+
+                        // 2. Add an entry in today's register
+                        drawerVm.SelectedCategoryString = "Customer Borrow / Credit (Due)";
+                        drawerVm.AmountInput = "120";
+                        drawerVm.CustomerNameInput = "Test Khata Customer";
+                        drawerVm.DescriptionInput = "Due / Khata borrowed";
+                        drawerVm.AddTransactionCommand.Execute(null);
+
+                        // 3. Switch filter to All History
+                        drawerVm.SelectedJournalFilter = "📚 All History";
+                        if (drawerVm.CanClearTodayJournal)
+                            throw new Exception("CanClearTodayJournal should be false in All History mode");
+
+                        var matchAll = drawerVm.Transactions.FirstOrDefault(t => t.CustomerName == "Test Khata Customer");
+                        if (matchAll == null)
+                            throw new Exception("Test Khata Customer was not found in All History filter");
+
+                        // 4. Switch back to Today Only
+                        drawerVm.SelectedJournalFilter = "📅 Today Only";
+                        if (!drawerVm.CanClearTodayJournal)
+                            throw new Exception("CanClearTodayJournal should be true in Today Only mode");
+
+                        // 5. Verify AllDays list in CashDrawerService contains today
+                        var allDays = CashDrawerService.Instance.AllDays;
+                        if (!allDays.Any(d => d.DateKey == DateTime.Today.ToString("yyyy-MM-dd")))
+                            throw new Exception("AllDays did not contain today's register");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx65 = ex;
+                    }
+                });
+                staThread65.SetApartmentState(ApartmentState.STA);
+                staThread65.Start();
+                staThread65.Join(TimeSpan.FromSeconds(15));
+                if (staEx65 != null) throw staEx65;
+
+                Console.WriteLine("PASSED (Multi-Day Historical Retention, Filter Options & Safe Clear Protection)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

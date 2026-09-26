@@ -55,7 +55,6 @@ public sealed class CashDrawerService
         _dataFilePath = Path.Combine(dataDir, "cash_drawer_registers.json");
 
         LoadData();
-        PurgeTestArtifacts();
         EnsureTodayRegister();
     }
 
@@ -345,74 +344,6 @@ public sealed class CashDrawerService
             catch (Exception ex)
             {
                 Log.Warning(ex, "Failed to load cash drawer registers");
-            }
-        }
-    }
-
-    private void PurgeTestArtifacts()
-    {
-        lock (_lock)
-        {
-            try
-            {
-                bool modified = false;
-                var testCustomerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    "Bikram", "Arun Roy", "Cust A", "Cust B", "Cust C", "Rahul Das",
-                    "Rahul Sen", "Amit Kumar", "Pooja Sharma", "Ramesh",
-                    "Walk-in Xerox", "Rush Customer", "Delete Test Cust", "Subhojit Paul"
-                };
-
-                var keysToRemove = new List<string>();
-
-                foreach (var kvp in _registers)
-                {
-                    var reg = kvp.Value;
-                    int countBefore = reg.Transactions.Count;
-
-                    reg.Transactions.RemoveAll(t =>
-                        testCustomerNames.Contains(t.CustomerName) ||
-                        t.Description.Contains("Bill Seq Test", StringComparison.OrdinalIgnoreCase) ||
-                        t.Description.Contains("Quick B&W Xerox × 5", StringComparison.OrdinalIgnoreCase) ||
-                        t.Description.Contains("Physical Xerox Meter Audit Reconciliation", StringComparison.OrdinalIgnoreCase) ||
-                        t.Description.Contains("JK Paper Ream", StringComparison.OrdinalIgnoreCase) ||
-                        t.Description.Contains("Manual Xerox sale", StringComparison.OrdinalIgnoreCase));
-
-                    if (reg.Transactions.Count != countBefore)
-                        modified = true;
-
-                    // Reset hardcoded test opening balances (from Test 60 and Test 61)
-                    if ((Math.Abs(reg.OpeningCashInDrawer - 2500.0) < 0.01 && Math.Abs(reg.OpeningOnlineBalance - 7500.0) < 0.01) ||
-                        (Math.Abs(reg.OpeningCashInDrawer - 1500.0) < 0.01 && Math.Abs(reg.OpeningOnlineBalance - 5000.0) < 0.01))
-                    {
-                        reg.OpeningCashInDrawer = 0;
-                        reg.OpeningOnlineBalance = 0;
-                        modified = true;
-                    }
-
-                    // If past date register now has 0 transactions and 0 opening balances, clean it up
-                    if (reg.Date.Date < DateTime.Today && reg.Transactions.Count == 0 &&
-                        reg.OpeningCashInDrawer == 0 && reg.OpeningOnlineBalance == 0)
-                    {
-                        keysToRemove.Add(kvp.Key);
-                    }
-                }
-
-                foreach (var k in keysToRemove)
-                {
-                    _registers.Remove(k);
-                    modified = true;
-                }
-
-                if (modified)
-                {
-                    SaveData();
-                    Log.Information("Purged hardcoded test data artifacts from CashDrawer registers");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to purge test artifacts from cash drawer");
             }
         }
     }

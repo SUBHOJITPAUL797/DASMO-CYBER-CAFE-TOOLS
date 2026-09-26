@@ -24,7 +24,9 @@ public class CashTransactionItemViewModel
 
     public string Id => _tx.Id;
     public DateTimeOffset Timestamp => _tx.Timestamp;
-    public string TimeFormatted => _tx.Timestamp.ToString("hh:mm tt");
+    public string TimeFormatted => _tx.Timestamp.Date == DateTime.Today
+        ? _tx.Timestamp.ToString("hh:mm tt")
+        : _tx.Timestamp.ToString("dd MMM, hh:mm tt");
     public double Amount => _tx.Amount;
     public double Commission => _tx.CommissionFee;
     public string CustomerName => _tx.CustomerName;
@@ -109,6 +111,31 @@ public class CashDrawerViewModel : ViewModelBase
     public double OnlineOutToday => _service.Today.TotalOnlineOut;
 
     public ObservableCollection<CashTransactionItemViewModel> Transactions { get; } = new();
+
+    // ── Financial Journal Historical Date Filter ──
+    public string[] JournalFilterOptions { get; } = new[]
+    {
+        "📅 Today Only",
+        "⏮️ Yesterday",
+        "📆 Past 7 Days",
+        "📚 All History"
+    };
+
+    private string _selectedJournalFilter = "📅 Today Only";
+    public string SelectedJournalFilter
+    {
+        get => _selectedJournalFilter;
+        set
+        {
+            if (SetProperty(ref _selectedJournalFilter, value))
+            {
+                OnPropertyChanged(nameof(CanClearTodayJournal));
+                RefreshAll();
+            }
+        }
+    }
+
+    public bool CanClearTodayJournal => SelectedJournalFilter.Contains("Today");
 
     // ── Opening Float Fields ──
     private string _openingCashText = string.Empty;
@@ -555,10 +582,49 @@ public class CashDrawerViewModel : ViewModelBase
     public void RefreshAll()
     {
         Transactions.Clear();
-        List<CashTransaction> snapshot;
-        lock (_service.Today.Transactions)
+        List<CashTransaction> snapshot = new();
+
+        if (SelectedJournalFilter.Contains("Today"))
         {
-            snapshot = _service.Today.Transactions.ToList();
+            lock (_service.Today.Transactions)
+            {
+                snapshot = _service.Today.Transactions.ToList();
+            }
+        }
+        else if (SelectedJournalFilter.Contains("Yesterday"))
+        {
+            string yesterdayKey = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+            var yesterdayReg = _service.AllDays.FirstOrDefault(r => r.DateKey == yesterdayKey);
+            if (yesterdayReg != null)
+            {
+                lock (yesterdayReg.Transactions)
+                {
+                    snapshot = yesterdayReg.Transactions.ToList();
+                }
+            }
+        }
+        else if (SelectedJournalFilter.Contains("7 Days"))
+        {
+            DateTime cutoff = DateTime.Today.AddDays(-7).Date;
+            foreach (var reg in _service.AllDays.Where(r => r.Date.Date >= cutoff))
+            {
+                lock (reg.Transactions)
+                {
+                    snapshot.AddRange(reg.Transactions);
+                }
+            }
+            snapshot = snapshot.OrderByDescending(t => t.Timestamp).ToList();
+        }
+        else // All History
+        {
+            foreach (var reg in _service.AllDays)
+            {
+                lock (reg.Transactions)
+                {
+                    snapshot.AddRange(reg.Transactions);
+                }
+            }
+            snapshot = snapshot.OrderByDescending(t => t.Timestamp).ToList();
         }
 
         foreach (var tx in snapshot)
