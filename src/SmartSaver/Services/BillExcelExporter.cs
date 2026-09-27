@@ -1060,8 +1060,8 @@ public static class BillExcelExporter
         chartSpace.AppendChild(new DrawCharts.RoundedCorners { Val = true });
 
         var chart = new DrawCharts.Chart();
-        chart.AppendChild(new DrawCharts.AutoTitleDeleted { Val = false });
         chart.AppendChild(CreateChartTitle("PAYMENT MODE DISTRIBUTION (% CASH VS % UPI)"));
+        chart.AppendChild(new DrawCharts.AutoTitleDeleted { Val = false });
 
         var plotArea = new DrawCharts.PlotArea();
         plotArea.AppendChild(new DrawCharts.Layout());
@@ -1163,8 +1163,8 @@ public static class BillExcelExporter
         chartSpace.AppendChild(new DrawCharts.RoundedCorners { Val = true });
 
         var chart = new DrawCharts.Chart();
-        chart.AppendChild(new DrawCharts.AutoTitleDeleted { Val = false });
         chart.AppendChild(CreateChartTitle("TODAY'S FINANCIAL OVERVIEW (REVENUE VS EXPENSES VS PROFIT)"));
+        chart.AppendChild(new DrawCharts.AutoTitleDeleted { Val = false });
 
         var plotArea = new DrawCharts.PlotArea();
         plotArea.AppendChild(new DrawCharts.Layout());
@@ -1364,15 +1364,15 @@ public static class BillExcelExporter
 
         // ── Fonts ──────────────────────────────────────────────────────────
         var fonts = new Fonts(
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new FontSize { Val = 10 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF0F172A" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 10.5 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFFFFFFF" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 14 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFFFFFFF" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Italic(), new FontSize { Val = 9.5 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFCBD5E1" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 11 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF0F172A" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 10.5 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF15803D" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 10.5 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFB91C1C" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 8.5 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF475569" }),
-            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 13 }, new FontName { Val = "Calibri" }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF0F172A" })
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new FontSize { Val = 10 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF0F172A" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 10.5 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFFFFFFF" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 14 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFFFFFFF" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Italic(), new FontSize { Val = 9.5 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFCBD5E1" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 11 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF0F172A" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 10.5 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF15803D" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 10.5 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FFB91C1C" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 8.5 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF475569" }, new FontName { Val = "Calibri" }),
+            new DocumentFormat.OpenXml.Spreadsheet.Font(new Bold(), new FontSize { Val = 13 }, new DocumentFormat.OpenXml.Spreadsheet.Color { Rgb = "FF0F172A" }, new FontName { Val = "Calibri" })
         );
 
         // ── Fills ──────────────────────────────────────────────────────────

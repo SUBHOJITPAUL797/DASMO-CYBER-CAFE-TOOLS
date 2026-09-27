@@ -518,7 +518,23 @@ public sealed class PrintTrackerService : IDisposable
         else
         {
             // Simplex (Single-sided) calculation
-            if (job.IsColor)
+            bool isLamination = job.IsManualEntry && job.ItemCategory.Contains("Lamination", StringComparison.OrdinalIgnoreCase);
+            bool isPhoto = job.IsManualEntry && !isPhotocopy && (
+                job.ItemCategory.Contains("Passport", StringComparison.OrdinalIgnoreCase) ||
+                job.ItemCategory.Contains("Glossy", StringComparison.OrdinalIgnoreCase) ||
+                job.ItemCategory.Contains("Photo", StringComparison.OrdinalIgnoreCase));
+
+            if (isLamination)
+            {
+                job.RatePerUnit = Settings.LaminationRate;
+                job.TotalCost = Math.Round(impressions * Settings.LaminationRate, 2);
+            }
+            else if (isPhoto)
+            {
+                job.RatePerUnit = Settings.PhotoGlossyRate;
+                job.TotalCost = Math.Round(impressions * Settings.PhotoGlossyRate, 2);
+            }
+            else if (job.IsColor)
             {
                 double rate = isPhotocopy ? Settings.PhotocopyColorRate : Settings.ColorSingleSideRate;
                 job.RatePerUnit = rate;
@@ -539,15 +555,20 @@ public sealed class PrintTrackerService : IDisposable
     /// </summary>
     public PrintJobRecord AddManualJob(string category, int pages, bool isDuplex, bool isColor, double? overrideRate = null)
     {
-        double rate = overrideRate ?? (category switch
-        {
-            "Photocopy" => isColor ? Settings.PhotocopyColorRate : Settings.PhotocopyBwRate,
-            "Lamination" => Settings.LaminationRate,
-            "Passport Photo" => Settings.PhotoGlossyRate,
-            _ => isDuplex
-                ? (isColor ? Settings.ColorDuplexRate : Settings.BwDuplexRate)
-                : (isColor ? Settings.ColorSingleSideRate : Settings.BwSingleSideRate)
-        });
+        bool isXerox = category.Contains("Photocopy", StringComparison.OrdinalIgnoreCase) || category.Contains("Xerox", StringComparison.OrdinalIgnoreCase);
+        bool isLamination = category.Contains("Lamination", StringComparison.OrdinalIgnoreCase);
+        bool isPhoto = !isXerox && (
+            category.Contains("Passport", StringComparison.OrdinalIgnoreCase) ||
+            category.Contains("Glossy", StringComparison.OrdinalIgnoreCase) ||
+            category.Contains("Photo", StringComparison.OrdinalIgnoreCase));
+
+        double rate = overrideRate ?? (
+            isLamination ? Settings.LaminationRate :
+            isPhoto ? Settings.PhotoGlossyRate :
+            isXerox ? (isColor ? Settings.PhotocopyColorRate : Settings.PhotocopyBwRate) :
+            isDuplex ? (isColor ? Settings.ColorDuplexRate : Settings.BwDuplexRate) :
+            (isColor ? Settings.ColorSingleSideRate : Settings.BwSingleSideRate)
+        );
 
         int copies = 1;
         int impressions = pages * copies;

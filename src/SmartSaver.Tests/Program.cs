@@ -5380,6 +5380,15 @@ public static class Program
                     bool hasPercentageLabel = chartParts.Any(cp => cp.ChartSpace.Descendants<DocumentFormat.OpenXml.Drawing.Charts.ShowPercent>().Any(p => p.Val?.Value == true));
                     if (!hasPercentageLabel)
                         throw new Exception("Donut Chart ShowPercent label was not set to true!");
+
+                    // Deep OpenXml Schema Validation: ensure zero corruptions or schema errors
+                    var validator = new DocumentFormat.OpenXml.Validation.OpenXmlValidator();
+                    var errors = validator.Validate(doc).ToList();
+                    if (errors.Any())
+                    {
+                        var errMsgs = string.Join("; ", errors.Take(5).Select(e => $"{e.Description} at {e.Path?.XPath}"));
+                        throw new Exception($"OpenXml validation found {errors.Count} schema errors: {errMsgs}");
+                    }
                 }
 
                 Console.WriteLine("PASSED (Virtual Printer Gate, Distinct ₹3/₹5 Rates, Dynamic Walkup, Dedicated Print History Tab & Native OpenXml Donut/Column Charts)");
