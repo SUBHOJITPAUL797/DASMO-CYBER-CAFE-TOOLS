@@ -354,13 +354,13 @@ public class PrintTrackerViewModel : ViewModelBase
     public double BwSingleSideRate
     {
         get => _tracker.Settings.BwSingleSideRate;
-        set { _tracker.UpdateSettings(s => s.BwSingleSideRate = value); OnPropertyChanged(); RefreshCart(); }
+        set { _tracker.UpdateSettings(s => s.BwSingleSideRate = value); OnPropertyChanged(); RefreshCart(); NotifyWalkupButtonLabels(); }
     }
 
     public double BwDuplexRate
     {
         get => _tracker.Settings.BwDuplexRate;
-        set { _tracker.UpdateSettings(s => s.BwDuplexRate = value); OnPropertyChanged(); RefreshCart(); }
+        set { _tracker.UpdateSettings(s => s.BwDuplexRate = value); OnPropertyChanged(); RefreshCart(); NotifyWalkupButtonLabels(); }
     }
 
     public bool BwDuplexPricedPerSheet
@@ -372,13 +372,13 @@ public class PrintTrackerViewModel : ViewModelBase
     public double ColorSingleSideRate
     {
         get => _tracker.Settings.ColorSingleSideRate;
-        set { _tracker.UpdateSettings(s => s.ColorSingleSideRate = value); OnPropertyChanged(); RefreshCart(); }
+        set { _tracker.UpdateSettings(s => s.ColorSingleSideRate = value); OnPropertyChanged(); RefreshCart(); NotifyWalkupButtonLabels(); }
     }
 
     public double ColorDuplexRate
     {
         get => _tracker.Settings.ColorDuplexRate;
-        set { _tracker.UpdateSettings(s => s.ColorDuplexRate = value); OnPropertyChanged(); RefreshCart(); }
+        set { _tracker.UpdateSettings(s => s.ColorDuplexRate = value); OnPropertyChanged(); RefreshCart(); NotifyWalkupButtonLabels(); }
     }
 
     public bool ColorDuplexPricedPerSheet
@@ -390,13 +390,35 @@ public class PrintTrackerViewModel : ViewModelBase
     public double PhotocopyBwRate
     {
         get => _tracker.Settings.PhotocopyBwRate;
-        set { _tracker.UpdateSettings(s => s.PhotocopyBwRate = value); OnPropertyChanged(); }
+        set { _tracker.UpdateSettings(s => s.PhotocopyBwRate = value); OnPropertyChanged(); NotifyWalkupButtonLabels(); }
     }
 
     public double PhotocopyColorRate
     {
         get => _tracker.Settings.PhotocopyColorRate;
-        set { _tracker.UpdateSettings(s => s.PhotocopyColorRate = value); OnPropertyChanged(); }
+        set { _tracker.UpdateSettings(s => s.PhotocopyColorRate = value); OnPropertyChanged(); NotifyWalkupButtonLabels(); }
+    }
+
+    // ── Dynamic Walk-Up Button Labels ──
+    public string WalkupXerox1Text => $"➕ 1 B&W Xerox (₹{PhotocopyBwRate:0.##})";
+    public string WalkupXerox2Text => $"➕ 2 B&W Xerox (₹{PhotocopyBwRate * 2:0.##})";
+    public string WalkupXerox5Text => $"➕ 5 B&W Xerox (₹{PhotocopyBwRate * 5:0.##})";
+    public string WalkupXerox10Text => $"➕ 10 B&W Xerox (₹{PhotocopyBwRate * 10:0.##})";
+    public string WalkupDuplex1Text => $"📑 1 Duplex B&W (₹{BwDuplexRate:0.##})";
+    public string WalkupDuplex2Text => $"📑 2 Duplex B&W (₹{BwDuplexRate * 2:0.##})";
+    public string WalkupColor1Text => $"🌈 1 Color Xerox (₹{PhotocopyColorRate:0.##})";
+    public string WalkupColor2Text => $"🌈 2 Color Xerox (₹{PhotocopyColorRate * 2:0.##})";
+
+    public void NotifyWalkupButtonLabels()
+    {
+        OnPropertyChanged(nameof(WalkupXerox1Text));
+        OnPropertyChanged(nameof(WalkupXerox2Text));
+        OnPropertyChanged(nameof(WalkupXerox5Text));
+        OnPropertyChanged(nameof(WalkupXerox10Text));
+        OnPropertyChanged(nameof(WalkupDuplex1Text));
+        OnPropertyChanged(nameof(WalkupDuplex2Text));
+        OnPropertyChanged(nameof(WalkupColor1Text));
+        OnPropertyChanged(nameof(WalkupColor2Text));
     }
 
     public double PhotoGlossyRate
@@ -588,24 +610,24 @@ public class PrintTrackerViewModel : ViewModelBase
 
         ApplyStandardRatesCommand = new RelayCommand(_ =>
         {
-            BwSingleSideRate = 2.0;
-            BwDuplexRate = 3.0;
+            BwSingleSideRate = 5.0;
+            PhotocopyBwRate = 3.0;
+            BwDuplexRate = 8.0;
             ColorSingleSideRate = 10.0;
             ColorDuplexRate = 15.0;
             PhotoGlossyRate = 20.0;
-            PhotocopyBwRate = 2.0;
             PhotocopyColorRate = 10.0;
             LaminationRate = 20.0;
         });
 
         ApplyEconomyRatesCommand = new RelayCommand(_ =>
         {
-            BwSingleSideRate = 1.5;
-            BwDuplexRate = 2.5;
+            BwSingleSideRate = 3.0;
+            PhotocopyBwRate = 2.0;
+            BwDuplexRate = 5.0;
             ColorSingleSideRate = 8.0;
             ColorDuplexRate = 12.0;
             PhotoGlossyRate = 15.0;
-            PhotocopyBwRate = 1.5;
             PhotocopyColorRate = 8.0;
             LaminationRate = 15.0;
         });
@@ -1337,7 +1359,8 @@ public class PrintTrackerViewModel : ViewModelBase
         {
             var bills = _tracker.CompletedBillSessions.ToList();
             var regs = CashDrawerService.Instance.AllDays.ToList();
-            bool ok = BillExcelExporter.AutoSyncAttachedExcel(_tracker.Settings, bills, regs);
+            var jobs = _tracker.AllJobHistory.ToList();
+            bool ok = BillExcelExporter.AutoSyncAttachedExcel(_tracker.Settings, bills, regs, jobs);
 
             if (ok)
             {

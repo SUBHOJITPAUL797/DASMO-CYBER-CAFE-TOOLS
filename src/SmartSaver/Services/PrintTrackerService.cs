@@ -168,15 +168,58 @@ public sealed class PrintTrackerService : IDisposable
     }
 
     /// <summary>
+    /// Identifies virtual, software-only, or PDF export printers that must never be counted as physical prints.
+    /// </summary>
+    public static bool IsVirtualOrPdfPrinter(string? printerName)
+    {
+        if (string.IsNullOrWhiteSpace(printerName)) return false;
+        string name = printerName.Trim();
+
+        // Exact names of common virtual / export printers
+        if (name.Equals("Microsoft Print to PDF", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("Microsoft XPS Document Writer", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("Fax", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("OneNote (Desktop)", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("OneNote for Windows 10", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("Send To OneNote 2016", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("Adobe PDF", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("Foxit PDF Printer", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("CutePDF Writer", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("Bullzip PDF Printer", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("PDFCreator", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("NovaPDF", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("doPDF", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Substring checks for virtual/export printers
+        if (name.Contains("Print to PDF", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Save as PDF", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("XPS Document", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith("OneNote", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Scans all local print queues using Win32 EnumJobs — the sole authoritative path.
-    /// The old System.Printing fallback has been removed: it was registering the same job
-    /// a second time because dedup keyed on (pages+docName) which change mid-spool.
+    /// Filters out virtual printers like 'Microsoft Print to PDF' to prevent false counts.
     /// </summary>
     public void PollPrintQueues()
     {
         var installedPrinters = GetInstalledPrinterNames();
         foreach (var printerName in installedPrinters)
         {
+            // Gate 0: Filter out virtual PDF/XPS export printers
+            if (IsVirtualOrPdfPrinter(printerName))
+            {
+                continue;
+            }
+
             if (Settings.TargetPrinters.Count > 0 &&
                 !Settings.TargetPrinters.Any(p => p.Equals(printerName, StringComparison.OrdinalIgnoreCase)))
             {
@@ -202,6 +245,8 @@ public sealed class PrintTrackerService : IDisposable
 
     private void ScanPrinterWithWin32(string printerName)
     {
+        if (IsVirtualOrPdfPrinter(printerName)) return;
+
         IntPtr hPrinter = IntPtr.Zero;
         try
         {
@@ -317,7 +362,9 @@ public sealed class PrintTrackerService : IDisposable
                         Copies       = copies,
                         IsDuplex     = isDuplex,
                         IsColor      = isColor,
-                        PaperSize    = "A4"
+                        PaperSize    = "A4",
+                        IsManualEntry = false,
+                        ItemCategory = "Windows Print (PC)"
                     };
 
                     CalculateCost(record);
@@ -427,11 +474,15 @@ public sealed class PrintTrackerService : IDisposable
 
     /// <summary>
     /// Calculates the cost in Rupees (₹) for a print job based on current rate settings.
-    /// Perfectly handles Duplex (double-sided): 1 sheet = 2 pages ("replacement in 2").
+    /// Differentiates between physical manual copies/Xerox (₹3) vs Windows computer prints (₹5),
+    /// and perfectly handles Duplex (double-sided): 1 sheet = 2 pages ("replacement in 2").
     /// </summary>
     public void CalculateCost(PrintJobRecord job)
     {
         int impressions = job.TotalImpressions;
+        bool isPhotocopy = job.IsManualEntry && (
+            job.ItemCategory.Contains("Photocopy", StringComparison.OrdinalIgnoreCase) ||
+            job.ItemCategory.Contains("Xerox", StringComparison.OrdinalIgnoreCase));
 
         if (job.IsDuplex)
         {
@@ -469,13 +520,16 @@ public sealed class PrintTrackerService : IDisposable
             // Simplex (Single-sided) calculation
             if (job.IsColor)
             {
-                job.RatePerUnit = Settings.ColorSingleSideRate;
-                job.TotalCost = Math.Round(impressions * Settings.ColorSingleSideRate, 2);
+                double rate = isPhotocopy ? Settings.PhotocopyColorRate : Settings.ColorSingleSideRate;
+                job.RatePerUnit = rate;
+                job.TotalCost = Math.Round(impressions * rate, 2);
             }
             else
             {
-                job.RatePerUnit = Settings.BwSingleSideRate;
-                job.TotalCost = Math.Round(impressions * Settings.BwSingleSideRate, 2);
+                // Physical Xerox is ₹3 (PhotocopyBwRate), Windows Print from PDF/PC is ₹5 (BwSingleSideRate)
+                double rate = isPhotocopy ? Settings.PhotocopyBwRate : Settings.BwSingleSideRate;
+                job.RatePerUnit = rate;
+                job.TotalCost = Math.Round(impressions * rate, 2);
             }
         }
     }
@@ -744,7 +798,8 @@ public sealed class PrintTrackerService : IDisposable
                 {
                     var bills = CompletedBillSessions.ToList();
                     var registers = CashDrawerService.Instance.AllDays.ToList();
-                    BillExcelExporter.AutoSyncAttachedExcel(Settings, bills, registers);
+                    var jobs = AllJobHistory.ToList();
+                    BillExcelExporter.AutoSyncAttachedExcel(Settings, bills, registers, jobs);
                 }
                 catch (Exception ex)
                 {

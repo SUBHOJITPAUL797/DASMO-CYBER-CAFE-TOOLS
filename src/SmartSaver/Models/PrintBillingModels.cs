@@ -68,12 +68,12 @@ public class PrintJobRecord
     /// <summary>
     /// Applied rate per unit (Rupees).
     /// </summary>
-    public double RatePerUnit { get; set; } = 2.0;
+    public double RatePerUnit { get; set; } = 5.0;
 
     /// <summary>
     /// Total calculated cost in Rupees (₹).
     /// </summary>
-    public double TotalCost { get; set; } = 2.0;
+    public double TotalCost { get; set; } = 5.0;
 
     /// <summary>
     /// Customer name or identifier associated with this job.
@@ -96,11 +96,17 @@ public class PrintJobRecord
     public bool IsBilled { get; set; } = false;
 
     /// <summary>
+    /// Distinguishes between computer/PDF prints vs manual physical copies on printer hardware.
+    /// </summary>
+    [JsonIgnore]
+    public string PrintSource => IsManualEntry ? "🖨️ Physical Xerox / Copy" : "💻 Windows Print (PC)";
+
+    /// <summary>
     /// Friendly human-readable summary badge.
     /// </summary>
     [JsonIgnore]
     public string SummaryText =>
-        $"{(IsColor ? "🌈 Color" : "⚫ B&W")} • {(IsDuplex ? $"📑 Duplex ({SheetsUsed} sheet{(SheetsUsed > 1 ? "s" : "")})" : $"📄 Single-Sided ({Pages} page{(Pages > 1 ? "s" : "")})")}" +
+        $"{PrintSource} • {(IsColor ? "🌈 Color" : "⚫ B&W")} • {(IsDuplex ? $"📑 Duplex ({SheetsUsed} sheet{(SheetsUsed > 1 ? "s" : "")})" : $"📄 Single-Sided ({Pages} page{(Pages > 1 ? "s" : "")})")}" +
         (Copies > 1 ? $" × {Copies} copies" : "") +
         $" = ₹{TotalCost:F2}";
 }
@@ -153,16 +159,16 @@ public class PrintBillingSettings
     public List<string> TargetPrinters { get; set; } = new();
 
     // ── Rates (in Rupees ₹) ──
-    public double BwSingleSideRate { get; set; } = 2.0;       // ₹2.00 per single-sided page
-    public double BwDuplexRate { get; set; } = 3.0;           // ₹3.00 per duplex sheet (or ₹1.50/side)
-    public bool BwDuplexPricedPerSheet { get; set; } = true;   // true = price per sheet (₹3/sheet); false = price per side (₹1.50/side)
+    public double BwSingleSideRate { get; set; } = 5.0;       // ₹5.00 per single-sided Windows PC print (PDF/Doc)
+    public double BwDuplexRate { get; set; } = 8.0;           // ₹8.00 per duplex sheet (or ₹4.00/side)
+    public bool BwDuplexPricedPerSheet { get; set; } = true;   // true = price per sheet (₹8/sheet); false = price per side (₹4/side)
 
     public double ColorSingleSideRate { get; set; } = 10.0;    // ₹10.00 per single-sided color page
     public double ColorDuplexRate { get; set; } = 15.0;        // ₹15.00 per duplex color sheet
     public bool ColorDuplexPricedPerSheet { get; set; } = true;
 
     public double PhotoGlossyRate { get; set; } = 20.0;       // ₹20.00 per 4x6 / A4 glossy photo
-    public double PhotocopyBwRate { get; set; } = 2.0;        // ₹2.00 per B&W photocopy
+    public double PhotocopyBwRate { get; set; } = 3.0;        // ₹3.00 per physical B&W photocopy / Xerox on hardware
     public double PhotocopyColorRate { get; set; } = 10.0;    // ₹10.00 per Color photocopy
     public double LaminationRate { get; set; } = 20.0;        // ₹20.00 per lamination pouch
 

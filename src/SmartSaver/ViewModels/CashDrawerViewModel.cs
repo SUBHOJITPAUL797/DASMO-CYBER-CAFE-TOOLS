@@ -643,7 +643,8 @@ public class CashDrawerViewModel : ViewModelBase
         {
             var bills = PrintTrackerService.Instance.CompletedBillSessions.ToList();
             var regs = CashDrawerService.Instance.AllDays.ToList();
-            bool ok = BillExcelExporter.AutoSyncAttachedExcel(PrintTrackerService.Instance.Settings, bills, regs);
+            var jobs = PrintTrackerService.Instance.AllJobHistory.ToList();
+            bool ok = BillExcelExporter.AutoSyncAttachedExcel(PrintTrackerService.Instance.Settings, bills, regs, jobs);
 
             if (ok)
             {

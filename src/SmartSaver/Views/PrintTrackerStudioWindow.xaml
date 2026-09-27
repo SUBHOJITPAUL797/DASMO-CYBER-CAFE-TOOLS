@@ -1079,28 +1079,28 @@
 
                                 <WrapPanel Orientation="Horizontal">
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="1|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
-                                        <TextBlock Text="➕ 1 B&amp;W Xerox (₹2)" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="{Binding WalkupXerox1Text}" FontWeight="Bold" Foreground="White"/>
                                     </Button>
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="2|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
-                                        <TextBlock Text="➕ 2 B&amp;W Xerox (₹4)" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="{Binding WalkupXerox2Text}" FontWeight="Bold" Foreground="White"/>
                                     </Button>
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="5|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
-                                        <TextBlock Text="➕ 5 B&amp;W Xerox (₹10)" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="{Binding WalkupXerox5Text}" FontWeight="Bold" Foreground="White"/>
                                     </Button>
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="10|false|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8">
-                                        <TextBlock Text="➕ 10 B&amp;W Xerox (₹20)" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="{Binding WalkupXerox10Text}" FontWeight="Bold" Foreground="White"/>
                                     </Button>
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="1|true|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#10B981">
-                                        <TextBlock Text="📑 1 Duplex B&amp;W (₹3)" FontWeight="Bold" Foreground="#10B981"/>
+                                        <TextBlock Text="{Binding WalkupDuplex1Text}" FontWeight="Bold" Foreground="#10B981"/>
                                     </Button>
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="2|true|false" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#10B981">
-                                        <TextBlock Text="📑 2 Duplex B&amp;W (₹6)" FontWeight="Bold" Foreground="#10B981"/>
+                                        <TextBlock Text="{Binding WalkupDuplex2Text}" FontWeight="Bold" Foreground="#10B981"/>
                                     </Button>
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="1|false|true" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#00BCD4">
-                                        <TextBlock Text="🌈 1 Color Xerox (₹10)" FontWeight="Bold" Foreground="#00BCD4"/>
+                                        <TextBlock Text="{Binding WalkupColor1Text}" FontWeight="Bold" Foreground="#00BCD4"/>
                                     </Button>
                                     <Button Command="{Binding QuickLogWalkupXeroxCommand}" CommandParameter="2|false|true" Style="{StaticResource CounterChipButton}" Margin="0,0,6,6" Padding="12,8" BorderBrush="#00BCD4">
-                                        <TextBlock Text="🌈 2 Color Xerox (₹20)" FontWeight="Bold" Foreground="#00BCD4"/>
+                                        <TextBlock Text="{Binding WalkupColor2Text}" FontWeight="Bold" Foreground="#00BCD4"/>
                                     </Button>
                                 </WrapPanel>
                             </StackPanel>
@@ -1730,31 +1730,44 @@
                                 <!-- Quick Presets -->
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                                     <TextBlock Text="Quick Presets: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                    <Button Content="💰 Standard (₹2 B&amp;W / ₹3 Duplex / ₹10 Color)" Command="{Binding ApplyStandardRatesCommand}"
+                                    <Button Content="💰 Standard (₹5 Windows / ₹3 Xerox / ₹8 Duplex / ₹10 Color)" Command="{Binding ApplyStandardRatesCommand}"
                                             Style="{StaticResource CounterChipButton}" Padding="8,3" FontSize="11" Margin="0,0,6,0"/>
-                                    <Button Content="🏷️ Economy (₹1.5 B&amp;W / ₹2.5 Duplex / ₹8 Color)" Command="{Binding ApplyEconomyRatesCommand}"
+                                    <Button Content="🏷️ Economy (₹3 Windows / ₹2 Xerox / ₹5 Duplex / ₹8 Color)" Command="{Binding ApplyEconomyRatesCommand}"
                                             Style="{StaticResource CounterChipButton}" Padding="8,3" FontSize="11"/>
                                 </StackPanel>
 
                                 <!-- 2-Column Rates Grid -->
                                 <UniformGrid Columns="2" Margin="0,0,0,14">
-                                    <!-- B&W Single-Sided -->
-                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                    <!-- 1. Windows PC Print B&W -->
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,8" BorderBrush="#3B82F6" BorderThickness="1">
                                         <StackPanel>
-                                            <TextBlock Text="⚫ B&amp;W Single-Sided Print" FontWeight="Bold" FontSize="12" Foreground="White" Margin="0,0,0,4"/>
-                                            <TextBlock Text="Rate per single-sided page" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <TextBlock Text="💻 Windows PC Print (B&amp;W Single)" FontWeight="Bold" FontSize="12" Foreground="#60A5FA" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per page from computer (PDF, Word, Browser)" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#60A5FA" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                                 <TextBox Text="{Binding BwSingleSideRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
                                                 <TextBlock Text=" / page" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- B&W Duplex -->
+                                    <!-- 2. Physical Walk-Up Xerox B&W -->
                                     <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,8" BorderBrush="#10B981" BorderThickness="1">
                                         <StackPanel>
-                                            <TextBlock Text="📑 B&amp;W Duplex Print (Double-Sided)" FontWeight="Bold" FontSize="12" Foreground="#10B981" Margin="0,0,0,4"/>
+                                            <TextBlock Text="🖨️ Physical Walk-Up Xerox (B&amp;W Copy)" FontWeight="Bold" FontSize="12" Foreground="#10B981" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per manual photocopy made on printer (without PC)" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding PhotocopyBwRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / copy" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 3. B&W Duplex -->
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="📑 B&amp;W Duplex Print (Double-Sided)" FontWeight="Bold" FontSize="12" Foreground="White" Margin="0,0,0,4"/>
                                             <TextBlock Text="Rate per sheet (2-in-1 replacement)" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -1764,8 +1777,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Color Single-Sided -->
-                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                    <!-- 4. Color Single-Sided -->
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="🌈 Color Single-Sided Print" FontWeight="Bold" FontSize="12" Foreground="#00BCD4" Margin="0,0,0,4"/>
                                             <TextBlock Text="Rate per single-sided color page" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
@@ -1777,8 +1790,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Color Duplex -->
-                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,8" BorderBrush="#10B981" BorderThickness="1">
+                                    <!-- 5. Color Duplex -->
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="🌈 Color Duplex Print (Double-Sided)" FontWeight="Bold" FontSize="12" Foreground="#00BCD4" Margin="0,0,0,4"/>
                                             <TextBlock Text="Rate per double-sided color sheet" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
@@ -1790,7 +1803,20 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Photo Paper -->
+                                    <!-- 6. Physical Color Xerox -->
+                                    <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="🌈 Physical Color Xerox / Copy" FontWeight="Bold" FontSize="12" Foreground="#00BCD4" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Rate per manual color copy on printer" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="₹" FontSize="16" FontWeight="Bold" Foreground="#00BCD4" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Text="{Binding PhotocopyColorRate, UpdateSourceTrigger=LostFocus, Converter={StaticResource DoubleStr}}" Width="100" Padding="8,4" FontSize="13" FontWeight="Bold"/>
+                                                <TextBlock Text=" / copy" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 7. Photo Paper -->
                                     <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="0,0,6,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="📸 Photo Paper (Glossy 4×6 / A4)" FontWeight="Bold" FontSize="12" Foreground="#FF9800" Margin="0,0,0,4"/>
@@ -1803,7 +1829,7 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Lamination -->
+                                    <!-- 8. Lamination -->
                                     <Border Background="#141520" CornerRadius="8" Padding="12,10" Margin="6,0,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                         <StackPanel>
                                             <TextBlock Text="🛡️ Lamination Pouch (A4 / ID)" FontWeight="Bold" FontSize="12" Foreground="White" Margin="0,0,0,4"/>
