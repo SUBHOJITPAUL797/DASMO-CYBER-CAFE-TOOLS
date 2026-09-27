@@ -171,18 +171,47 @@ public static class BillExcelExporter
         Log.Information("Full Finance Excel report exported successfully to {Path}", outputPath);
     }
 
+    public static string GetDefaultExcelPath(string? customDir = null)
+    {
+        string baseDir = !string.IsNullOrWhiteSpace(customDir)
+            ? Path.Combine(customDir, "DASMO CYBER CAFE")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "DASMO CYBER CAFE");
+
+        try
+        {
+            if (!Directory.Exists(baseDir))
+                Directory.CreateDirectory(baseDir);
+        }
+        catch { }
+
+        return Path.Combine(baseDir, "DASMO_CYBER_CAFE_ACCOUNTS.xlsx");
+    }
+
+    public static string GetEffectiveExcelPath(PrintBillingSettings settings, string? customDir = null)
+    {
+        if (!string.IsNullOrWhiteSpace(settings.AttachedExcelPath))
+            return settings.AttachedExcelPath;
+
+        string defaultPath = GetDefaultExcelPath(customDir ?? PrintTrackerService.CustomDataDirectory);
+        settings.AttachedExcelPath = defaultPath;
+        return defaultPath;
+    }
+
     public static bool AutoSyncAttachedExcel(
         PrintBillingSettings settings,
         IEnumerable<CustomerBillSession> bills,
         IEnumerable<DailyCashRegister> registers,
         IEnumerable<PrintJobRecord>? jobHistory = null)
     {
-        if (!settings.AutoSyncToExcel || string.IsNullOrWhiteSpace(settings.AttachedExcelPath))
+        if (!settings.AutoSyncToExcel)
+            return false;
+
+        string targetPath = GetEffectiveExcelPath(settings);
+        if (string.IsNullOrWhiteSpace(targetPath))
             return false;
 
         lock (_syncLock)
         {
-            string targetPath = settings.AttachedExcelPath;
             string? tempFile = null;
             try
             {

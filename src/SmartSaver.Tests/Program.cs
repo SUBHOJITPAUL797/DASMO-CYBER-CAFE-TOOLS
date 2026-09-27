@@ -5400,6 +5400,116 @@ public static class Program
                 failed++;
             }
 
+            // ─── TEST 69: Zero-Config Silent Background Excel Auto-Sync & Real-Time Data Flow ─
+            Console.Write("[TEST 69] Zero-Config Silent Background Excel Auto-Sync (v1.5.27)... ");
+            try
+            {
+                string syncSandbox = Path.Combine(testDir, "ExcelSyncSandbox");
+                Directory.CreateDirectory(syncSandbox);
+
+                // Reset services to clean sandbox
+                CashDrawerService.ResetForTesting(syncSandbox);
+                PrintTrackerService.ResetForTesting(syncSandbox);
+
+                var tracker = PrintTrackerService.Instance;
+                var drawer = CashDrawerService.Instance;
+
+                // 1. Verify Effective Default Excel Path without any user configuration
+                tracker.Settings.AttachedExcelPath = string.Empty; // clear explicitly to simulate fresh install
+                string defaultPath = BillExcelExporter.GetEffectiveExcelPath(tracker.Settings, syncSandbox);
+                if (string.IsNullOrWhiteSpace(defaultPath) || !defaultPath.EndsWith("DASMO_CYBER_CAFE_ACCOUNTS.xlsx"))
+                    throw new Exception($"Expected default Excel path ending in DASMO_CYBER_CAFE_ACCOUNTS.xlsx, got: {defaultPath}");
+
+                if (tracker.Settings.AttachedExcelPath != defaultPath)
+                    throw new Exception("Settings.AttachedExcelPath was not populated with default path");
+
+                // 2. Add Transactions to Cash Drawer -> Triggers OnRegisterChanged -> Triggers silent Excel Auto-Sync
+                drawer.SetOpeningBalances(1000.0, 5000.0);
+                drawer.AddTransaction(
+                    TransactionDirection.Income,
+                    PaymentMedium.CashInDrawer,
+                    CashCategory.OnlineFormFillup,
+                    350.0,
+                    "Aadhaar Correction Form",
+                    "Raju Mondal",
+                    "9832109876");
+                drawer.RecordCustomerBorrow(120.0, "Amit Das", "9876543210", "Xerox Due");
+
+                // Add print jobs -> Triggers RegisterNewJob -> Triggers silent Excel Auto-Sync
+                tracker.AddManualJob("Photocopy", 5, false, false); // 5 x ₹3 = ₹15
+                var testBill = tracker.CompleteCustomerBill("Raju Mondal", "9832109876", "Cash", "Form + Xerox");
+
+                // Trigger immediate sync (0 debounce for testing) to write to disk synchronously
+                tracker.TriggerExcelAutoSync(debounceMs: 0);
+                Thread.Sleep(600); // Allow background task to complete write
+
+                if (!File.Exists(defaultPath))
+                    throw new Exception($"Silent auto-sync failed to create Excel workbook at: {defaultPath}");
+
+                var fileInfo = new FileInfo(defaultPath);
+                if (fileInfo.Length < 10000)
+                    throw new Exception($"Excel file size suspiciously small ({fileInfo.Length} bytes)");
+
+                // 3. Inspect the silently generated Excel workbook
+                using (var doc = DocumentFormat.OpenXml.Packaging.SpreadsheetDocument.Open(defaultPath, false))
+                {
+                    var sheets = doc.WorkbookPart!.Workbook.Sheets!.Elements<DocumentFormat.OpenXml.Spreadsheet.Sheet>().ToList();
+                    if (sheets.Count != 4)
+                        throw new Exception($"Expected 4 sheets in silently generated Excel, found {sheets.Count}");
+
+                    var sheetNames = sheets.Select(s => s.Name?.Value).ToList();
+                    if (!sheetNames.Contains("Cash Drawer & Accounts") || !sheetNames.Contains("Print & Xerox History"))
+                        throw new Exception("Missing essential tabs in silently synced Excel workbook");
+
+                    // Deep OpenXml schema validation
+                    var validator = new DocumentFormat.OpenXml.Validation.OpenXmlValidator();
+                    var errors = validator.Validate(doc).ToList();
+                    if (errors.Any())
+                    {
+                        var errMsgs = string.Join("; ", errors.Take(5).Select(e => $"{e.Description} at {e.Path?.XPath}"));
+                        throw new Exception($"OpenXml validation found schema errors in auto-synced workbook: {errMsgs}");
+                    }
+                }
+
+                // 4. Verify ViewModel bindings reflect active synced status with 0 user effort
+                Exception? staEx69 = null;
+                var staThread69 = new Thread(() =>
+                {
+                    try
+                    {
+                        var cdVm = new CashDrawerViewModel();
+                        if (!cdVm.HasAttachedExcel)
+                            throw new Exception("CashDrawerViewModel.HasAttachedExcel should be true by default");
+                        if (cdVm.AttachedExcelName != "DASMO_CYBER_CAFE_ACCOUNTS.xlsx")
+                            throw new Exception($"Expected AttachedExcelName 'DASMO_CYBER_CAFE_ACCOUNTS.xlsx', got '{cdVm.AttachedExcelName}'");
+                        if (!cdVm.AutoSyncToExcel)
+                            throw new Exception("AutoSyncToExcel should be true by default");
+
+                        var ptVm = new PrintTrackerViewModel();
+                        if (!ptVm.HasAttachedExcel)
+                            throw new Exception("PrintTrackerViewModel.HasAttachedExcel should be true by default");
+                        if (ptVm.AttachedExcelName != "DASMO_CYBER_CAFE_ACCOUNTS.xlsx")
+                            throw new Exception($"Expected PrintTrackerViewModel.AttachedExcelName 'DASMO_CYBER_CAFE_ACCOUNTS.xlsx', got '{ptVm.AttachedExcelName}'");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx69 = ex;
+                    }
+                });
+                staThread69.SetApartmentState(ApartmentState.STA);
+                staThread69.Start();
+                staThread69.Join(TimeSpan.FromSeconds(15));
+                if (staEx69 != null) throw staEx69;
+
+                Console.WriteLine("PASSED (Zero-Config Default Path, Real-Time Cash & Print Triggers, Thread-Safe Background Auto-Sync & Validated OpenXml Ledger)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

@@ -365,7 +365,7 @@ public class CashDrawerViewModel : ViewModelBase
     // ── Linked Excel Spreadsheet Properties ──
     public string AttachedExcelPath
     {
-        get => PrintTrackerService.Instance.Settings.AttachedExcelPath;
+        get => BillExcelExporter.GetEffectiveExcelPath(PrintTrackerService.Instance.Settings);
         set
         {
             PrintTrackerService.Instance.UpdateSettings(s => s.AttachedExcelPath = value);
@@ -376,10 +376,10 @@ public class CashDrawerViewModel : ViewModelBase
     }
 
     public string AttachedExcelName => string.IsNullOrWhiteSpace(AttachedExcelPath)
-        ? "No Excel Workbook Attached (Click to Link)"
+        ? "DASMO_CYBER_CAFE_ACCOUNTS.xlsx"
         : Path.GetFileName(AttachedExcelPath);
 
-    public bool HasAttachedExcel => !string.IsNullOrWhiteSpace(AttachedExcelPath);
+    public bool HasAttachedExcel => true;
 
     public bool AutoSyncToExcel
     {
@@ -633,11 +633,7 @@ public class CashDrawerViewModel : ViewModelBase
 
     private void ExecuteSyncExcelNow()
     {
-        if (string.IsNullOrWhiteSpace(AttachedExcelPath))
-        {
-            ExecuteLinkExcelFile();
-            return;
-        }
+        string path = BillExcelExporter.GetEffectiveExcelPath(PrintTrackerService.Instance.Settings);
 
         try
         {
@@ -649,7 +645,7 @@ public class CashDrawerViewModel : ViewModelBase
             if (ok)
             {
                 MessageBox.Show(
-                    $"✅ All accounts & bills synced successfully to:\n{AttachedExcelPath}",
+                    $"✅ All accounts & bills synced successfully to:\n{path}",
                     "Sync Complete", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else

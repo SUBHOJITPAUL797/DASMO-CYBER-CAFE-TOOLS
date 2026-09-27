@@ -526,7 +526,7 @@ public class PrintTrackerViewModel : ViewModelBase
     // ── Linked Excel Spreadsheet Auto-Sync ──
     public string AttachedExcelPath
     {
-        get => _tracker.Settings.AttachedExcelPath;
+        get => BillExcelExporter.GetEffectiveExcelPath(_tracker.Settings);
         set
         {
             _tracker.UpdateSettings(s => s.AttachedExcelPath = value);
@@ -537,10 +537,10 @@ public class PrintTrackerViewModel : ViewModelBase
     }
 
     public string AttachedExcelName => string.IsNullOrWhiteSpace(AttachedExcelPath)
-        ? "No Excel Linked"
+        ? "DASMO_CYBER_CAFE_ACCOUNTS.xlsx"
         : Path.GetFileName(AttachedExcelPath);
 
-    public bool HasAttachedExcel => !string.IsNullOrWhiteSpace(AttachedExcelPath);
+    public bool HasAttachedExcel => true;
 
     public bool AutoSyncToExcel
     {
@@ -1349,11 +1349,7 @@ public class PrintTrackerViewModel : ViewModelBase
 
     private void ExecuteSyncExcelNow()
     {
-        if (string.IsNullOrWhiteSpace(AttachedExcelPath))
-        {
-            ExecuteLinkExcelFile();
-            return;
-        }
+        string path = BillExcelExporter.GetEffectiveExcelPath(_tracker.Settings);
 
         try
         {
@@ -1365,7 +1361,7 @@ public class PrintTrackerViewModel : ViewModelBase
             if (ok)
             {
                 MessageBox.Show(
-                    $"✅ All accounts & bills synced successfully to:\n{AttachedExcelPath}",
+                    $"✅ All accounts & bills synced successfully to:\n{path}",
                     "Sync Complete", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
@@ -1384,19 +1380,20 @@ public class PrintTrackerViewModel : ViewModelBase
 
     private void ExecuteOpenAttachedExcel()
     {
-        if (string.IsNullOrWhiteSpace(AttachedExcelPath) || !File.Exists(AttachedExcelPath))
+        string path = BillExcelExporter.GetEffectiveExcelPath(_tracker.Settings);
+        if (!File.Exists(path))
         {
-            ExecuteLinkExcelFile();
-            return;
+            ExecuteSyncExcelNow();
+            if (!File.Exists(path)) return;
         }
 
         try
         {
-            Process.Start(new ProcessStartInfo(AttachedExcelPath) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to open attached Excel file {Path}", AttachedExcelPath);
+            Log.Error(ex, "Failed to open attached Excel file {Path}", path);
             MessageBox.Show($"Could not open Excel file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

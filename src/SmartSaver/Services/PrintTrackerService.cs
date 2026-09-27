@@ -42,6 +42,8 @@ public sealed class PrintTrackerService : IDisposable
     private CancellationTokenSource? _monitorCts;
     private Task? _monitorTask;
     private bool _isDisposed;
+    private readonly object _syncDebounceLock = new();
+    private CancellationTokenSource? _syncCts;
 
     public PrintBillingSettings Settings { get; private set; } = new();
 
@@ -100,6 +102,9 @@ public sealed class PrintTrackerService : IDisposable
 
         LoadSettings();
         LoadHistory();
+
+        // Wire Cash Drawer so every transaction, borrow, repayment or balance change silently syncs to Excel
+        CashDrawerService.Instance.OnRegisterChanged += () => TriggerExcelAutoSync();
     }
 
     #region Lifecycle & Background Monitoring
@@ -120,6 +125,9 @@ public sealed class PrintTrackerService : IDisposable
             var token = _monitorCts.Token;
             _monitorTask = Task.Run(() => MonitorLoopAsync(token), token);
             Log.Information("PrintTrackerService started monitoring print queues");
+
+            // Initial silent background sync on application startup (delayed by 1.5s for clean initialization)
+            TriggerExcelAutoSync(debounceMs: 1500);
         }
     }
 
@@ -470,6 +478,7 @@ public sealed class PrintTrackerService : IDisposable
         OnJobDetected?.Invoke(job);
         OnActiveCartChanged?.Invoke();
         OnHistoryUpdated?.Invoke();
+        TriggerExcelAutoSync();
     }
 
     /// <summary>
@@ -806,27 +815,62 @@ public sealed class PrintTrackerService : IDisposable
     }
 
     /// <summary>
-    /// Automatically synchronizes all sales and cash drawer records to the user's attached Excel spreadsheet.
-    /// Runs asynchronously in the background so the UI is never blocked.
+    /// Automatically and silently synchronizes all sales, jobs, cash drawer, and ledger records
+    /// to the user's attached Excel spreadsheet.
+    /// Uses debouncing (600ms) and runs asynchronously on a background thread so the UI is 100% responsive.
     /// </summary>
-    public void TriggerExcelAutoSync()
+    public void TriggerExcelAutoSync(int debounceMs = 600)
     {
-        if (Settings.AutoSyncToExcel && !string.IsNullOrWhiteSpace(Settings.AttachedExcelPath))
+        if (!Settings.AutoSyncToExcel) return;
+
+        // Ensure effective Excel path is assigned (defaults to Documents\DASMO CYBER CAFE\DASMO_CYBER_CAFE_ACCOUNTS.xlsx)
+        BillExcelExporter.GetEffectiveExcelPath(Settings, CustomDataDirectory);
+
+        lock (_syncDebounceLock)
         {
-            Task.Run(() =>
+            try
+            {
+                _syncCts?.Cancel();
+                _syncCts?.Dispose();
+            }
+            catch { }
+            _syncCts = new CancellationTokenSource();
+            var token = _syncCts.Token;
+
+            Task.Run(async () =>
             {
                 try
                 {
+                    if (debounceMs > 0)
+                    {
+                        await Task.Delay(debounceMs, token);
+                    }
+                    if (token.IsCancellationRequested) return;
+
                     var bills = CompletedBillSessions.ToList();
                     var registers = CashDrawerService.Instance.AllDays.ToList();
                     var jobs = AllJobHistory.ToList();
-                    BillExcelExporter.AutoSyncAttachedExcel(Settings, bills, registers, jobs);
+                    bool synced = BillExcelExporter.AutoSyncAttachedExcel(Settings, bills, registers, jobs);
+
+                    // If file was locked (e.g. user had Excel open), schedule a gentle retry after 4 seconds
+                    if (!synced && Settings.AutoSyncToExcel && !token.IsCancellationRequested)
+                    {
+                        await Task.Delay(4000, token);
+                        if (!token.IsCancellationRequested)
+                        {
+                            bills = CompletedBillSessions.ToList();
+                            registers = CashDrawerService.Instance.AllDays.ToList();
+                            jobs = AllJobHistory.ToList();
+                            BillExcelExporter.AutoSyncAttachedExcel(Settings, bills, registers, jobs);
+                        }
+                    }
                 }
+                catch (OperationCanceledException) { }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, "Background auto-sync to Excel failed");
+                    Log.Warning(ex, "Background silent auto-sync to Excel failed");
                 }
-            });
+            }, token);
         }
     }
 
@@ -1013,6 +1057,13 @@ public sealed class PrintTrackerService : IDisposable
         {
             Log.Warning(ex, "Failed to load print billing settings. Using defaults.");
         }
+
+        // Ensure default attached Excel path is assigned if empty
+        if (string.IsNullOrWhiteSpace(Settings.AttachedExcelPath))
+        {
+            Settings.AttachedExcelPath = BillExcelExporter.GetDefaultExcelPath(CustomDataDirectory);
+            SaveSettings();
+        }
     }
 
     private void SaveSettings()
@@ -1165,6 +1216,12 @@ public sealed class PrintTrackerService : IDisposable
         _isDisposed = true;
         Stop();
         _monitorCts?.Dispose();
+        try
+        {
+            _syncCts?.Cancel();
+            _syncCts?.Dispose();
+        }
+        catch { }
     }
 
     [DllImport("winspool.drv", EntryPoint = "OpenPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
