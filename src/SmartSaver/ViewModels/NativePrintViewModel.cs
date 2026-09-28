@@ -962,6 +962,7 @@ public class NativePrintViewModel : ViewModelBase
 
                     pd.DefaultPageSettings.Landscape = isLandscape;
                     pd.DefaultPageSettings.Color = !IsGrayscale;
+                    pd.PrinterSettings.DefaultPageSettings.Color = !IsGrayscale;
 
                     int pageCounter = 0;
 

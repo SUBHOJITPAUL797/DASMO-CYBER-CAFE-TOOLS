@@ -322,6 +322,13 @@ public sealed class PrintTrackerService : IDisposable
                         }
                     }
 
+                    // Smart safety: DASMO Passport Photo Studio sheets and photos are always color prints
+                    if (!isColor && (docName.Contains("Passport Photo", StringComparison.OrdinalIgnoreCase) ||
+                                     docName.Contains("Photo Sheet", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        isColor = true;
+                    }
+
                     Log.Information(
                         "Win32 print job captured: [{Printer}] JobId={JobId} Doc='{Doc}' Pages={Pages} Duplex={Duplex} Color={Color} Copies={Copies}",
                         printerName, jobInfo.JobId, CleanDocumentName(docName), pages, isDuplex, isColor, copies);
@@ -387,6 +394,12 @@ public sealed class PrintTrackerService : IDisposable
                         bool isDuplex = EvaluateDevModeDuplex(devMode);
                         bool isColor  = EvaluateDevModeColor(devMode);
                         int copies    = EvaluateDevModeCopies(devMode);
+                        string doc = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "";
+                        if (!isColor && (doc.Contains("Passport Photo", StringComparison.OrdinalIgnoreCase) ||
+                                         doc.Contains("Photo Sheet", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            isColor = true;
+                        }
                         return (isDuplex, isColor, copies);
                     }
                 }
@@ -1284,9 +1297,10 @@ public sealed class PrintTrackerService : IDisposable
     /// </summary>
     public static bool EvaluateDevModeColor(DEVMODE devMode)
     {
-        // 1. Explicit Monochrome: If dmColor is 1 (DMCOLOR_MONOCHROME) and plain paper (dmMediaType <= 1),
+        // 1. Explicit Monochrome: If dmColor is 1 (DMCOLOR_MONOCHROME), plain paper (dmMediaType <= 1),
+        // and normal/draft quality (dmPrintQuality > -3 && dmPrintQuality < 600),
         // the user or application explicitly configured Black & White / Grayscale.
-        if (devMode.dmColor == 1 && devMode.dmMediaType <= 1)
+        if (devMode.dmColor == 1 && devMode.dmMediaType <= 1 && devMode.dmPrintQuality > -3 && devMode.dmPrintQuality < 600)
         {
             return false;
         }
