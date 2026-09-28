@@ -312,42 +312,9 @@ public sealed class PrintTrackerService : IDisposable
                         {
                             var devMode = Marshal.PtrToStructure<DEVMODE>(jobInfo.pDevMode);
 
-                            // dmDuplex: 1=Simplex, 2=Duplex Long-Edge (portrait), 3=Duplex Short-Edge (landscape)
-                            isDuplex = devMode.dmDuplex is 2 or 3;
-
-                            // ── COLOR DETECTION (industry-grade) ────────────────────────────
-                            // dmColor=2 means the printer driver *supports* color, NOT that this
-                            // job is color. Brother DCP-T530DW always sends dmColor=2 even for
-                            // plain black text documents printed from Word, Chrome, or Adobe.
-                            //
-                            // The CORRECT flag is dmICMIntent:
-                            //   0 = Not specified / driver default (treat as B&W for billing)
-                            //   1 = Saturate        ← Color (ICC color management)
-                            //   2 = RelativeColorimetric ← Color
-                            //   3 = Perceptual      ← Color
-                            //   4 = AbsoluteColorimetric ← Color
-                            //
-                            // Additionally, if dmColor==1 the driver explicitly forces monochrome.
-                            // This overrides any ICM intent.
-                            if (devMode.dmColor == 1)
-                            {
-                                // Driver explicitly forced monochrome — definitely B&W
-                                isColor = false;
-                            }
-                            else if (devMode.dmICMIntent >= 1 && devMode.dmICMIntent <= 4)
-                            {
-                                // ICM is active → color job
-                                isColor = true;
-                            }
-                            else
-                            {
-                                // dmColor==2 (color-capable hardware) but no ICM intent set.
-                                // This is the "false color" Brother scenario.
-                                // Default to B&W — the user printed a B&W document.
-                                isColor = false;
-                            }
-
-                            if (devMode.dmCopies > 1) copies = devMode.dmCopies;
+                            isDuplex = EvaluateDevModeDuplex(devMode);
+                            isColor  = EvaluateDevModeColor(devMode);
+                            copies   = EvaluateDevModeCopies(devMode);
                         }
                         catch (Exception ex)
                         {
@@ -417,16 +384,9 @@ public sealed class PrintTrackerService : IDisposable
                     if (jobInfo.pDevMode != IntPtr.Zero)
                     {
                         var devMode = Marshal.PtrToStructure<DEVMODE>(jobInfo.pDevMode);
-                        bool isDuplex = devMode.dmDuplex is 2 or 3;
-                        // Use the same industry-grade color detection as ScanPrinterWithWin32
-                        bool isColor;
-                        if (devMode.dmColor == 1)
-                            isColor = false; // driver explicitly forced monochrome
-                        else if (devMode.dmICMIntent >= 1 && devMode.dmICMIntent <= 4)
-                            isColor = true;  // ICC color management active → color job
-                        else
-                            isColor = false; // hardware color-capable but no ICM → B&W
-                        int copies = devMode.dmCopies > 1 ? devMode.dmCopies : 1;
+                        bool isDuplex = EvaluateDevModeDuplex(devMode);
+                        bool isColor  = EvaluateDevModeColor(devMode);
+                        int copies    = EvaluateDevModeCopies(devMode);
                         return (isDuplex, isColor, copies);
                     }
                 }
@@ -1278,7 +1238,7 @@ public sealed class PrintTrackerService : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct DEVMODE
+    public struct DEVMODE
     {
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
         public string dmDeviceName;
@@ -1316,6 +1276,71 @@ public sealed class PrintTrackerService : IDisposable
         public int dmReserved2;
         public int dmPanningWidth;
         public int dmPanningHeight;
+    }
+
+    /// <summary>
+    /// Evaluates DEVMODE attributes to reliably determine whether a print job is Color or B&amp;W.
+    /// Follows Win32 standards across all Windows applications (Adobe Acrobat, Chrome, Word, Photo Viewer, etc.)
+    /// </summary>
+    public static bool EvaluateDevModeColor(DEVMODE devMode)
+    {
+        // 1. Explicit Monochrome: If dmColor is 1 (DMCOLOR_MONOCHROME) and plain paper (dmMediaType <= 1),
+        // the user or application explicitly configured Black & White / Grayscale.
+        if (devMode.dmColor == 1 && devMode.dmMediaType <= 1)
+        {
+            return false;
+        }
+
+        // 2. Explicit Color mode: dmColor == 2 (DMCOLOR_COLOR)
+        // Standard in Windows GDI / spooler when printing color documents.
+        if (devMode.dmColor == 2)
+        {
+            return true;
+        }
+
+        // 3. High Print Quality: DMRES_HIGH (-4), DMRES_MEDIUM (-3), or DPI >= 600
+        // Indicates high-resolution photo or presentation graphics.
+        if (devMode.dmPrintQuality is <= -3 or >= 600)
+        {
+            return true;
+        }
+
+        // 4. Photo/Glossy Paper media: dmMediaType > 1 (2=Transparency, 3=Glossy, 4+=Photo Paper)
+        if (devMode.dmMediaType > 1)
+        {
+            return true;
+        }
+
+        // 5. True-color bit depth: 24-bit or 32-bit RGB
+        if (devMode.dmBitsPerPel >= 24)
+        {
+            return true;
+        }
+
+        // 6. Active ICC color matching intent (1=Saturate, 2=RelativeColorimetric, 3=Perceptual, 4=AbsoluteColorimetric)
+        if (devMode.dmICMIntent >= 1 && devMode.dmICMIntent <= 4)
+        {
+            return true;
+        }
+
+        // Default to Monochrome if no color signals are found
+        return false;
+    }
+
+    /// <summary>
+    /// Evaluates DEVMODE dmDuplex flag (1=Simplex, 2=Duplex Long-Edge, 3=Duplex Short-Edge).
+    /// </summary>
+    public static bool EvaluateDevModeDuplex(DEVMODE devMode)
+    {
+        return devMode.dmDuplex is 2 or 3;
+    }
+
+    /// <summary>
+    /// Evaluates DEVMODE dmCopies flag.
+    /// </summary>
+    public static int EvaluateDevModeCopies(DEVMODE devMode)
+    {
+        return devMode.dmCopies > 1 ? devMode.dmCopies : 1;
     }
 
     #endregion

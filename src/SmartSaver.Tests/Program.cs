@@ -5510,6 +5510,144 @@ public static class Program
                 failed++;
             }
 
+            // ─────────────────────────────────────────────────────────────
+            // TEST 70: Windows-Wide Acrobat / Spooler DEVMODE Color Detection & 1-Click Toast Toggle (v1.5.28)
+            // ─────────────────────────────────────────────────────────────
+            try
+            {
+                Console.Write("[TEST 70] Windows-Wide DEVMODE Color Detection & 1-Click Toast Toggle (v1.5.28)... ");
+
+                // 1. Adobe Acrobat High-Quality Color Print Simulation (dmColor=2, dmPrintQuality=-4, dmICMIntent=0)
+                var acrobatColorJob = new PrintTrackerService.DEVMODE
+                {
+                    dmColor = 2,
+                    dmPrintQuality = -4, // DMRES_HIGH
+                    dmMediaType = 1,     // Standard plain paper
+                    dmICMIntent = 0      // Acrobat default GDI / spooler (no ICM intent)
+                };
+                if (!PrintTrackerService.EvaluateDevModeColor(acrobatColorJob))
+                    throw new Exception("Adobe Acrobat High Quality color print (dmColor=2, dmPrintQuality=-4) falsely detected as B&W!");
+
+                // 2. High DPI (600 DPI) Color Print Simulation
+                var dpi600ColorJob = new PrintTrackerService.DEVMODE
+                {
+                    dmColor = 2,
+                    dmPrintQuality = 600,
+                    dmICMIntent = 0
+                };
+                if (!PrintTrackerService.EvaluateDevModeColor(dpi600ColorJob))
+                    throw new Exception("600 DPI Color print (dmColor=2, dmPrintQuality=600) failed color evaluation!");
+
+                // 3. Photo Glossy Media Simulation (dmMediaType=3)
+                var glossyPhotoJob = new PrintTrackerService.DEVMODE
+                {
+                    dmColor = 2,
+                    dmMediaType = 3 // DMMEDIA_GLOSSY
+                };
+                if (!PrintTrackerService.EvaluateDevModeColor(glossyPhotoJob))
+                    throw new Exception("Glossy photo print failed color evaluation!");
+
+                // 4. 24-bit TrueColor simulation
+                var trueColorJob = new PrintTrackerService.DEVMODE
+                {
+                    dmColor = 2,
+                    dmBitsPerPel = 24
+                };
+                if (!PrintTrackerService.EvaluateDevModeColor(trueColorJob))
+                    throw new Exception("24-bit true color print failed color evaluation!");
+
+                // 5. Explicit Monochrome / Grayscale Selection (dmColor=1)
+                var acrobatMonochromeJob = new PrintTrackerService.DEVMODE
+                {
+                    dmColor = 1,        // DMCOLOR_MONOCHROME
+                    dmPrintQuality = 300,
+                    dmMediaType = 1,
+                    dmICMIntent = 0
+                };
+                if (PrintTrackerService.EvaluateDevModeColor(acrobatMonochromeJob))
+                    throw new Exception("Explicit Grayscale/Monochrome print (dmColor=1) should evaluate to false (B&W)!");
+
+                // 6. Default Uninitialized DEVMODE
+                var zeroDevMode = new PrintTrackerService.DEVMODE();
+                if (PrintTrackerService.EvaluateDevModeColor(zeroDevMode))
+                    throw new Exception("Empty uninitialized DEVMODE should default to false (B&W)!");
+
+                // 7. Duplex & Copies DEVMODE evaluation
+                var duplexJob = new PrintTrackerService.DEVMODE { dmDuplex = 2, dmCopies = 3 };
+                if (!PrintTrackerService.EvaluateDevModeDuplex(duplexJob))
+                    throw new Exception("Duplex long-edge (dmDuplex=2) failed duplex evaluation!");
+                if (PrintTrackerService.EvaluateDevModeCopies(duplexJob) != 3)
+                    throw new Exception("Copies (dmCopies=3) failed copies evaluation!");
+
+                // 8. PrintJobRecord creation, Color Cost Calculation & 1-Click Toggle
+                var tracker = PrintTrackerService.Instance;
+                var colorJobRecord = new PrintJobRecord
+                {
+                    DocumentName = "Moupriya Pal - Professional Resume.pdf",
+                    PrinterName = "Brother DCP-T530DW",
+                    Pages = 1,
+                    Copies = 1,
+                    IsDuplex = false,
+                    IsColor = true, // Color detected
+                    ItemCategory = "Windows Print (PC)"
+                };
+                tracker.CalculateCost(colorJobRecord);
+                if (colorJobRecord.TotalCost != tracker.Settings.ColorSingleSideRate)
+                    throw new Exception($"Expected color single rate ₹{tracker.Settings.ColorSingleSideRate}, got ₹{colorJobRecord.TotalCost}");
+
+                tracker.RegisterNewJob(colorJobRecord);
+
+                // 9. Interactive 1-click Toggle: Color -> B&W -> Color
+                tracker.UpdateJobInCart(colorJobRecord.Id, j => j.IsColor = false);
+                var updatedInCart = tracker.ActiveCustomerJobs.FirstOrDefault(j => j.Id == colorJobRecord.Id);
+                if (updatedInCart == null || updatedInCart.IsColor != false)
+                    throw new Exception("Failed to toggle job to B&W in active cart");
+                if (updatedInCart.TotalCost != tracker.Settings.BwSingleSideRate)
+                    throw new Exception($"Expected B&W rate ₹{tracker.Settings.BwSingleSideRate} after toggle, got ₹{updatedInCart.TotalCost}");
+
+                tracker.UpdateJobInCart(colorJobRecord.Id, j => j.IsColor = true);
+                if (updatedInCart.IsColor != true || updatedInCart.TotalCost != tracker.Settings.ColorSingleSideRate)
+                    throw new Exception("Failed to toggle job back to Color in active cart");
+
+                // 10. STA Thread Validation for PrintAlertPopup HUD Toast
+                Exception? staEx70 = null;
+                var staThread70 = new Thread(() =>
+                {
+                    try
+                    {
+                        var popup = new SmartSaver.Views.PrintAlertPopup(colorJobRecord);
+                        if (popup.ColorBadgeText != "🌈 Color")
+                            throw new Exception($"Expected popup badge '🌈 Color', got '{popup.ColorBadgeText}'");
+                        if (!popup.TotalCostText.Contains($"{tracker.Settings.ColorSingleSideRate:F2}"))
+                            throw new Exception($"Expected popup cost to show ₹{tracker.Settings.ColorSingleSideRate:F2}, got '{popup.TotalCostText}'");
+
+                        // Toggle to B&W and update popup
+                        tracker.UpdateJobInCart(colorJobRecord.Id, j => j.IsColor = false);
+                        popup.UpdateJob(colorJobRecord);
+                        if (popup.ColorBadgeText != "⚫ B&W")
+                            throw new Exception($"Expected popup badge '⚫ B&W' after toggle, got '{popup.ColorBadgeText}'");
+                        if (!popup.TotalCostText.Contains($"{tracker.Settings.BwSingleSideRate:F2}"))
+                            throw new Exception($"Expected popup cost to show ₹{tracker.Settings.BwSingleSideRate:F2}, got '{popup.TotalCostText}'");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx70 = ex;
+                    }
+                });
+                staThread70.SetApartmentState(ApartmentState.STA);
+                staThread70.Start();
+                staThread70.Join(TimeSpan.FromSeconds(15));
+                if (staEx70 != null) throw staEx70;
+
+                Console.WriteLine("PASSED (Acrobat/Win32 dmColor=2 High Quality Detection, Explicit B&W Grayscale Support, Cart Math & Interactive Toast Toggling)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

@@ -78,11 +78,21 @@
                         <Border Background="#222538" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
                             <TextBlock x:Name="TxtPagesBadge" Text="6 Pages" FontWeight="Bold" FontSize="11" Foreground="White"/>
                         </Border>
-                        <Border x:Name="PillDuplex" Background="#1A2E26" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                            <TextBlock x:Name="TxtDuplexBadge" Text="📑 3 Sheets (Duplex)" FontWeight="SemiBold" FontSize="11" Foreground="#10B981"/>
+                        <Border x:Name="PillDuplex" Background="#1A2E26" CornerRadius="4" Padding="6,2" Margin="0,0,6,0"
+                                Cursor="Hand" ToolTip="Click to toggle Single-Sided / Duplex (2-in-1)"
+                                MouseLeftButtonDown="PillDuplex_MouseLeftButtonDown">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock x:Name="TxtDuplexBadge" Text="📑 3 Sheets (Duplex)" FontWeight="SemiBold" FontSize="11" Foreground="#10B981"/>
+                                <TextBlock Text=" ⇋" FontSize="10" Foreground="#10B981" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Border>
-                        <Border x:Name="PillColor" Background="#1A2A38" CornerRadius="4" Padding="6,2">
-                            <TextBlock x:Name="TxtColorBadge" Text="⚫ B&amp;W" FontWeight="SemiBold" FontSize="11" Foreground="#00BCD4"/>
+                        <Border x:Name="PillColor" Background="#1A2A38" CornerRadius="4" Padding="6,2"
+                                Cursor="Hand" ToolTip="Click to toggle between 🌈 Color and ⚫ B&amp;W"
+                                MouseLeftButtonDown="PillColor_MouseLeftButtonDown">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock x:Name="TxtColorBadge" Text="⚫ B&amp;W" FontWeight="SemiBold" FontSize="11" Foreground="#00BCD4"/>
+                                <TextBlock Text=" ⇋" FontSize="10" Foreground="#88AACC" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </StackPanel>
