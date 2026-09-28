@@ -5648,6 +5648,101 @@ public static class Program
                 failed++;
             }
 
+            // =================================================================
+            // TEST 71: Compact Update Dialog & Release Notes Highlights Sanitization (Anti-Screen Overflow)
+            // =================================================================
+            try
+            {
+                Console.Write("[TEST 71] Compact Update Dialog & Release Notes Sanitization... ");
+
+                // 1. Verify FormatReleaseHighlights with complex 200+ line markdown
+                string hugeMarkdownNotes = @"# DASMO CYBER CAFE TOOLS — Release Documentation
+## Version 1.5.29: Universal Windows-Wide DEVMODE Color Detection & Interactive Toast HUD
+---
+### Executive Overview
+Version **1.5.29** addresses a critical print spooler tracking bug.
+```mermaid
+flowchart TD
+    A[Job Arrives] --> B[Color Check]
+```
+| Col 1 | Col 2 |
+|---|---|
+| Val 1 | Val 2 |
+• 🖨️ **Universal Color Print Detection**: Full DEVMODE detection for Adobe Acrobat and Chrome.
+• 📸 **Passport Photo Studio Safety**: Guaranteed automatic Color detection for all passport photo sheets.
+• ⚡ **Interactive Toast HUD**: 1-click [🌈 Color ⇋] and [📑 Duplex ⇋] toggles directly on notification.
+• 🛡️ **Zero Regressions**: 70/70 automated verification tests passing.
+👉 Complete documentation & architecture: [RELEASE.md](https://github.com/...)
+";
+
+                string sanitized = SmartSaver.Services.AppUpdateService.FormatReleaseHighlights(hugeMarkdownNotes);
+                if (string.IsNullOrWhiteSpace(sanitized))
+                    throw new Exception("FormatReleaseHighlights returned empty string");
+                if (sanitized.Contains("mermaid") || sanitized.Contains("flowchart") || sanitized.Contains("| Col 1 |"))
+                    throw new Exception("FormatReleaseHighlights failed to filter code blocks or tables");
+                if (!sanitized.Contains("Universal Color Print Detection") || !sanitized.Contains("Passport Photo Studio Safety"))
+                    throw new Exception("FormatReleaseHighlights did not preserve key bullet points");
+                if (sanitized.Length > 450)
+                    throw new Exception($"FormatReleaseHighlights exceeded safe maximum length: {sanitized.Length} chars");
+
+                // Empty / null fallback check
+                string fallback = SmartSaver.Services.AppUpdateService.FormatReleaseHighlights(null);
+                if (!fallback.Contains("Performance improvements and bug fixes"))
+                    throw new Exception("FormatReleaseHighlights null fallback failed");
+
+                // 2. STA Thread Validation for UpdateAvailableDialog
+                Exception? staEx71 = null;
+                var staThread71 = new Thread(() =>
+                {
+                    try
+                    {
+                        var updateInfo = new SmartSaver.Services.UpdateCheckResult
+                        {
+                            HasUpdate = true,
+                            IsMandatory = false,
+                            CurrentVersion = "1.5.28",
+                            LatestVersion = "1.5.29",
+                            DownloadUrl = "https://example.com/update.msi",
+                            ReleaseNotes = hugeMarkdownNotes,
+                            CustomAdminMessage = "Please update for latest print fixes."
+                        };
+
+                        var dialog = new SmartSaver.Views.UpdateAvailableDialog(updateInfo);
+
+                        // Verify fixed, compact bounds (MUST NEVER cover screen!)
+                        if (dialog.Width > 600 || dialog.Height > 500)
+                            throw new Exception($"Update dialog dimensions ({dialog.Width}x{dialog.Height}) exceed safe compact size");
+
+                        // Trigger layout load
+                        dialog.Measure(new System.Windows.Size(520, 460));
+                        dialog.Arrange(new System.Windows.Rect(0, 0, 520, 460));
+
+                        if (dialog.TxtCurrentVersion.Text != "v1.5.28")
+                            throw new Exception($"Expected CurrentVersion 'v1.5.28', got '{dialog.TxtCurrentVersion.Text}'");
+                        if (dialog.TxtLatestVersion.Text != "v1.5.29")
+                            throw new Exception($"Expected LatestVersion 'v1.5.29', got '{dialog.TxtLatestVersion.Text}'");
+                        if (string.IsNullOrWhiteSpace(dialog.TxtChangelog.Text) || dialog.TxtChangelog.Text.Contains("mermaid"))
+                            throw new Exception("Dialog changelog text was invalid or contained unparsed markdown");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx71 = ex;
+                    }
+                });
+                staThread71.SetApartmentState(ApartmentState.STA);
+                staThread71.Start();
+                staThread71.Join(TimeSpan.FromSeconds(15));
+                if (staEx71 != null) throw staEx71;
+
+                Console.WriteLine("PASSED (Compact 520x460 WPF Dialog, Zero-Screen Overflow, Markdown Sanitization & STA Verification)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

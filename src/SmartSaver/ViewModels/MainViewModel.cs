@@ -768,7 +768,7 @@ public class MainViewModel : ViewModelBase
                 if (_lastNotifiedUpdateVersion != result.LatestVersion)
                 {
                     _lastNotifiedUpdateVersion = result.LatestVersion;
-                    NotificationService.NotifyUpdateAvailable(result.LatestVersion, result.ReleaseNotes);
+                    NotificationService.NotifyUpdateAvailable(result.LatestVersion, AppUpdateService.FormatReleaseHighlights(result.ReleaseNotes));
                 }
 
                 if (result.IsMandatory)
@@ -781,13 +781,11 @@ public class MainViewModel : ViewModelBase
                 }
                 else if (!silent)
                 {
-                    var ask = System.Windows.MessageBox.Show(
-                        $"🚀 A new update (v{result.LatestVersion}) is available for DASMO CYBER CAFE TOOLS!\n\nRelease Highlights:\n{(string.IsNullOrWhiteSpace(result.ReleaseNotes) ? "Bug fixes and improvements" : result.ReleaseNotes)}\n\nWould you like to download and install this update now?",
-                        "Update Available", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
-                    if (ask == System.Windows.MessageBoxResult.Yes)
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                     {
-                        _ = DownloadAndInstallUpdateAsync();
-                    }
+                        var win = new Views.UpdateAvailableDialog(result);
+                        win.ShowDialog();
+                    });
                 }
             }
             else

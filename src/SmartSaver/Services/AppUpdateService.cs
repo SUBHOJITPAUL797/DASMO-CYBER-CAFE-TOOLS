@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -46,6 +48,72 @@ public class AppUpdateService
 
     public static string CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.5.0";
+
+    /// <summary>
+    /// Sanitizes and extracts a clean, concise bullet-point summary from raw release notes
+    /// to ensure UI dialogs and notifications never overflow the screen.
+    /// </summary>
+    public static string FormatReleaseHighlights(string? rawNotes, int maxBulletCount = 5, int maxTotalChars = 400)
+    {
+        if (string.IsNullOrWhiteSpace(rawNotes))
+        {
+            return "• Performance improvements and bug fixes.";
+        }
+
+        var lines = rawNotes.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        var cleanBullets = new List<string>();
+        bool inCodeBlock = false;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+            if (line.StartsWith("```"))
+            {
+                inCodeBlock = !inCodeBlock;
+                continue;
+            }
+            if (inCodeBlock) continue;
+
+            // Skip markdown headers, horizontal rules, table syntax, html, links
+            if (line.StartsWith("#") || line.StartsWith("---") || line.StartsWith("===") || line.StartsWith("|") || line.StartsWith("<") || line.StartsWith("👉"))
+                continue;
+
+            // Capture bullet lines or meaningful descriptive lines
+            if (line.StartsWith("•") || line.StartsWith("- ") || line.StartsWith("* "))
+            {
+                string cleanLine = line.Replace("**", "").Trim();
+                if (!cleanLine.StartsWith("•"))
+                {
+                    cleanLine = "• " + cleanLine.TrimStart('-', '*', ' ');
+                }
+                cleanBullets.Add(cleanLine);
+            }
+            else if (line.Length > 10 && !line.StartsWith("Title:", StringComparison.OrdinalIgnoreCase) && !line.StartsWith("Tag:", StringComparison.OrdinalIgnoreCase))
+            {
+                if (cleanBullets.Count < maxBulletCount && !line.EndsWith(":"))
+                {
+                    string cleanLine = line.Replace("**", "").Trim();
+                    cleanBullets.Add("• " + cleanLine);
+                }
+            }
+
+            if (cleanBullets.Count >= maxBulletCount) break;
+        }
+
+        if (cleanBullets.Count == 0)
+        {
+            string plain = Regex.Replace(rawNotes, @"[#*`|>]", " ").Trim();
+            if (plain.Length > 200) plain = plain.Substring(0, 197) + "...";
+            return "• " + plain;
+        }
+
+        string result = string.Join("\n", cleanBullets);
+        if (result.Length > maxTotalChars)
+        {
+            result = result.Substring(0, maxTotalChars - 3) + "...";
+        }
+        return result;
+    }
 
     private AppUpdateService()
     {

@@ -99,19 +99,21 @@ To give the cyber cafe operator immediate manual control without having to open 
 
 ---
 
-### 3. In-App Update Engine Workflow (`AppUpdateService.cs`)
+### 3. In-App Update Engine & Sleek Compact Dialog (`UpdateAvailableDialog.xaml`)
 
-The application includes an automated background update mechanism:
+The application includes an automated background update mechanism with anti-overflow UI protection:
 1. **Background Polling**: On startup and scheduled intervals, `AppUpdateService` queries the GitHub Releases API (`https://api.github.com/repos/SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS/releases/latest`).
 2. **Semantic Version Comparison**:
    * Installed Version: `1.5.28` (or earlier)
    * Available Release: `1.5.29`
    * Trigger Condition: `LatestVersion > CurrentVersion`
-3. **User Prompt**:
-   A Windows desktop notification toast appears:
-   > *"🚀 A new update (v1.5.29) is available for DASMO CYBER CAFE TOOLS!"*
+3. **Compact, Anti-Overflow Dialog (`UpdateAvailableDialog.xaml`)**:
+   * Previous versions used standard Win32 `MessageBox.Show`, which lacked vertical scrollbars and stretched vertically across the entire monitor when displaying detailed release notes.
+   * Replaced with a custom **520 × 460 px** dark-themed WPF window with `WindowStartupLocation="CenterScreen"` and internal `ScrollViewer`.
+   * **Markdown Sanitizer (`AppUpdateService.FormatReleaseHighlights`)**: Automatically strips code fences, tables, and raw syntax into clean, readable bullet points (max 5 items / 400 characters), ensuring zero screen overflow.
+   * **Direct In-Dialog Downloader**: Displays live progress bar, speed in MB/s, and a "Remind Me Later" dismissal option.
 4. **One-Click Download & Install**:
-   Clicking the notification downloads the official MSI installer package to `%TEMP%` and launches it with automatic closing of the previous version.
+   Clicking **"🚀 Download & Install Update Now"** downloads the official MSI installer package to `%TEMP%` and launches it with automatic closing of the previous version.
 5. **Manual Check**:
    Operators can also open Dashboard $\rightarrow$ **Tab 11: About & Updates** $\rightarrow$ Click **"Check for Updates"** to review changelogs and trigger installation on demand.
 
@@ -119,7 +121,7 @@ The application includes an automated background update mechanism:
 
 ### 4. Automated Verification Test Suite
 
-A comprehensive test suite of **70 automated tests** verifies the entire application stack:
+A comprehensive test suite of **71 automated tests** verifies the entire application stack:
 
 | Test ID | Area Tested | Outcome |
 | :--- | :--- | :--- |
@@ -129,11 +131,12 @@ A comprehensive test suite of **70 automated tests** verifies the entire applica
 | `[TEST 54 - 60]` | Exact Dimension Scaling, Universal Decoders, Spooler Interceptor, Bill Engine | ✅ PASSED |
 | `[TEST 61 - 67]` | Cash Drawer Accounts, Brother SNMP Live Audit, Khata Ledger, Repayments | ✅ PASSED |
 | `[TEST 68 - 69]` | Virtual Printer Gate, ₹3 Xerox vs ₹5 PC Print, Zero-Config Silent Excel Auto-Sync | ✅ PASSED |
-| **`[TEST 70]`** | **Win32 DEVMODE Acrobat High Quality, 600 DPI, Glossy, TrueColor, B&W Override & STA Toast HUD** | **✅ PASSED** |
+| `[TEST 70]` | Win32 DEVMODE Acrobat High Quality, 600 DPI, Glossy, TrueColor, B&W Override & STA Toast HUD | ✅ PASSED |
+| **`[TEST 71]`** | **Compact 520x460 UpdateAvailableDialog, Markdown Sanitization, Zero Screen Overflow & STA Thread** | **✅ PASSED** |
 
 ```
 ==================================================================
-   TEST RESULTS: 70 PASSED, 0 FAILED
+   TEST RESULTS: 71 PASSED, 0 FAILED
 ==================================================================
 ```
 
