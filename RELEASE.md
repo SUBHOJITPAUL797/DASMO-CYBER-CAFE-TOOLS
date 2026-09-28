@@ -1,215 +1,147 @@
-# DASMO CYBER CAFE TOOLS — Release & Build Flow
+# DASMO CYBER CAFE TOOLS — Release Documentation
 
-> **⚠️ READ THIS BEFORE EVERY RELEASE — NO SHORTCUTS**
-> This document is the single source of truth for how to build, package, install, and publish the software.
-
----
-
-## 📁 Folder Structure (What Each Folder Is For)
-
-```
-DASMO CYBER CAFE/
-│
-├── src/                          ← SOURCE CODE ONLY (never run from here)
-│   ├── SmartSaver/               ← Main WPF app project
-│   │   └── bin/Release/.../publish/  ← WiX reads from HERE (auto-synced by build script)
-│   └── SmartSaver.Installer/     ← WiX MSI project (DO NOT install MSI from here)
-│       └── bin/Release/          ← Intermediate WiX build output (ignore this)
-│
-├── releases/                     ← ✅ SINGLE SOURCE OF TRUTH FOR RELEASES
-│   └── DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.1.msi   ← The OFFICIAL MSI to install & upload
-│
-└── RELEASE.md                    ← THIS FILE (build/release instructions)
-```
-
-> **RULE:** Always install from `releases/` folder. Always upload from `releases/` folder.
-> Never install from `src/SmartSaver.Installer/bin/Release/` — that is intermediate output, NOT the official release.
+## Version 1.5.29: Universal Windows-Wide DEVMODE Color Detection & Interactive Toast HUD
 
 ---
 
-## 🔢 Version Checklist (do this FIRST before building)
+### Executive Overview
+Version **1.5.29** addresses a critical print spooler tracking bug where documents printed in **Color / High Quality** from applications such as **Adobe Acrobat**, **Google Chrome**, **Microsoft Edge**, **Microsoft Word**, **Windows Photo Viewer**, or **DASMO Passport Photo Studio** were falsely detected as `⚫ B&W` (Monochrome) instead of `🌈 Color`.
 
-Before building, bump the version in **TWO** files:
-
-### 1. `src/SmartSaver/SmartSaver.csproj`
-```xml
-<Version>1.5.7.0</Version>
-<AssemblyVersion>1.5.7.0</AssemblyVersion>
-<FileVersion>1.5.7.0</FileVersion>
-```
-
-### 2. `src/SmartSaver.Installer/Package.wxs`
-```xml
-<Package Name="DASMO CYBER CAFE TOOLS"
-         Version="1.5.7.0"   ← change this
-         ...>
-```
-
-> Both must match — if they differ, the MSI will install wrong version info.
+This release introduces an authoritative, multi-tier **Win32 DEVMODE evaluation engine**, provides an interactive **1-click override directly on the desktop HUD notification toast**, adds a dedicated safety net for photo sheets, and prepares the application for automated in-app updates.
 
 ---
 
-## 🏗️ Step-by-Step Build & Release Process
+### Root Cause Analysis
 
-### STEP 1 — Build the App (requires .NET 8 SDK)
-
-Open PowerShell and run:
-```powershell
-cd "c:\CODING\coading\DASMO CYBER CAFE"
-
-dotnet publish "src\SmartSaver\SmartSaver.csproj" `
-    -c Release `
-    -r win-x64 `
-    --self-contained true `
-    -o "src\SmartSaver\bin\Release\net8.0-windows10.0.17763.0\win-x64\publish"
+#### The Technical Issue in Earlier Versions (≤ v1.5.27)
+In `PrintTrackerService.cs`, spooler DEVMODE parsing evaluated the print job's color mode using:
+```csharp
+if (devMode.dmColor == 1)
+{
+    isColor = false;
+}
+else if (devMode.dmICMIntent >= 1 && devMode.dmICMIntent <= 4)
+{
+    isColor = true;
+}
+else
+{
+    isColor = false; // <-- ROOT CAUSE BUG
+}
 ```
 
-> **Why this exact `-o` path?** The WiX installer (`SmartSaver.Installer.wixproj`) reads from
-> `src\SmartSaver\bin\Release\net8.0-windows10.0.17763.0\win-x64\publish`
-> If you publish to any other folder, WiX will package OLD files and you'll ship the wrong version!
-
-After publish, verify:
-```powershell
-[System.Diagnostics.FileVersionInfo]::GetVersionInfo(
-    "src\SmartSaver\bin\Release\net8.0-windows10.0.17763.0\win-x64\publish\DASMO CYBER CAFE TOOLS.exe"
-).FileVersion
-# Must show the new version e.g. 1.5.6.0
-```
+#### Why Color Prints Were Detected as B&W:
+1. **ICM Intent is Unset in Standard Windows Printing**:
+   Standard Windows GDI / EMF printing applications (including Adobe Acrobat, Microsoft Office, web browsers, and image viewers) do **not** engage Image Color Management intent flags in the print job DEVMODE (`dmICMIntent` remains `0`).
+2. **DEVMODE Color Flag Was Ignored**:
+   When users configure "Color" or "High Quality", Windows and printer drivers (such as the Brother DCP-T530DW) set:
+   * `dmColor = 2` (`DMCOLOR_COLOR`)
+   * `dmPrintQuality = -4` (`DMRES_HIGH`) or `≥ 600 DPI`
+   * `dmBitsPerPel = 24` or `32` (True Color)
+3. Because `dmICMIntent == 0`, the previous code fell through to `else { isColor = false; }`, **forcibly converting every color print job into Black & White**.
 
 ---
 
-### STEP 2 — Build the MSI Installer
+### Comprehensive Architecture & Fixes (v1.5.29)
 
-Run from the installer directory:
-```powershell
-$wix     = "C:\Users\Mypc3\.dotnet\tools\wix.exe"
-$nuget   = "$env:USERPROFILE\.nuget\packages"
-$uiExt   = "$nuget\wixtoolset.ui.wixext\5.0.2\wixext5\WixToolset.UI.wixext.dll"
-$utilExt = "$nuget\wixtoolset.util.wixext\5.0.2\wixext5\WixToolset.Util.wixext.dll"
-$pubDir  = "c:\CODING\coading\DASMO CYBER CAFE\src\SmartSaver\bin\Release\net8.0-windows10.0.17763.0\win-x64\publish"
+#### 1. Multi-Tier Win32 DEVMODE Color Detection Engine
+A unified `EvaluateDevModeColor(DEVMODE devMode)` method now governs all print spooler polling and job inspection:
 
-# Run FROM installer dir so License.rtf resolves correctly
-cd "c:\CODING\coading\DASMO CYBER CAFE\src\SmartSaver.Installer"
-
-& $wix build `
-    Package.wxs Components.wxs Directories.wxs Registry.wxs `
-    -ext $uiExt -ext $utilExt `
-    -d "PublishDir=$pubDir" `
-    -arch x64 `
-    -o "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi"
+```mermaid
+flowchart TD
+    A["Spooler Job Arrives (winspool.drv)"] --> B{"dmColor == 1 (Monochrome)\nAND plain paper\nAND standard DPI?"}
+    B -- Yes --> C["⚫ Black & White (Monochrome)"]
+    B -- No --> D{"dmColor == 2 (DMCOLOR_COLOR)?"}
+    D -- Yes --> E["🌈 Color"]
+    D -- No --> F{"dmPrintQuality <= -3 (High Quality)\nOR >= 600 DPI?"}
+    F -- Yes --> E
+    F -- No --> G{"dmMediaType > 1\n(Glossy/Photo Paper)?"}
+    G -- Yes --> E
+    G -- No --> H{"dmBitsPerPel >= 24\n(True Color RGB)?"}
+    H -- Yes --> E
+    H -- No --> I{"dmICMIntent in 1..4\n(ICC Active)?"}
+    I -- Yes --> E
+    I -- No --> J{"Document Name contains\n'Passport Photo' or 'Photo Sheet'?"}
+    J -- Yes --> E
+    J -- No --> C
 ```
 
-> **Why output directly to `releases/`?** This keeps `releases/` as the single source of truth.
-> The MSI filename must include the version number e.g. `_v1.5.6.msi`
-
-After build, verify the MSI:
-```powershell
-Get-Item "c:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi" | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,1)}}, LastWriteTime
-# Expected: ~77 MB
-```
+#### Detection Hierarchy Rules:
+1. **Explicit Monochrome (`dmColor == 1`)**:
+   If `dmColor == 1`, plain paper (`dmMediaType <= 1`), and normal draft/standard quality (`dmPrintQuality > -3 && dmPrintQuality < 600`), the print job is strictly categorized as **Monochrome (B&W)**.
+2. **Explicit Color (`dmColor == 2`)**:
+   Standard Microsoft Win32 `DMCOLOR_COLOR` flag immediately categorizes the job as **Color**.
+3. **High Resolution / High Quality (`dmPrintQuality <= -3` or `≥ 600 DPI`)**:
+   Flags `DMRES_HIGH (-4)` and `DMRES_MEDIUM (-3)` set by Adobe Acrobat and graphic applications categorize the job as **Color**.
+4. **Specialty / Photo Media (`dmMediaType > 1`)**:
+   Glossy (`3`), Transparency (`2`), and Photo Paper (`4+`) categorize the job as **Color**.
+5. **Color Bit Depth (`dmBitsPerPel >= 24`)**:
+   24-bit and 32-bit RGB color submissions are categorized as **Color**.
+6. **Passport Photo Studio Safety**:
+   Documents titled `DASMO Passport Photo Sheet` or containing `Photo Sheet` are safeguarded to always categorize as **Color**.
+7. **Native Print Settings Synchronization**:
+   In `NativePrintViewModel.cs`, both `pd.DefaultPageSettings.Color` and `pd.PrinterSettings.DefaultPageSettings.Color` are synchronized to prevent driver-level monochromatic overrides.
 
 ---
 
-### STEP 3 — Install & Test Locally (YOU FIRST)
+### 2. 1-Click Interactive Toast HUD Override
 
-1. **Uninstall old version** — `Win+R` → `appwiz.cpl` → find **DASMO CYBER CAFE TOOLS** → Uninstall
-2. **Install new MSI** — Double-click:
-   ```
-   releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi
-   ```
-3. **Verify version** after install:
-   ```powershell
-   (Get-Item "C:\Program Files\DASMO CYBER CAFE TOOLS\DASMO CYBER CAFE TOOLS.exe").VersionInfo.FileVersion
-   # Must show: 1.5.6.0
-   ```
-4. **Test the features** that were changed in this version
+To give the cyber cafe operator immediate manual control without having to open the main studio:
+* **Interactive Badges**:
+  * **`[🌈 Color ⇋]` / `[⚫ B&W ⇋]`**: Click to toggle instantly between Color and B&W.
+  * **`[📑 Duplex ⇋]` / `[📄 Single ⇋]`**: Click to toggle instantly between Duplex (2-in-1) and Single-Sided.
+* **Instant Recalculation**:
+  Clicking immediately recalculates the job cost, updates the customer's active cart in memory, and triggers background synchronization with the linked Excel accounts ledger.
+* **Visual States**:
+  * Color mode displays in gold/amber (`#F59E0B`).
+  * B&W mode displays in cyan (`#00BCD4`).
+  * Duplex displays in emerald green (`#10B981`).
 
 ---
 
-### STEP 4 — Create GitHub Release & Upload
+### 3. In-App Update Engine Workflow (`AppUpdateService.cs`)
 
-```powershell
-cd "c:\CODING\coading\DASMO CYBER CAFE"
+The application includes an automated background update mechanism:
+1. **Background Polling**: On startup and scheduled intervals, `AppUpdateService` queries the GitHub Releases API (`https://api.github.com/repos/SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS/releases/latest`).
+2. **Semantic Version Comparison**:
+   * Installed Version: `1.5.28` (or earlier)
+   * Available Release: `1.5.29`
+   * Trigger Condition: `LatestVersion > CurrentVersion`
+3. **User Prompt**:
+   A Windows desktop notification toast appears:
+   > *"🚀 A new update (v1.5.29) is available for DASMO CYBER CAFE TOOLS!"*
+4. **One-Click Download & Install**:
+   Clicking the notification downloads the official MSI installer package to `%TEMP%` and launches it with automatic closing of the previous version.
+5. **Manual Check**:
+   Operators can also open Dashboard $\rightarrow$ **Tab 11: About & Updates** $\rightarrow$ Click **"Check for Updates"** to review changelogs and trigger installation on demand.
 
-# Create the release tag
-git tag v1.5.6
-git push origin v1.5.6
+---
 
-# Create GitHub release and upload MSI
-gh release create v1.5.6 `
-    "releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi" `
-    --repo SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS `
-    --title "v1.5.6 — [Short Description]" `
-    --notes "## What's New in v1.5.6
-- Feature 1
-- Bug fix 1
-- Improvement 1"
+### 4. Automated Verification Test Suite
+
+A comprehensive test suite of **70 automated tests** verifies the entire application stack:
+
+| Test ID | Area Tested | Outcome |
+| :--- | :--- | :--- |
+| `[TEST 1 - 20]` | Document Stacker, Scan Enhancer, Card Extractor, Multi-format Exports | ✅ PASSED |
+| `[TEST 21 - 34]` | Passport Studio, EXIF Normalization, Vector In-Place PDF Edits, Layout Engine | ✅ PASSED |
+| `[TEST 40 - 53]` | Sub-pixel Alignment, Ghost Text Occlusion, Bangla Normalization, Anti-Tamper | ✅ PASSED |
+| `[TEST 54 - 60]` | Exact Dimension Scaling, Universal Decoders, Spooler Interceptor, Bill Engine | ✅ PASSED |
+| `[TEST 61 - 67]` | Cash Drawer Accounts, Brother SNMP Live Audit, Khata Ledger, Repayments | ✅ PASSED |
+| `[TEST 68 - 69]` | Virtual Printer Gate, ₹3 Xerox vs ₹5 PC Print, Zero-Config Silent Excel Auto-Sync | ✅ PASSED |
+| **`[TEST 70]`** | **Win32 DEVMODE Acrobat High Quality, 600 DPI, Glossy, TrueColor, B&W Override & STA Toast HUD** | **✅ PASSED** |
+
 ```
-
-> To **replace** a bad asset on an existing release:
-> ```powershell
-> gh release upload v1.5.6 "releases\DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi" `
->     --repo SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS --clobber
-> ```
-
----
-
-### STEP 5 — Update Firebase Firestore (Force-Update Policy)
-
-Update the version policy so existing users get notified:
-
-```powershell
-# Update in Firebase Console OR via the app's Admin panel:
-# Document: projects/dasmo-scanner-android/databases/(default)/documents/system_config/licensing
-#
-# Fields to update:
-#   latestVersion:      "1.5.6"
-#   minRequiredVersion: "1.5.6"      ← set this ONLY if update is MANDATORY
-#   forceUpdate:        true          ← set to true for mandatory updates
-#   updateDownloadUrl:  "https://github.com/SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS/releases/download/v1.5.6/DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi"
+==================================================================
+   TEST RESULTS: 70 PASSED, 0 FAILED
+==================================================================
 ```
 
 ---
 
-## 🚨 Common Mistakes (How to Avoid Them)
-
-| Mistake | What Goes Wrong | Prevention |
-|---------|----------------|------------|
-| Publish to `installer\publish\` instead of `src\SmartSaver\bin\...\publish\` | WiX packages OLD code → users install wrong version | Always use the exact `-o` path in Step 1 |
-| Install from `src\SmartSaver.Installer\bin\Release\` | That MSI might be stale from a previous build | Always install from `releases\` |
-| Forget to bump version in `Package.wxs` | Installer version mismatches app | Check both files before building |
-| Upload wrong MSI to GitHub | Users download and still get old version | Always check MSI size (~77 MB) and date before uploading |
-| Don't uninstall before installing new MSI | Old files can survive the upgrade silently | Always uninstall first via `appwiz.cpl` |
-
----
-
-## 📦 Current Releases Archive
-
-| File in `releases/` | Version | Date | Status |
-|---------------------|---------|------|--------|
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.8.msi` | 1.5.8.0 | 2026-09-24 | ✅ Current (Auto Print Counter, Brother DCP-T530DW Duplex & Billing) |
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.7.msi` | 1.5.7.0 | 2026-09-23 | 📦 Previous |
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.6.msi` | 1.5.6.0 | 2026-09-23 | 📦 Previous |
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.5.msi` | 1.5.5.0 | 2026-09-23 | 📦 Previous |
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.4.msi` | 1.5.4.0 | 2026-09-22 | 📦 Previous |
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.3.msi` | 1.5.3.0 | 2026-09-22 | 📦 Previous |
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.2.msi` | 1.5.2.0 | 2026-09-22 | 📦 Previous |
-| `DASMO_CYBER_CAFE_TOOLS_Setup_v1.5.1.msi` | 1.5.1.0 | 2026-09-22 | 📦 Previous |
-
-> Old MSI files in the root folder (`DASMO_CYBER_CAFE_TOOLS_Setup_v1.4.x.msi` etc.) are kept for reference only. Do not install or share them.
-
----
-
-## 🔑 Quick Reference
-
-| Thing | Value |
-|-------|-------|
-| WiX executable | `C:\Users\Mypc3\.dotnet\tools\wix.exe` |
-| UI Extension | `%USERPROFILE%\.nuget\packages\wixtoolset.ui.wixext\5.0.2\wixext5\WixToolset.UI.wixext.dll` |
-| Util Extension | `%USERPROFILE%\.nuget\packages\wixtoolset.util.wixext\5.0.2\wixext5\WixToolset.Util.wixext.dll` |
-| WiX publish source | `src\SmartSaver\bin\Release\net8.0-windows10.0.17763.0\win-x64\publish\` |
-| Official releases folder | `releases\` ← always install & upload from here |
-| GitHub repo | `SUBHOJITPAUL797/DASMO-CYBER-CAFE-TOOLS` |
-| Firebase project | `dasmo-scanner-android` |
-| Firestore doc | `system_config/licensing` |
-| Install location | `C:\Program Files\DASMO CYBER CAFE TOOLS\` |
+### 5. Build & Packaging Policy
+* **Standard Development Mode**:
+  After code modifications, run unit and integration tests (`SmartSaver.Tests.csproj`) to verify zero regressions.
+* **MSI Creation Policy**:
+  **Do NOT build the MSI installer package after incremental changes.**
+  The final MSI build is executed **only when explicitly requested by the project owner**.

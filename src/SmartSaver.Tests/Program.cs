@@ -5511,11 +5511,11 @@ public static class Program
             }
 
             // ─────────────────────────────────────────────────────────────
-            // TEST 70: Windows-Wide Acrobat / Spooler DEVMODE Color Detection & 1-Click Toast Toggle (v1.5.28)
+            // TEST 70: Windows-Wide Acrobat / Spooler DEVMODE Color Detection & 1-Click Toast Toggle (v1.5.29)
             // ─────────────────────────────────────────────────────────────
             try
             {
-                Console.Write("[TEST 70] Windows-Wide DEVMODE Color Detection & 1-Click Toast Toggle (v1.5.28)... ");
+                Console.Write("[TEST 70] Windows-Wide DEVMODE Color Detection & 1-Click Toast Toggle (v1.5.29)... ");
 
                 // 1. Adobe Acrobat High-Quality Color Print Simulation (dmColor=2, dmPrintQuality=-4, dmICMIntent=0)
                 var acrobatColorJob = new PrintTrackerService.DEVMODE
