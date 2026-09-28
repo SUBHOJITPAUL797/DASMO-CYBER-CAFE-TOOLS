@@ -2599,31 +2599,38 @@
                                     </Border>
                                 </Grid>
 
-                                <!-- Admin Custom Notice Box (if set by Super Admin) -->
-                                <Border Grid.Row="2" Background="#261A1A" BorderBrush="#EF4444" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
-                                        Visibility="{Binding HasCustomAdminNotice, Converter={StaticResource BoolToVis}}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="32"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="📢" FontSize="20" VerticalAlignment="Top" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                            <TextBlock Text="Official Developer Broadcast" FontSize="12" FontWeight="Bold" Foreground="#FCA5A5"/>
-                                            <TextBlock Text="{Binding CustomAdminNoticeText}" FontSize="11" Foreground="#FEE2E2" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
+                                <!-- Notice & Changelog Container -->
+                                <Grid Grid.Row="2" Margin="0,0,0,14">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
 
-                                <!-- Changelog & Release Notes (visible when no custom notice is present) -->
-                                <GroupBox Grid.Row="2" Header="📝 Release Notes &amp; What's New" Margin="0,0,0,14"
-                                          Visibility="{Binding HasCustomAdminNotice, Converter={StaticResource BoolToVis}, ConverterParameter=Inverse}">
-                                    <Border Background="#10111A" CornerRadius="6" Padding="10">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                            <TextBlock Text="{Binding UpdateChangelogText}" FontSize="11.5" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" LineHeight="18"/>
-                                        </ScrollViewer>
+                                    <!-- Admin Custom Notice Box (if set by Super Admin) -->
+                                    <Border Grid.Row="0" Background="#261A1A" BorderBrush="#EF4444" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
+                                            Visibility="{Binding HasCustomAdminNotice, Converter={StaticResource BoolToVis}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="32"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="📢" FontSize="20" VerticalAlignment="Top" HorizontalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                                <TextBlock Text="Official Developer Broadcast" FontSize="12" FontWeight="Bold" Foreground="#FCA5A5"/>
+                                                <TextBlock Text="{Binding CustomAdminNoticeText}" FontSize="11" Foreground="#FEE2E2" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
                                     </Border>
-                                </GroupBox>
+
+                                    <!-- Changelog & Release Notes (Always visible) -->
+                                    <GroupBox Grid.Row="1" Header="📝 Release Notes &amp; What's New">
+                                        <Border Background="#10111A" CornerRadius="6" Padding="10">
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                <TextBlock Text="{Binding UpdateChangelogText}" FontSize="11.5" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" LineHeight="18"/>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </GroupBox>
+                                </Grid>
 
                                 <!-- Live Download Progress Section (Visible during download) -->
                                 <Border Grid.Row="3" Background="#141520" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,14"

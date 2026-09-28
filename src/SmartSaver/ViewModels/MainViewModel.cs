@@ -752,7 +752,30 @@ public class MainViewModel : ViewModelBase
             var result = await AppUpdateService.Instance.CheckForUpdateAsync().ConfigureAwait(true);
             LatestVersionText = $"v{result.LatestVersion}";
             _cachedDownloadUrl = result.DownloadUrl;
-            CustomAdminNoticeText = result.CustomAdminMessage;
+            // Filter out stale broadcast messages from older versions
+            if (!string.IsNullOrWhiteSpace(result.CustomAdminMessage))
+            {
+                var verMatch = System.Text.RegularExpressions.Regex.Match(result.CustomAdminMessage, @"v?(\d+\.\d+\.\d+)");
+                if (verMatch.Success && Version.TryParse(verMatch.Groups[1].Value, out var msgVer))
+                {
+                    if (Version.TryParse(AppUpdateService.CurrentVersion, out var currVer) && msgVer < currVer)
+                    {
+                        CustomAdminNoticeText = string.Empty;
+                    }
+                    else
+                    {
+                        CustomAdminNoticeText = result.CustomAdminMessage;
+                    }
+                }
+                else
+                {
+                    CustomAdminNoticeText = result.CustomAdminMessage;
+                }
+            }
+            else
+            {
+                CustomAdminNoticeText = string.Empty;
+            }
 
             if (!string.IsNullOrWhiteSpace(result.ReleaseNotes))
             {
