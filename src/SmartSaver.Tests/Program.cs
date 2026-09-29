@@ -5578,6 +5578,12 @@ public static class Program
                 if (PrintTrackerService.EvaluateDevModeColor(wordMonochrome600DpiJob))
                     throw new Exception("Word application form in B&W (dmColor=1, 600 DPI, 24bpp) must evaluate to false (B&W)!");
 
+                // 5c. Brother Driver internal handshake job filtering (_PreparatoryJob________________)
+                if (!PrintTrackerService.IsInternalDriverJob("_PreparatoryJob________________"))
+                    throw new Exception("Brother internal driver job '_PreparatoryJob________________' should be identified as internal!");
+                if (PrintTrackerService.IsInternalDriverJob("Application_Form.docx"))
+                    throw new Exception("Normal customer document should NOT be identified as internal driver job!");
+
                 // 6. Default Uninitialized DEVMODE
                 var zeroDevMode = new PrintTrackerService.DEVMODE();
                 if (PrintTrackerService.EvaluateDevModeColor(zeroDevMode))

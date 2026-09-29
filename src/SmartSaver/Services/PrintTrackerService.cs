@@ -299,12 +299,18 @@ public sealed class PrintTrackerService : IDisposable
                     if (_seenJobs.ContainsKey(dedupKey)) continue;
                     _seenJobs.TryAdd(dedupKey, DateTimeOffset.Now);
 
-                    // ── GATE 3: Parse DEVMODE — authoritative duplex + color flags ──────────
+                    // ── GATE 3: Filter internal printer driver handshake/calibration jobs ──────
+                    string docName = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "Print Document";
+                    if (IsInternalDriverJob(docName))
+                    {
+                        Log.Debug("Skipping internal printer driver handshake/calibration job {JobId}: '{Doc}' on {Printer}", jobInfo.JobId, docName, printerName);
+                        continue;
+                    }
+
+                    // ── GATE 4: Parse DEVMODE — authoritative duplex + color flags ──────────
                     bool isDuplex = false;
                     bool isColor  = false;
                     int  copies   = 1;
-
-                    string docName = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "Print Document";
 
                     if (jobInfo.pDevMode != IntPtr.Zero)
                     {
@@ -388,13 +394,15 @@ public sealed class PrintTrackerService : IDisposable
                 if (GetJob(hPrinter, jobId, 2, pBuf, bytesNeeded, out bytesNeeded))
                 {
                     var jobInfo = Marshal.PtrToStructure<JOB_INFO_2>(pBuf);
+                    string doc = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "";
+                    if (IsInternalDriverJob(doc)) return (false, false, 0);
+
                     if (jobInfo.pDevMode != IntPtr.Zero)
                     {
                         var devMode = Marshal.PtrToStructure<DEVMODE>(jobInfo.pDevMode);
                         bool isDuplex = EvaluateDevModeDuplex(devMode);
                         bool isColor  = EvaluateDevModeColor(devMode);
                         int copies    = EvaluateDevModeCopies(devMode);
-                        string doc = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "";
                         if (!isColor && (doc.Contains("Passport Photo", StringComparison.OrdinalIgnoreCase) ||
                                          doc.Contains("Photo Sheet", StringComparison.OrdinalIgnoreCase)))
                         {
@@ -1172,6 +1180,17 @@ public sealed class PrintTrackerService : IDisposable
             }
         }
         return s;
+    }
+
+    /// <summary>
+    /// Checks whether a document name is an internal driver handshake, spooler probe, or calibration job
+    /// (such as Brother DCP-T530DW's '_PreparatoryJob________________') rather than an actual user document.
+    /// </summary>
+    public static bool IsInternalDriverJob(string? docName)
+    {
+        if (string.IsNullOrWhiteSpace(docName)) return false;
+        return docName.Contains("_PreparatoryJob", StringComparison.OrdinalIgnoreCase) ||
+               docName.Equals("Remote Downlevel Document", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void PlayChimeSound()
