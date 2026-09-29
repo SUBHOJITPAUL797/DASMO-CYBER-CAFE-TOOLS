@@ -1297,10 +1297,11 @@ public sealed class PrintTrackerService : IDisposable
     /// </summary>
     public static bool EvaluateDevModeColor(DEVMODE devMode)
     {
-        // 1. Explicit Monochrome: If dmColor is 1 (DMCOLOR_MONOCHROME), plain paper (dmMediaType <= 1),
-        // and normal/draft quality (dmPrintQuality > -3 && dmPrintQuality < 600),
-        // the user or application explicitly configured Black & White / Grayscale.
-        if (devMode.dmColor == 1 && devMode.dmMediaType <= 1 && devMode.dmPrintQuality > -3 && devMode.dmPrintQuality < 600)
+        // 1. Explicit Monochrome: dmColor == 1 (DMCOLOR_MONOCHROME)
+        // Set when the user or application selects Black & White / Grayscale
+        // in Word, Adobe Acrobat, Google Chrome, Edge, or Windows Printer Properties.
+        // Standard 600 DPI laser/inkjet resolution on plain paper is normal text printing, NOT color!
+        if (devMode.dmColor == 1)
         {
             return false;
         }
@@ -1312,32 +1313,20 @@ public sealed class PrintTrackerService : IDisposable
             return true;
         }
 
-        // 3. High Print Quality: DMRES_HIGH (-4), DMRES_MEDIUM (-3), or DPI >= 600
-        // Indicates high-resolution photo or presentation graphics.
-        if (devMode.dmPrintQuality is <= -3 or >= 600)
-        {
-            return true;
-        }
-
-        // 4. Photo/Glossy Paper media: dmMediaType > 1 (2=Transparency, 3=Glossy, 4+=Photo Paper)
+        // 3. Fallbacks for rare legacy drivers where dmColor is unset (0):
+        // Photo/Glossy Paper media: dmMediaType > 1 (2=Transparency, 3=Glossy, 4+=Photo Paper)
         if (devMode.dmMediaType > 1)
         {
             return true;
         }
 
-        // 5. True-color bit depth: 24-bit or 32-bit RGB
-        if (devMode.dmBitsPerPel >= 24)
-        {
-            return true;
-        }
-
-        // 6. Active ICC color matching intent (1=Saturate, 2=RelativeColorimetric, 3=Perceptual, 4=AbsoluteColorimetric)
+        // Active ICC color matching intent (1=Saturate, 2=RelativeColorimetric, 3=Perceptual, 4=AbsoluteColorimetric)
         if (devMode.dmICMIntent >= 1 && devMode.dmICMIntent <= 4)
         {
             return true;
         }
 
-        // Default to Monochrome if no color signals are found
+        // Default to Monochrome (B&W) if no color signals are found
         return false;
     }
 

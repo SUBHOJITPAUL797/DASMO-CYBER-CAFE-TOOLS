@@ -45,41 +45,35 @@ else
 ### Comprehensive Architecture & Fixes (v1.5.29)
 
 #### 1. Multi-Tier Win32 DEVMODE Color Detection Engine
-A unified `EvaluateDevModeColor(DEVMODE devMode)` method now governs all print spooler polling and job inspection:
+A unified `EvaluateDevModeColor(DEVMODE devMode)` method now governs all print spooler polling and job inspection across Windows:
 
 ```mermaid
 flowchart TD
-    A["Spooler Job Arrives (winspool.drv)"] --> B{"dmColor == 1 (Monochrome)\nAND plain paper\nAND standard DPI?"}
+    A["Spooler Job Arrives (winspool.drv)"] --> B{"dmColor == 1\n(DMCOLOR_MONOCHROME)?"}
     B -- Yes --> C["⚫ Black & White (Monochrome)"]
-    B -- No --> D{"dmColor == 2 (DMCOLOR_COLOR)?"}
+    B -- No --> D{"dmColor == 2\n(DMCOLOR_COLOR)?"}
     D -- Yes --> E["🌈 Color"]
-    D -- No --> F{"dmPrintQuality <= -3 (High Quality)\nOR >= 600 DPI?"}
+    D -- No --> F{"dmMediaType > 1\n(Glossy/Photo Paper)?"}
     F -- Yes --> E
-    F -- No --> G{"dmMediaType > 1\n(Glossy/Photo Paper)?"}
+    F -- No --> G{"dmICMIntent in 1..4\n(ICC Active)?"}
     G -- Yes --> E
-    G -- No --> H{"dmBitsPerPel >= 24\n(True Color RGB)?"}
+    G -- No --> H{"Document Name contains\n'Passport Photo' or 'Photo Sheet'?"}
     H -- Yes --> E
-    H -- No --> I{"dmICMIntent in 1..4\n(ICC Active)?"}
-    I -- Yes --> E
-    I -- No --> J{"Document Name contains\n'Passport Photo' or 'Photo Sheet'?"}
-    J -- Yes --> E
-    J -- No --> C
+    H -- No --> C
 ```
 
 #### Detection Hierarchy Rules:
-1. **Explicit Monochrome (`dmColor == 1`)**:
-   If `dmColor == 1`, plain paper (`dmMediaType <= 1`), and normal draft/standard quality (`dmPrintQuality > -3 && dmPrintQuality < 600`), the print job is strictly categorized as **Monochrome (B&W)**.
-2. **Explicit Color (`dmColor == 2`)**:
-   Standard Microsoft Win32 `DMCOLOR_COLOR` flag immediately categorizes the job as **Color**.
-3. **High Resolution / High Quality (`dmPrintQuality <= -3` or `≥ 600 DPI`)**:
-   Flags `DMRES_HIGH (-4)` and `DMRES_MEDIUM (-3)` set by Adobe Acrobat and graphic applications categorize the job as **Color**.
-4. **Specialty / Photo Media (`dmMediaType > 1`)**:
-   Glossy (`3`), Transparency (`2`), and Photo Paper (`4+`) categorize the job as **Color**.
-5. **Color Bit Depth (`dmBitsPerPel >= 24`)**:
-   24-bit and 32-bit RGB color submissions are categorized as **Color**.
-6. **Passport Photo Studio Safety**:
+1. **Authoritative Monochrome (`dmColor == 1`)**:
+   Standard Win32 `DMCOLOR_MONOCHROME`. When selected in Microsoft Word, Adobe Acrobat, Google Chrome, Edge, or Windows Printer Properties, this **authoritatively forces Black & White (Monochrome)**. Standard 600 DPI Brother laser/inkjet resolution and Windows GDI 24bpp rendering buffers are normal document attributes and no longer trigger false color alarms.
+2. **Authoritative Color (`dmColor == 2`)**:
+   Standard Win32 `DMCOLOR_COLOR`. Selected whenever color printing is requested from Acrobat, browsers, Office, or photo tools.
+3. **Specialty / Photo Media (`dmMediaType > 1`)**:
+   Glossy (`3`), Transparency (`2`), and Photo Paper (`4+`) categorize legacy/unflagged driver jobs as **Color**.
+4. **Active Color Matching (`dmICMIntent in 1..4`)**:
+   Active ICC color intents categorize unflagged legacy jobs as **Color**.
+5. **Passport Photo Studio Safety**:
    Documents titled `DASMO Passport Photo Sheet` or containing `Photo Sheet` are safeguarded to always categorize as **Color**.
-7. **Native Print Settings Synchronization**:
+6. **Native Print Settings Synchronization**:
    In `NativePrintViewModel.cs`, both `pd.DefaultPageSettings.Color` and `pd.PrinterSettings.DefaultPageSettings.Color` are synchronized to prevent driver-level monochromatic overrides.
 
 ---

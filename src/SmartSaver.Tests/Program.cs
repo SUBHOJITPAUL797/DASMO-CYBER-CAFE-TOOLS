@@ -5567,6 +5567,17 @@ public static class Program
                 if (PrintTrackerService.EvaluateDevModeColor(acrobatMonochromeJob))
                     throw new Exception("Explicit Grayscale/Monochrome print (dmColor=1) should evaluate to false (B&W)!");
 
+                // 5b. Explicit Word Application Form B&W Print on Brother Printer (dmColor=1, dmPrintQuality=600, 24bpp)
+                var wordMonochrome600DpiJob = new PrintTrackerService.DEVMODE
+                {
+                    dmColor = 1,        // DMCOLOR_MONOCHROME
+                    dmPrintQuality = 600, // Brother DCP-T530DW plain paper default resolution
+                    dmMediaType = 1,    // Plain paper
+                    dmBitsPerPel = 24   // Windows GDI truecolor rendering context
+                };
+                if (PrintTrackerService.EvaluateDevModeColor(wordMonochrome600DpiJob))
+                    throw new Exception("Word application form in B&W (dmColor=1, 600 DPI, 24bpp) must evaluate to false (B&W)!");
+
                 // 6. Default Uninitialized DEVMODE
                 var zeroDevMode = new PrintTrackerService.DEVMODE();
                 if (PrintTrackerService.EvaluateDevModeColor(zeroDevMode))
