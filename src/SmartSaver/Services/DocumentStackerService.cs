@@ -511,13 +511,13 @@ public sealed class DocumentStackerService
                     int maxDiff = Math.Max(Math.Abs(p.R - p.G), Math.Max(Math.Abs(p.R - p.B), Math.Abs(p.G - p.B)));
                     if (maxDiff <= 35) // Neutral text or grayscale document background
                     {
-                        if (lum >= 175)
+                        if (lum >= 228)
                         {
                             p.R = 255;
                             p.G = 255;
                             p.B = 255;
                         }
-                        else if (lum < 135)
+                        else if (lum < 155)
                         {
                             p.R = 0;
                             p.G = 0;
@@ -525,7 +525,7 @@ public sealed class DocumentStackerService
                         }
                         else
                         {
-                            float factor = (lum - 135.0f) / 40.0f;
+                            float factor = (lum - 155.0f) / 73.0f;
                             byte val = (byte)Math.Clamp(factor * 255.0f, 0, 255);
                             p.R = val;
                             p.G = val;
@@ -549,17 +549,37 @@ public sealed class DocumentStackerService
                     ref Rgba32 p = ref pixelRow[x];
                     float lum = 0.299f * p.R + 0.587f * p.G + 0.114f * p.B;
                     int maxDiff = Math.Max(Math.Abs(p.R - p.G), Math.Max(Math.Abs(p.R - p.B), Math.Abs(p.G - p.B)));
-                    if (maxDiff <= 28)
+                    if (maxDiff <= 32)
                     {
-                        if (lum >= 170)
+                        if (lum >= 228)
                         {
+                            // Clean white paper background
                             p.R = 255;
                             p.G = 255;
                             p.B = 255;
                         }
-                        else if (lum < 110)
+                        else if (lum < 135)
                         {
-                            float factor = (lum / 110.0f) * 0.70f;
+                            // High-contrast text: boost to solid dark
+                            float factor = Math.Clamp((lum / 135.0f) * 0.65f, 0f, 1f);
+                            p.R = (byte)Math.Clamp(p.R * factor, 0, 255);
+                            p.G = (byte)Math.Clamp(p.G * factor, 0, 255);
+                            p.B = (byte)Math.Clamp(p.B * factor, 0, 255);
+                        }
+                        else if (lum >= 135 && lum < 200)
+                        {
+                            // Medium/faint text, phone flash glare text, address text:
+                            // Darken toward text rather than bleaching toward white!
+                            float textWeight = (200.0f - lum) / 65.0f;
+                            float factor = 1.0f - (textWeight * 0.35f);
+                            p.R = (byte)Math.Clamp(p.R * factor, 0, 255);
+                            p.G = (byte)Math.Clamp(p.G * factor, 0, 255);
+                            p.B = (byte)Math.Clamp(p.B * factor, 0, 255);
+                        }
+                        else
+                        {
+                            // 200 <= lum < 228: Soft paper background transition without harsh cutoffs
+                            float factor = 1.0f + ((lum - 200.0f) / 28.0f) * 0.12f;
                             p.R = (byte)Math.Clamp(p.R * factor, 0, 255);
                             p.G = (byte)Math.Clamp(p.G * factor, 0, 255);
                             p.B = (byte)Math.Clamp(p.B * factor, 0, 255);
@@ -675,13 +695,13 @@ public sealed class DocumentStackerService
 
             if (maxDiff <= 35)
             {
-                if (lum >= 175)
+                if (lum >= 228)
                 {
                     pixels[i] = 255;
                     pixels[i + 1] = 255;
                     pixels[i + 2] = 255;
                 }
-                else if (lum < 135)
+                else if (lum < 155)
                 {
                     pixels[i] = 0;
                     pixels[i + 1] = 0;
@@ -689,7 +709,7 @@ public sealed class DocumentStackerService
                 }
                 else
                 {
-                    float factor = (lum - 135.0f) / 40.0f;
+                    float factor = (lum - 155.0f) / 73.0f;
                     byte val = (byte)Math.Clamp(factor * 255.0f, 0, 255);
                     pixels[i] = val;
                     pixels[i + 1] = val;

@@ -53,6 +53,10 @@ public class BooleanToVisibilityConverter : IValueConverter
         {
             bValue = !string.IsNullOrWhiteSpace(s);
         }
+        else if (value != null)
+        {
+            bValue = true;
+        }
 
         bool invert = parameter != null && (parameter.ToString()?.ToLower() == "inverse" || parameter.ToString()?.ToLower() == "invert");
 
