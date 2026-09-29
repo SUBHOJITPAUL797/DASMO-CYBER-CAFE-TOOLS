@@ -19,6 +19,7 @@ public partial class UpdateAvailableDialog : Window
     {
         InitializeComponent();
         _updateInfo = updateInfo ?? throw new ArgumentNullException(nameof(updateInfo));
+        InitializeData();
         Loaded += (s, e) => InitializeData();
     }
 

@@ -1,5 +1,26 @@
 # DASMO CYBER CAFE TOOLS — Release Documentation
 
+## Version 1.5.30: Accurate Brother 600 DPI B&W Print Detection & Glare-Safe Document Whitening
+
+---
+
+### Executive Overview (v1.5.30)
+Version **1.5.30** delivers critical accuracy and quality enhancements across the Windows print spooler tracker and the cyber cafe document processing studio:
+1. **Accurate Brother 600 DPI B&W Print Detection**:
+   * Previously, when users printed black & white application forms from Microsoft Word on Brother printers (e.g. Brother DCP-T530DW), the driver set standard 600 DPI resolution and 24bpp EMF rendering buffers, which triggered a false `🌈 Color` detection.
+   * In v1.5.30, `dmColor == 1` (`DMCOLOR_MONOCHROME`) is authoritatively and unconditionally treated as **Black & White** (`⚫ B&W`), respecting the user's printer properties setting perfectly.
+2. **Brother Internal Driver Handshake Filtering**:
+   * Brother printer drivers issue background wake-up and calibration jobs titled `_PreparatoryJob________________`.
+   * These jobs are now detected and silently skipped, preventing bogus ₹10.00 color charges on the counter.
+3. **Glare-Safe Non-Destructive Card Whitening (Aadhaar / Voter / PAN)**:
+   * Upgraded background whitening in Document Stacker (`DocumentStackerService.cs`).
+   * Raised the whitening threshold to a safe `lum >= 228` and added adaptive darkening (up to 35%) for pixels with `135 <= lum < 200`.
+   * Address text washed out under camera flash glare on laminated cards is now preserved and enhanced with crisp readability rather than being erased.
+4. **Native Print Dialog Ghost Watermark Elimination**:
+   * Fixed `BooleanToVisibilityConverter` to prevent the "📄 No preview available" placeholder watermark from floating over valid document previews.
+
+---
+
 ## Version 1.5.29: Universal Windows-Wide DEVMODE Color Detection & Interactive Toast HUD
 
 ---

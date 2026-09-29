@@ -65,7 +65,7 @@
                         <!-- Current Version -->
                         <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                             <TextBlock Text="CURRENT VERSION" FontSize="9.5" FontWeight="Bold" Foreground="#64748B" HorizontalAlignment="Center"/>
-                            <TextBlock x:Name="TxtCurrentVersion" Text="v1.5.28" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="TxtCurrentVersion" Text="v1.5.29" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" HorizontalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Arrow -->
@@ -74,7 +74,7 @@
                         <!-- Latest Version -->
                         <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                             <TextBlock Text="NEW VERSION" FontSize="9.5" FontWeight="Bold" Foreground="#64748B" HorizontalAlignment="Center"/>
-                            <TextBlock x:Name="TxtLatestVersion" Text="v1.5.29" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" Margin="0,2,0,0" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="TxtLatestVersion" Text="v1.5.30" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" Margin="0,2,0,0" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Border>
