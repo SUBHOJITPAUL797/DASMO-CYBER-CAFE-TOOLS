@@ -91,20 +91,24 @@
                                 <!-- Top Slot (Front Side) -->
                                 <Grid Grid.Row="0" Margin="10,10,10,6" Background="#F8FAFC">
                                     <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="3"/>
-                                    <!-- Image Preview -->
-                                    <Image Source="{Binding FrontImageSource}" Stretch="Uniform" Margin="2"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Visibility="{Binding FrontPreviewVisibility}">
-                                        <Image.LayoutTransform>
-                                            <ScaleTransform ScaleX="{Binding FrontScaleFactor}" ScaleY="{Binding FrontScaleFactor}"/>
-                                        </Image.LayoutTransform>
-                                    </Image>
-                                    <!-- Placeholder Text -->
-                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                                                Visibility="{Binding FrontPlaceholderVisibility}">
-                                        <TextBlock Text="FRONT SIDE (TOP)" FontSize="10" FontWeight="Bold" Foreground="#334155" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding FrontFileName}" FontSize="9" Foreground="#64748B" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="170"/>
-                                    </StackPanel>
+                                    <!-- Inner Box: True 8.5x5.5cm when Pocket ID, or Full Half when Large Half-A4 -->
+                                    <Border Width="{Binding FrontSlotWidth}" Height="{Binding FrontSlotHeight}" 
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            BorderBrush="{Binding FrontSlotBorderBrush}" BorderThickness="{Binding FrontSlotBorderThickness}"
+                                            CornerRadius="2">
+                                        <Grid>
+                                            <!-- Image Preview -->
+                                            <Image Source="{Binding FrontImageSource}" Stretch="Uniform" Margin="1"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Visibility="{Binding FrontPreviewVisibility}"/>
+                                            <!-- Placeholder Text -->
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                        Visibility="{Binding FrontPlaceholderVisibility}">
+                                                <TextBlock Text="FRONT SIDE (TOP)" FontSize="10" FontWeight="Bold" Foreground="#334155" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding FrontFileName}" FontSize="9" Foreground="#64748B" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="170"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </Grid>
 
                                 <!-- Mid divider dashed fold / cut line -->
@@ -113,20 +117,24 @@
                                 <!-- Bottom Slot (Back Side) -->
                                 <Grid Grid.Row="2" Margin="10,6,10,10" Background="#F8FAFC">
                                     <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="3"/>
-                                    <!-- Image Preview -->
-                                    <Image Source="{Binding BackImageSource}" Stretch="Uniform" Margin="2"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Visibility="{Binding BackPreviewVisibility}">
-                                        <Image.LayoutTransform>
-                                            <ScaleTransform ScaleX="{Binding BackScaleFactor}" ScaleY="{Binding BackScaleFactor}"/>
-                                        </Image.LayoutTransform>
-                                    </Image>
-                                    <!-- Placeholder Text -->
-                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                                                Visibility="{Binding BackPlaceholderVisibility}">
-                                        <TextBlock Text="BACK SIDE (BOTTOM)" FontSize="10" FontWeight="Bold" Foreground="#334155" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding BackFileName}" FontSize="9" Foreground="#64748B" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="170"/>
-                                    </StackPanel>
+                                    <!-- Inner Box: True 8.5x5.5cm when Pocket ID, or Full Half when Large Half-A4 -->
+                                    <Border Width="{Binding BackSlotWidth}" Height="{Binding BackSlotHeight}" 
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            BorderBrush="{Binding BackSlotBorderBrush}" BorderThickness="{Binding BackSlotBorderThickness}"
+                                            CornerRadius="2">
+                                        <Grid>
+                                            <!-- Image Preview -->
+                                            <Image Source="{Binding BackImageSource}" Stretch="Uniform" Margin="1"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Visibility="{Binding BackPreviewVisibility}"/>
+                                            <!-- Placeholder Text -->
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                        Visibility="{Binding BackPlaceholderVisibility}">
+                                                <TextBlock Text="BACK SIDE (BOTTOM)" FontSize="10" FontWeight="Bold" Foreground="#334155" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding BackFileName}" FontSize="9" Foreground="#64748B" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="170"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </Grid>
                             </Grid>
 
@@ -150,12 +158,23 @@
                         </Grid>
                     </Border>
 
+                    <!-- Mode Quick Toggle & Size Indicator Badge -->
+                    <Border Background="#161B26" BorderBrush="#2D3748" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,12" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PreviewModeBadgeText}" FontWeight="SemiBold" FontSize="11.5" Foreground="#38BDF8" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <Button Content="🔍 Switch to Large Half-A4" Command="{Binding SwitchToLargeHalfA4Command}" Visibility="{Binding IsStandardIdCard, Converter={StaticResource BoolToVis}}"
+                                    Padding="8,3" Background="#1E293B" Foreground="#38BDF8" BorderBrush="#38BDF8" BorderThickness="1" FontWeight="Bold" Cursor="Hand" ToolTip="Enlarge to fill half of A4 paper (best for bank KYC / forms)"/>
+                            <Button Content="🪪 Switch to Pocket ID (8.5cm)" Command="{Binding SwitchToPocketIdCommand}" Visibility="{Binding IsHalfA4, Converter={StaticResource BoolToVis}}"
+                                    Padding="8,3" Background="#1E293B" Foreground="#10B981" BorderBrush="#10B981" BorderThickness="1" FontWeight="Bold" Cursor="Hand" ToolTip="Exact 8.5cm x 5.5cm for wallet &amp; lamination"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Card Sizing Presets & Auto-Whiten -->
                     <GroupBox Header="1. Print Layout &amp; Card Size Sizing" Margin="0,0,0,10">
                         <StackPanel Margin="0,4">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <RadioButton Content="🪪 Standard ID Card (8.5 × 5.5 cm Up &amp; Down)" IsChecked="{Binding IsStandardIdCard}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Exact 8.5cm length x 5.5cm width Indian standard ID card, both front and back same size aligned top and bottom"/>
-                                <RadioButton Content="📜 Half-A4 (Passbook/Certificates)" IsChecked="{Binding IsHalfA4}" Margin="0,0,14,0" ToolTip="Splits A4 into two equal horizontal halves"/>
+                                <RadioButton Content="🪪 Pocket ID Card (8.5 × 5.5 cm Wallet Size)" IsChecked="{Binding IsStandardIdCard}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Exact 8.5cm length x 5.5cm width Indian standard ID card for wallet cutting and lamination"/>
+                                <RadioButton Content="📜 Large Half-A4 (Full Half Page — Xerox for Forms &amp; KYC)" IsChecked="{Binding IsHalfA4}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Enlarges card across top or bottom half of A4 for clear readability on official bank &amp; job application forms"/>
                                 <RadioButton Content="📄 Full A4 Entire Page" IsChecked="{Binding IsFullA4Sheet}" ToolTip="Fits a single document or scanned sheet across the entire A4 paper"/>
                             </StackPanel>
 

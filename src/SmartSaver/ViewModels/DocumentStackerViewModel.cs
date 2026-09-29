@@ -150,11 +150,15 @@ public class DocumentStackerViewModel : ViewModelBase
             if (SetProperty(ref _frontScale, value))
             {
                 OnPropertyChanged(nameof(FrontScaleFactor));
+                OnPropertyChanged(nameof(FrontSlotWidth));
+                OnPropertyChanged(nameof(FrontSlotHeight));
                 if (SameSizeBothCards && IsStandardIdCard)
                 {
                     _backScale = value;
                     OnPropertyChanged(nameof(BackScale));
                     OnPropertyChanged(nameof(BackScaleFactor));
+                    OnPropertyChanged(nameof(BackSlotWidth));
+                    OnPropertyChanged(nameof(BackSlotHeight));
                 }
             }
         }
@@ -170,11 +174,15 @@ public class DocumentStackerViewModel : ViewModelBase
             if (SetProperty(ref _backScale, value))
             {
                 OnPropertyChanged(nameof(BackScaleFactor));
+                OnPropertyChanged(nameof(BackSlotWidth));
+                OnPropertyChanged(nameof(BackSlotHeight));
                 if (SameSizeBothCards && IsStandardIdCard)
                 {
                     _frontScale = value;
                     OnPropertyChanged(nameof(FrontScale));
                     OnPropertyChanged(nameof(FrontScaleFactor));
+                    OnPropertyChanged(nameof(FrontSlotWidth));
+                    OnPropertyChanged(nameof(FrontSlotHeight));
                 }
             }
         }
@@ -201,6 +209,15 @@ public class DocumentStackerViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsFullA4Fit));
                 OnPropertyChanged(nameof(IsBackSlotVisible));
                 OnPropertyChanged(nameof(Slot1Label));
+                OnPropertyChanged(nameof(FrontSlotWidth));
+                OnPropertyChanged(nameof(FrontSlotHeight));
+                OnPropertyChanged(nameof(BackSlotWidth));
+                OnPropertyChanged(nameof(BackSlotHeight));
+                OnPropertyChanged(nameof(FrontSlotBorderThickness));
+                OnPropertyChanged(nameof(BackSlotBorderThickness));
+                OnPropertyChanged(nameof(FrontSlotBorderBrush));
+                OnPropertyChanged(nameof(BackSlotBorderBrush));
+                OnPropertyChanged(nameof(PreviewModeBadgeText));
                 (StackCommand as RelayCommand)?.OnCanExecuteChanged();
                 (PrintNowCommand as RelayCommand)?.OnCanExecuteChanged();
             }
@@ -236,6 +253,27 @@ public class DocumentStackerViewModel : ViewModelBase
     public string Slot1Label => LayoutMode == StackerLayoutMode.FullA4Sheet
         ? "📄 Document / Certificate (Full A4 Entire Page)"
         : "Front Side (Top)";
+
+    public double FrontSlotWidth => IsStandardIdCard ? Math.Round(97.0 * FrontScaleFactor) : 216.0;
+    public double FrontSlotHeight => IsStandardIdCard ? Math.Round(63.0 * FrontScaleFactor) : 145.0;
+    public double BackSlotWidth => IsStandardIdCard ? Math.Round(97.0 * BackScaleFactor) : 216.0;
+    public double BackSlotHeight => IsStandardIdCard ? Math.Round(63.0 * BackScaleFactor) : 145.0;
+
+    public Thickness FrontSlotBorderThickness => IsStandardIdCard ? new Thickness(1) : new Thickness(0);
+    public Thickness BackSlotBorderThickness => IsStandardIdCard ? new Thickness(1) : new Thickness(0);
+    public System.Windows.Media.Brush FrontSlotBorderBrush => IsStandardIdCard ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 188, 212)) : System.Windows.Media.Brushes.Transparent;
+    public System.Windows.Media.Brush BackSlotBorderBrush => IsStandardIdCard ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 188, 212)) : System.Windows.Media.Brushes.Transparent;
+
+    public string PreviewModeBadgeText => LayoutMode switch
+    {
+        StackerLayoutMode.StandardIdCard => "🪪 Mode: Exact 8.5 × 5.5 cm Pocket ID (Wallet / Lamination Size)",
+        StackerLayoutMode.HalfA4 => "📜 Mode: Large Half-A4 (Full Top/Bottom Xerox for Bank & Job Forms)",
+        StackerLayoutMode.FullA4Sheet => "📄 Mode: Full A4 Page Document",
+        _ => string.Empty
+    };
+
+    public ICommand SwitchToLargeHalfA4Command => new RelayCommand(_ => LayoutMode = StackerLayoutMode.HalfA4);
+    public ICommand SwitchToPocketIdCommand => new RelayCommand(_ => LayoutMode = StackerLayoutMode.StandardIdCard);
 
     private bool _autoWhiten = true;
     public bool AutoWhiten
