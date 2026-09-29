@@ -553,8 +553,10 @@
                                                                 Command="{Binding DataContext.DecrementPagesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                 CommandParameter="{Binding}"
                                                                 Style="{StaticResource CounterChipButton}" Margin="0,0,4,0" ToolTip="Decrease page count"/>
-                                                        <Border Background="{StaticResource BackgroundBrush}" CornerRadius="4" Padding="8,3" MinWidth="34">
-                                                            <TextBlock Text="{Binding Pages}" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Border Background="{StaticResource BackgroundBrush}" CornerRadius="4" Padding="4,2" MinWidth="38" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                            <TextBox Text="{Binding Pages, UpdateSourceTrigger=LostFocus}" FontWeight="Bold" FontSize="13" Foreground="White"
+                                                                     Background="Transparent" BorderThickness="0" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                     TextAlignment="Center" MinWidth="30" ToolTip="Directly enter page count (e.g. 11) and click outside or press Enter"/>
                                                         </Border>
                                                         <Button Content="+" Width="26" Height="26" Padding="0" FontSize="14" FontWeight="Bold"
                                                                 Command="{Binding DataContext.IncrementPagesCommand, RelativeSource={RelativeSource AncestorType=Window}}"

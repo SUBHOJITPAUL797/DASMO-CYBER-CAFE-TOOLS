@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using SmartSaver.Services;
 
 namespace SmartSaver.Models;
 
@@ -17,8 +20,12 @@ public enum PrintDuplexMode
 /// <summary>
 /// Represents a single print job captured from the Windows Print Spooler or manually entered.
 /// </summary>
-public class PrintJobRecord
+public class PrintJobRecord : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public uint SpoolerJobId { get; set; }
     public string DocumentName { get; set; } = "Untitled Document";
@@ -26,18 +33,83 @@ public class PrintJobRecord
     public string Submitter { get; set; } = Environment.UserName;
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.Now;
 
-    public int Pages { get; set; } = 1;
-    public int Copies { get; set; } = 1;
+    private int _pages = 1;
+    public int Pages
+    {
+        get => _pages;
+        set
+        {
+            int clamped = Math.Max(1, value);
+            if (_pages != clamped)
+            {
+                _pages = clamped;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(TotalImpressions));
+                OnPropertyChanged(nameof(SheetsUsed));
+                OnPropertyChanged(nameof(SummaryText));
+
+                try
+                {
+                    PrintTrackerService.Instance.CalculateCost(this);
+                    OnPropertyChanged(nameof(TotalCost));
+                    OnPropertyChanged(nameof(SummaryText));
+                    PrintTrackerService.Instance.NotifyCartUpdated();
+                }
+                catch { }
+            }
+        }
+    }
+
+    private int _copies = 1;
+    public int Copies
+    {
+        get => _copies;
+        set
+        {
+            int clamped = Math.Max(1, value);
+            if (_copies != clamped)
+            {
+                _copies = clamped;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(TotalImpressions));
+                OnPropertyChanged(nameof(SheetsUsed));
+                OnPropertyChanged(nameof(SummaryText));
+
+                try
+                {
+                    PrintTrackerService.Instance.CalculateCost(this);
+                    OnPropertyChanged(nameof(TotalCost));
+                    OnPropertyChanged(nameof(SummaryText));
+                    PrintTrackerService.Instance.NotifyCartUpdated();
+                }
+                catch { }
+            }
+        }
+    }
 
     /// <summary>
     /// Total impressions / sides printed = Pages * Copies.
     /// </summary>
     public int TotalImpressions => Math.Max(1, Pages * Copies);
 
+    private bool _isDuplex = false;
     /// <summary>
     /// True if printed double-sided (duplex).
     /// </summary>
-    public bool IsDuplex { get; set; } = false;
+    public bool IsDuplex
+    {
+        get => _isDuplex;
+        set
+        {
+            if (_isDuplex != value)
+            {
+                _isDuplex = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SheetsUsed));
+                OnPropertyChanged(nameof(SummaryText));
+            }
+        }
+    }
 
     /// <summary>
     /// Physical sheets of paper used.
@@ -45,10 +117,23 @@ public class PrintJobRecord
     /// </summary>
     public int SheetsUsed => IsDuplex ? (int)Math.Ceiling(TotalImpressions / 2.0) : TotalImpressions;
 
+    private bool _isColor = false;
     /// <summary>
     /// True if color print, false if black and white (monochrome).
     /// </summary>
-    public bool IsColor { get; set; } = false;
+    public bool IsColor
+    {
+        get => _isColor;
+        set
+        {
+            if (_isColor != value)
+            {
+                _isColor = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SummaryText));
+            }
+        }
+    }
 
     /// <summary>
     /// Paper size string (e.g. A4, Letter, Legal, 4x6).
@@ -70,10 +155,23 @@ public class PrintJobRecord
     /// </summary>
     public double RatePerUnit { get; set; } = 5.0;
 
+    private double _totalCost = 5.0;
     /// <summary>
     /// Total calculated cost in Rupees (₹).
     /// </summary>
-    public double TotalCost { get; set; } = 5.0;
+    public double TotalCost
+    {
+        get => _totalCost;
+        set
+        {
+            if (Math.Abs(_totalCost - value) > 0.001)
+            {
+                _totalCost = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SummaryText));
+            }
+        }
+    }
 
     /// <summary>
     /// Customer name or identifier associated with this job.

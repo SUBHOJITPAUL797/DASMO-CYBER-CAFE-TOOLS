@@ -5760,6 +5760,92 @@ flowchart TD
                 failed++;
             }
 
+            // ── TEST 72: Dynamic In-Flight Spooler Streaming Page Updates & Direct Cart Page Editing (v1.5.30) ──
+            Console.Write("Test 72: Dynamic Spooler Streaming Page Updates & Direct Cart Page Editing (v1.5.30)... ");
+            try
+            {
+                Exception? staEx72 = null;
+                var staThread72 = new Thread(() =>
+                {
+                    try
+                    {
+                        var tracker = SmartSaver.Services.PrintTrackerService.Instance;
+                        tracker.ClearActiveCart();
+
+                        // 1. Initial simulated job detection during mid-stream spooling (3 pages detected initially)
+                        var jobRecord = new SmartSaver.Models.PrintJobRecord
+                        {
+                            SpoolerJobId = 999,
+                            PrinterName = "Brother DCP-T530DW Printer",
+                            DocumentName = "Merged PDFs - DASMO PRINT",
+                            Pages = 3,
+                            Copies = 1,
+                            IsColor = false,
+                            IsDuplex = false
+                        };
+                        tracker.CalculateCost(jobRecord);
+
+                        double expectedCost3 = Math.Round(3 * tracker.Settings.BwSingleSideRate, 2);
+                        if (Math.Abs(jobRecord.TotalCost - expectedCost3) > 0.01)
+                            throw new Exception($"Expected cost {expectedCost3} for 3 pages, got {jobRecord.TotalCost}");
+
+                        // Add to Active Customer Jobs
+                        tracker.ActiveCustomerJobs.Add(jobRecord);
+
+                        // 2. Instantiate ViewModel and check synchronization
+                        var vm = new SmartSaver.ViewModels.PrintTrackerViewModel();
+                        if (vm.ActiveJobs.Count != 1)
+                            throw new Exception($"Expected 1 active job in ViewModel, got {vm.ActiveJobs.Count}");
+                        if (Math.Abs(vm.ActiveCartTotalCost - expectedCost3) > 0.01)
+                            throw new Exception($"ActiveCartTotalCost was {vm.ActiveCartTotalCost}, expected {expectedCost3}");
+
+                        // 3. Test dynamic in-flight streaming update or direct operator edit to 11 pages
+                        bool pagesChangedFired = false;
+                        bool totalCostChangedFired = false;
+                        jobRecord.PropertyChanged += (s, e) =>
+                        {
+                            if (e.PropertyName == nameof(SmartSaver.Models.PrintJobRecord.Pages)) pagesChangedFired = true;
+                            if (e.PropertyName == nameof(SmartSaver.Models.PrintJobRecord.TotalCost)) totalCostChangedFired = true;
+                        };
+
+                        // User typed 11 or spooler streaming updated to 11
+                        jobRecord.Pages = 11;
+
+                        if (!pagesChangedFired)
+                            throw new Exception("PropertyChanged for 'Pages' was not raised");
+                        if (!totalCostChangedFired)
+                            throw new Exception("PropertyChanged for 'TotalCost' was not raised");
+
+                        double expectedCost11 = Math.Round(11 * tracker.Settings.BwSingleSideRate, 2);
+                        if (Math.Abs(jobRecord.TotalCost - expectedCost11) > 0.01)
+                            throw new Exception($"Expected cost {expectedCost11} for 11 pages, got {jobRecord.TotalCost}");
+
+                        // Verify ViewModel cart total updated via OnActiveCartChanged
+                        if (Math.Abs(vm.ActiveCartTotalCost - expectedCost11) > 0.01)
+                            throw new Exception($"ViewModel cart total did not update to {expectedCost11}, got {vm.ActiveCartTotalCost}");
+
+                        // Clean up
+                        tracker.ClearActiveCart();
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx72 = ex;
+                    }
+                });
+                staThread72.SetApartmentState(ApartmentState.STA);
+                staThread72.Start();
+                staThread72.Join(TimeSpan.FromSeconds(15));
+                if (staEx72 != null) throw staEx72;
+
+                Console.WriteLine("PASSED (Dynamic Spooler Streaming Page Updates, Cart PropertyChanged Recalculation & ViewModel Sync)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

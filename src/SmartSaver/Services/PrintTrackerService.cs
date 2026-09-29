@@ -38,6 +38,25 @@ public sealed class PrintTrackerService : IDisposable
 
     private readonly object _lock = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _seenJobs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, PrintJobRecord> _activeSpoolerJobs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, (int lastPages, DateTimeOffset firstSeen)> _spoolingTracker = new(StringComparer.OrdinalIgnoreCase);
+
+    // Win32 Print Spooler Job Status Constants
+    private const uint JOB_STATUS_PAUSED            = 0x00000001;
+    private const uint JOB_STATUS_ERROR             = 0x00000002;
+    private const uint JOB_STATUS_DELETING          = 0x00000004;
+    private const uint JOB_STATUS_SPOOLING          = 0x00000008;
+    private const uint JOB_STATUS_PRINTING          = 0x00000010;
+    private const uint JOB_STATUS_OFFLINE           = 0x00000020;
+    private const uint JOB_STATUS_PAPEROUT          = 0x00000040;
+    private const uint JOB_STATUS_PRINTED           = 0x00000080;
+    private const uint JOB_STATUS_DELETED           = 0x00000100;
+    private const uint JOB_STATUS_BLOCKED_DEVQ      = 0x00000200;
+    private const uint JOB_STATUS_USER_INTERVENTION = 0x00000400;
+    private const uint JOB_STATUS_RESTART           = 0x00000800;
+    private const uint JOB_STATUS_COMPLETE          = 0x00001000;
+    private const uint JOB_STATUS_RETAINED          = 0x00002000;
+    private const uint JOB_STATUS_RENDERING_LOCALLY = 0x00004000;
 
     private CancellationTokenSource? _monitorCts;
     private Task? _monitorTask;
@@ -271,35 +290,34 @@ public sealed class PrintTrackerService : IDisposable
             try
             {
                 if (!EnumJobs(hPrinter, 0, 100, 2, pBuf, bytesNeeded, out bytesNeeded, out jobsReturned) || jobsReturned == 0)
+                {
+                    // No active jobs in the spooler on this printer.
+                    // Archive any completed tracked jobs into _seenJobs so they are not re-registered.
+                    foreach (var key in _activeSpoolerJobs.Keys)
+                    {
+                        if (key.StartsWith(printerName + ":", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (_activeSpoolerJobs.TryRemove(key, out _))
+                            {
+                                _seenJobs.TryAdd(key, DateTimeOffset.Now);
+                                _spoolingTracker.TryRemove(key, out _);
+                            }
+                        }
+                    }
                     return;
+                }
 
+                var currentSpoolerJobKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 int structSize = Marshal.SizeOf<JOB_INFO_2>();
                 for (int i = 0; i < jobsReturned; i++)
                 {
                     IntPtr jobPtr = IntPtr.Add(pBuf, i * structSize);
                     var jobInfo = Marshal.PtrToStructure<JOB_INFO_2>(jobPtr);
 
-                    // ── GATE 1: Only capture fully-spooled jobs ──────────────────────────────
-                    // JOB_STATUS_SPOOLING = 0x0004, JOB_STATUS_DELETING = 0x0004 overlap check:
-                    // We want at least TotalPages > 0 meaning the spooler has counted the pages.
-                    // Jobs with TotalPages==0 are still streaming in — skip them; we'll catch them
-                    // on the next 500ms poll cycle once TotalPages is finalized.
-                    int pages = (int)jobInfo.TotalPages;
-                    if (pages <= 0)
-                    {
-                        Log.Debug("Skipping partially-spooled job {JobId} on {Printer} (TotalPages=0)", jobInfo.JobId, printerName);
-                        continue;
-                    }
-
-                    // ── GATE 2: Deduplicate by JobId only ───────────────────────────────────
-                    // Do NOT include pages or docName in the key — they can change between polls
-                    // as the spooler writes more data, causing the same physical print job to be
-                    // registered as two different entries with different page counts / costs.
                     string dedupKey = $"{printerName}:{jobInfo.JobId}";
-                    if (_seenJobs.ContainsKey(dedupKey)) continue;
-                    _seenJobs.TryAdd(dedupKey, DateTimeOffset.Now);
+                    currentSpoolerJobKeys.Add(dedupKey);
 
-                    // ── GATE 3: Filter internal printer driver handshake/calibration jobs ──────
+                    // ── GATE 1: Filter internal printer driver handshake/calibration jobs ──────
                     string docName = Marshal.PtrToStringAuto(jobInfo.pDocument) ?? "Print Document";
                     if (IsInternalDriverJob(docName))
                     {
@@ -307,7 +325,83 @@ public sealed class PrintTrackerService : IDisposable
                         continue;
                     }
 
-                    // ── GATE 4: Parse DEVMODE — authoritative duplex + color flags ──────────
+                    int spoolerPages = (int)Math.Max(jobInfo.TotalPages, jobInfo.PagesPrinted);
+
+                    // ── GATE 2: Dynamic In-Flight Real-Time Page Update ───────────────────────
+                    // If this job is ALREADY tracked, check if Edge/Chrome or spooler has finished
+                    // streaming more pages (e.g. 3 -> 11 pages) or if physical printer fed more sheets!
+                    if (_activeSpoolerJobs.TryGetValue(dedupKey, out var existingRecord))
+                    {
+                        if (spoolerPages > existingRecord.Pages)
+                        {
+                            int oldPages = existingRecord.Pages;
+                            existingRecord.Pages = spoolerPages;
+                            CalculateCost(existingRecord);
+                            SaveHistory();
+
+                            Log.Information(
+                                "Print job {JobId} ({Doc}) dynamically updated: {OldPages} -> {NewPages} pages (Spooler TotalPages={TotalPages}, PagesPrinted={PagesPrinted}), New Cost=₹{Cost:F2}",
+                                jobInfo.JobId, existingRecord.DocumentName, oldPages, spoolerPages, jobInfo.TotalPages, jobInfo.PagesPrinted, existingRecord.TotalCost);
+
+                            OnActiveCartChanged?.Invoke();
+                            OnHistoryUpdated?.Invoke();
+
+                            if (Settings.ShowNotificationOnJobDetected)
+                            {
+                                NotificationService.NotifyPrintJobCaptured(existingRecord.DocumentName, existingRecord.Pages, existingRecord.IsDuplex, existingRecord.IsColor, existingRecord.TotalCost);
+                                Views.PrintAlertPopup.ShowAlert(existingRecord);
+                            }
+                        }
+                        continue;
+                    }
+
+                    // ── GATE 3: Already completed job deduplication ──────────────────────────
+                    if (_seenJobs.ContainsKey(dedupKey))
+                    {
+                        continue;
+                    }
+
+                    // ── GATE 4: Skip uninitialized jobs (0 pages) ───────────────────────────
+                    if (spoolerPages <= 0)
+                    {
+                        Log.Debug("Skipping uninitialized job {JobId} on {Printer} (TotalPages=0, PagesPrinted=0)", jobInfo.JobId, printerName);
+                        continue;
+                    }
+
+                    // ── GATE 5: Spooling streaming check ─────────────────────────────────────
+                    // When an application (like Edge or Chrome) prints multi-page documents,
+                    // it streams pages into the spooler asynchronously. While streaming:
+                    // JOB_STATUS_SPOOLING (0x0008) or JOB_STATUS_RENDERING_LOCALLY (0x4000) is set,
+                    // and TotalPages is still growing (e.g. 1..3..11).
+                    // Do NOT register mid-stream! Wait until spooling finishes or stabilizes.
+                    bool isSpooling = (jobInfo.Status & (JOB_STATUS_SPOOLING | JOB_STATUS_RENDERING_LOCALLY)) != 0;
+                    if (isSpooling)
+                    {
+                        var now = DateTimeOffset.Now;
+                        if (!_spoolingTracker.TryGetValue(dedupKey, out var spoolInfo))
+                        {
+                            _spoolingTracker[dedupKey] = (spoolerPages, now);
+                            Log.Information(
+                                "Job {JobId} ({Doc}) actively spooling ({Pages} pages received so far, Status=0x{Status:X4}). Waiting for spooling to complete...",
+                                jobInfo.JobId, CleanDocumentName(docName), spoolerPages, jobInfo.Status);
+                            continue;
+                        }
+                        else
+                        {
+                            // If pages are still climbing or less than 2.0s elapsed, let the stream finish
+                            if (spoolerPages > spoolInfo.lastPages || (now - spoolInfo.firstSeen).TotalSeconds < 2.0)
+                            {
+                                _spoolingTracker[dedupKey] = (spoolerPages, spoolInfo.firstSeen);
+                                Log.Debug("Job {JobId} ({Doc}) streaming: {Pages} pages so far...", jobInfo.JobId, CleanDocumentName(docName), spoolerPages);
+                                continue;
+                            }
+                        }
+                    }
+
+                    // Spooling completed or stream stabilized!
+                    _spoolingTracker.TryRemove(dedupKey, out _);
+
+                    // ── GATE 6: Parse DEVMODE — authoritative duplex + color flags ──────────
                     bool isDuplex = false;
                     bool isColor  = false;
                     int  copies   = 1;
@@ -337,7 +431,7 @@ public sealed class PrintTrackerService : IDisposable
 
                     Log.Information(
                         "Win32 print job captured: [{Printer}] JobId={JobId} Doc='{Doc}' Pages={Pages} Duplex={Duplex} Color={Color} Copies={Copies}",
-                        printerName, jobInfo.JobId, CleanDocumentName(docName), pages, isDuplex, isColor, copies);
+                        printerName, jobInfo.JobId, CleanDocumentName(docName), spoolerPages, isDuplex, isColor, copies);
 
                     var record = new PrintJobRecord
                     {
@@ -346,7 +440,7 @@ public sealed class PrintTrackerService : IDisposable
                         PrinterName  = printerName,
                         Submitter    = Marshal.PtrToStringAuto(jobInfo.pUserName) ?? Environment.UserName,
                         Timestamp    = DateTimeOffset.Now,
-                        Pages        = pages,
+                        Pages        = spoolerPages,
                         Copies       = copies,
                         IsDuplex     = isDuplex,
                         IsColor      = isColor,
@@ -357,6 +451,22 @@ public sealed class PrintTrackerService : IDisposable
 
                     CalculateCost(record);
                     RegisterNewJob(record);
+
+                    // Track in active spooler dictionary so any later page increments (or PagesPrinted) update dynamically
+                    _activeSpoolerJobs[dedupKey] = record;
+                }
+
+                // Clean up jobs that have left the spooler
+                foreach (var key in _activeSpoolerJobs.Keys)
+                {
+                    if (key.StartsWith(printerName + ":", StringComparison.OrdinalIgnoreCase) && !currentSpoolerJobKeys.Contains(key))
+                    {
+                        if (_activeSpoolerJobs.TryRemove(key, out _))
+                        {
+                            _seenJobs.TryAdd(key, DateTimeOffset.Now);
+                            _spoolingTracker.TryRemove(key, out _);
+                        }
+                    }
                 }
             }
             finally
@@ -604,6 +714,20 @@ public sealed class PrintTrackerService : IDisposable
             SaveHistory();
         }
 
+        OnActiveCartChanged?.Invoke();
+        OnHistoryUpdated?.Invoke();
+    }
+
+    /// <summary>
+    /// Notifies listeners that a job in the cart was modified (e.g. direct page edit).
+    /// Saves history, triggers real-time UI calculation, and background Excel sync.
+    /// </summary>
+    public void NotifyCartUpdated()
+    {
+        lock (_lock)
+        {
+            SaveHistory();
+        }
         OnActiveCartChanged?.Invoke();
         OnHistoryUpdated?.Invoke();
     }
