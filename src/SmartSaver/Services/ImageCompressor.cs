@@ -96,6 +96,13 @@ public sealed class ImageCompressor
         try
         {
             string outExt = outputExtension.ToLowerInvariant();
+
+            // When converting to PDF, use genuine PDF document generator
+            if (outExt == ".pdf")
+            {
+                return CompressionEngine.ConvertImageToPdfDirect(sourcePath, outputPath);
+            }
+
             using var image = Image.Load(sourcePath);
             image.Mutate(ctx => ctx.AutoOrient()); // fix EXIF rotation
 

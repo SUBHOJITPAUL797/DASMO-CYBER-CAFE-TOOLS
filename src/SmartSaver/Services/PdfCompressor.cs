@@ -319,7 +319,23 @@ public sealed class PdfCompressor
                     try
                     {
                         var page = doc.AddPage();
-                        using var xImg = XImage.FromFile(imgPath);
+                        byte[]? cleanBytes = null;
+                        try
+                        {
+                            using var sImg = SixLabors.ImageSharp.Image.Load(imgPath);
+                            sImg.Mutate(ctx => ctx.AutoOrient());
+                            using var ms = new MemoryStream();
+                            if (Path.GetExtension(imgPath).Equals(".png", StringComparison.OrdinalIgnoreCase))
+                                sImg.SaveAsPng(ms);
+                            else
+                                sImg.SaveAsJpeg(ms, new JpegEncoder { Quality = 95 });
+                            cleanBytes = ms.ToArray();
+                        }
+                        catch { }
+
+                        using var xImg = cleanBytes != null 
+                            ? XImage.FromStream(() => new MemoryStream(cleanBytes))
+                            : XImage.FromFile(imgPath);
 
                         if (fitA4)
                         {

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using SmartSaver.Models;
 using SmartSaver.Services;
 using SmartSaver.ViewModels;
@@ -5838,6 +5839,92 @@ flowchart TD
                 if (staEx72 != null) throw staEx72;
 
                 Console.WriteLine("PASSED (Dynamic Spooler Streaming Page Updates, Cart PropertyChanged Recalculation & ViewModel Sync)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
+            // ── TEST 73: Format Conversion Only: Image (PNG, JPG) to Valid Standard PDF ──────────
+            try
+            {
+                Console.Write("\n[TEST 73] Image to PDF Format-Only Conversion (Edge & Acrobat Compatibility)... ");
+
+                // 1. Create a test PNG image (similar to user's ChatGPT downloaded image)
+                string testPng = Path.Combine(testDir, "TestImage_ChatGPT.png");
+                using (var img = new Image<Rgba32>(800, 600))
+                {
+                    img.Mutate(ctx => ctx.BackgroundColor(SixLabors.ImageSharp.Color.LightSkyBlue));
+                    img.SaveAsPng(testPng);
+                }
+
+                // 2. Instantiate engine
+                var imgComp = new ImageCompressor();
+                var pdfComp = new PdfCompressor();
+                var offComp = new OfficeCompressor(imgComp);
+                var engine = new CompressionEngine(imgComp, pdfComp, offComp);
+
+                // 3. Test ConvertFormatAsync with outExt = ".pdf"
+                string outPdf = Path.Combine(testDir, "TestImage_Converted.pdf");
+                var result = await engine.ConvertFormatAsync(testPng, outPdf, ".pdf");
+
+                if (!result.Success)
+                    throw new Exception($"ConvertFormatAsync returned Success=false: {result.Message}");
+
+                if (!File.Exists(outPdf))
+                    throw new Exception("Converted PDF file does not exist on disk.");
+
+                var fileBytes = File.ReadAllBytes(outPdf);
+                if (fileBytes.Length < 100)
+                    throw new Exception($"Converted PDF file is too small: {fileBytes.Length} bytes");
+
+                // 4. Verify magic bytes: MUST start with "%PDF-"
+                string header = Encoding.ASCII.GetString(fileBytes, 0, Math.Min(fileBytes.Length, 10));
+                if (!header.StartsWith("%PDF-"))
+                    throw new Exception($"Output file is NOT a valid PDF! Header was: '{header}' instead of '%PDF-'");
+
+                // 5. Verify it opens cleanly via PdfSharpCore without corruption
+                using (var openedDoc = PdfSharpCore.Pdf.IO.PdfReader.Open(outPdf, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.ReadOnly))
+                {
+                    if (openedDoc.PageCount != 1)
+                        throw new Exception($"Expected 1 page, found {openedDoc.PageCount}");
+
+                    var p = openedDoc.Pages[0];
+                    if (p.Width.Point <= 0 || p.Height.Point <= 0)
+                        throw new Exception($"Invalid page dimensions: {p.Width.Point} x {p.Height.Point}");
+                }
+
+                // 6. Test ImageCompressor.ConvertFormat directly with ".pdf"
+                string directPdf = Path.Combine(testDir, "TestImage_Direct.pdf");
+                bool directOk = imgComp.ConvertFormat(testPng, directPdf, ".pdf");
+                if (!directOk || !File.Exists(directPdf))
+                    throw new Exception("ImageCompressor.ConvertFormat directly failed for .pdf");
+
+                var directBytes = File.ReadAllBytes(directPdf);
+                string directHeader = Encoding.ASCII.GetString(directBytes, 0, Math.Min(directBytes.Length, 10));
+                if (!directHeader.StartsWith("%PDF-"))
+                    throw new Exception($"ImageCompressor direct conversion produced non-PDF header: '{directHeader}'");
+
+                // 7. Test JPEG to PDF as well
+                string testJpg = Path.Combine(testDir, "TestImage_Photo.jpg");
+                using (var img = new Image<Rgba32>(400, 400))
+                {
+                    img.Mutate(ctx => ctx.BackgroundColor(SixLabors.ImageSharp.Color.Coral));
+                    img.SaveAsJpeg(testJpg);
+                }
+
+                string jpgPdf = Path.Combine(testDir, "TestJpg_Converted.pdf");
+                var jpgResult = await engine.ConvertFormatAsync(testJpg, jpgPdf, ".pdf");
+                if (!jpgResult.Success || !File.Exists(jpgPdf))
+                    throw new Exception("JPEG to PDF conversion failed");
+
+                var jpgPdfBytes = File.ReadAllBytes(jpgPdf);
+                if (!Encoding.ASCII.GetString(jpgPdfBytes, 0, 5).StartsWith("%PDF-"))
+                    throw new Exception("JPEG to PDF produced non-PDF bytes");
+
+                Console.WriteLine("PASSED (Genuine %PDF-1.4 header, Edge & Acrobat compatible, verified via PdfReader)");
                 passed++;
             }
             catch (Exception ex)

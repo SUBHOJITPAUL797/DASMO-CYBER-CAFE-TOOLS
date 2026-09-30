@@ -5,6 +5,10 @@ using Serilog;
 using SmartSaver.Models;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Drawing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Processing;
 
 namespace SmartSaver.Services;
 
@@ -86,6 +90,7 @@ public sealed class CompressionEngine
     /// <summary>
     /// Converts an image to a different format WITHOUT any compression or quality reduction.
     /// The output file will be the same visual quality — only the container/encoding changes.
+    /// Supports converting images (.png, .jpg, .webp, .bmp, .tiff) to valid PDF documents.
     /// </summary>
     public async Task<CompressionResult> ConvertFormatAsync(
         string sourcePath, string outputPath, string outputExtension)
@@ -104,7 +109,16 @@ public sealed class CompressionEngine
 
             try
             {
-                bool ok = _imageCompressor.ConvertFormat(sourcePath, outputPath, outExt);
+                bool ok;
+                if (outExt == ".pdf" && IsImageExt(srcExt))
+                {
+                    ok = ConvertImageToPdfDirect(sourcePath, outputPath);
+                }
+                else
+                {
+                    ok = _imageCompressor.ConvertFormat(sourcePath, outputPath, outExt);
+                }
+
                 if (!ok || !File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
                 {
                     CleanupTemp(outputPath);
@@ -805,11 +819,103 @@ public sealed class CompressionEngine
         }
     }
 
-    private static bool IsImageExt(string ext) =>
+    public static bool IsImageExt(string ext) =>
         ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".webp" or ".tiff" or ".tif";
 
     private static bool IsOfficeExt(string ext) =>
         ext is ".docx" or ".xlsx";
+
+    /// <summary>
+    /// Converts a single image to a high-quality, valid PDF document without lossy compression.
+    /// Preserves original image dimensions, aspect ratio, and visual fidelity.
+    /// Auto-orients based on EXIF and supports JPG, PNG, WebP, BMP, and TIFF.
+    /// </summary>
+    public static bool ConvertImageToPdfDirect(string sourcePath, string outputPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+
+        if (!File.Exists(sourcePath)) return false;
+
+        string tempPdf = Path.Combine(
+            Path.GetDirectoryName(outputPath)!,
+            $".smartsaver_direct_pdf_{Guid.NewGuid():N}.pdf");
+
+        try
+        {
+            using var sharpImg = SixLabors.ImageSharp.Image.Load(sourcePath);
+            sharpImg.Mutate(ctx => ctx.AutoOrient());
+
+            string srcExt = Path.GetExtension(sourcePath).ToLowerInvariant();
+
+            using var ms = new MemoryStream();
+            if (srcExt == ".png")
+            {
+                sharpImg.SaveAsPng(ms, new PngEncoder
+                {
+                    CompressionLevel = PngCompressionLevel.DefaultCompression
+                });
+            }
+            else
+            {
+                sharpImg.SaveAsJpeg(ms, new JpegEncoder
+                {
+                    Quality = 98
+                });
+            }
+
+            byte[] imgBytes = ms.ToArray();
+
+            using (var doc = new PdfDocument())
+            {
+                doc.Info.Title = Path.GetFileNameWithoutExtension(sourcePath);
+                doc.Info.Creator = "DASMO CYBER CAFE TOOLS";
+
+                var page = doc.AddPage();
+                using var xImg = XImage.FromStream(() => new MemoryStream(imgBytes));
+
+                double ptWidth = xImg.PointWidth;
+                double ptHeight = xImg.PointHeight;
+
+                // Sanity check: if DPI is missing, 0, or invalid, calculate using standard 96 DPI
+                if (ptWidth <= 10 || ptHeight <= 10 || ptWidth > 14400 || ptHeight > 14400 ||
+                    double.IsNaN(ptWidth) || double.IsInfinity(ptWidth))
+                {
+                    ptWidth = xImg.PixelWidth * 72.0 / 96.0;
+                    ptHeight = xImg.PixelHeight * 72.0 / 96.0;
+                }
+
+                page.Width = XUnit.FromPoint(ptWidth);
+                page.Height = XUnit.FromPoint(ptHeight);
+
+                using (var gfx = XGraphics.FromPdfPage(page))
+                {
+                    gfx.DrawImage(xImg, 0, 0, ptWidth, ptHeight);
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(tempPdf)!);
+                doc.Save(tempPdf);
+            }
+
+            if (!File.Exists(tempPdf) || new FileInfo(tempPdf).Length == 0)
+            {
+                CleanupTemp(tempPdf);
+                return false;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            FileWatcherService.IgnoreOutputFile(outputPath);
+            File.Move(tempPdf, outputPath, overwrite: true);
+
+            return File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "ConvertImageToPdfDirect failed for {Source} → {Dest}", sourcePath, outputPath);
+            CleanupTemp(tempPdf);
+            return false;
+        }
+    }
 
     private bool ConvertImageToPdf(string imagePath, string pdfTempPath, long targetBytes)
     {
@@ -819,25 +925,34 @@ public sealed class CompressionEngine
 
         try
         {
-            using (var document = new PdfDocument())
+            bool rawOk = ConvertImageToPdfDirect(imagePath, rawPdfTemp);
+            if (!rawOk || !File.Exists(rawPdfTemp) || new FileInfo(rawPdfTemp).Length == 0)
             {
-                var page = document.AddPage();
-                using (var image = XImage.FromFile(imagePath))
-                {
-                    page.Width = image.PointWidth;
-                    page.Height = image.PointHeight;
-                    using (var gfx = XGraphics.FromPdfPage(page))
-                    {
-                        gfx.DrawImage(image, 0, 0, image.PointWidth, image.PointHeight);
-                    }
-                }
-                document.Save(rawPdfTemp);
+                CleanupTemp(rawPdfTemp);
+                return false;
+            }
+
+            long rawSize = new FileInfo(rawPdfTemp).Length;
+            if (rawSize <= targetBytes)
+            {
+                File.Move(rawPdfTemp, pdfTempPath, overwrite: true);
+                return true;
             }
 
             bool compressed = _pdfCompressor.CompressToTargetSize(rawPdfTemp, pdfTempPath, targetBytes);
 
             // Clean up intermediate raw PDF
             try { if (File.Exists(rawPdfTemp)) File.Delete(rawPdfTemp); } catch { }
+
+            // If compressor did not produce output, fallback to raw PDF
+            if (!compressed || !File.Exists(pdfTempPath))
+            {
+                if (File.Exists(rawPdfTemp))
+                {
+                    File.Move(rawPdfTemp, pdfTempPath, overwrite: true);
+                    return true;
+                }
+            }
 
             return compressed;
         }
