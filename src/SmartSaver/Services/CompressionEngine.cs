@@ -843,24 +843,25 @@ public sealed class CompressionEngine
 
         try
         {
-            using var sharpImg = SixLabors.ImageSharp.Image.Load(sourcePath);
+            using var fs = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var sharpImg = SixLabors.ImageSharp.Image.Load(fs);
             sharpImg.Mutate(ctx => ctx.AutoOrient());
 
             string srcExt = Path.GetExtension(sourcePath).ToLowerInvariant();
 
             using var ms = new MemoryStream();
-            if (srcExt == ".png")
-            {
-                sharpImg.SaveAsPng(ms, new PngEncoder
-                {
-                    CompressionLevel = PngCompressionLevel.DefaultCompression
-                });
-            }
-            else
+            if (srcExt is ".jpg" or ".jpeg")
             {
                 sharpImg.SaveAsJpeg(ms, new JpegEncoder
                 {
                     Quality = 98
+                });
+            }
+            else
+            {
+                sharpImg.SaveAsPng(ms, new PngEncoder
+                {
+                    CompressionLevel = PngCompressionLevel.DefaultCompression
                 });
             }
 
@@ -941,25 +942,26 @@ public sealed class CompressionEngine
 
             bool compressed = _pdfCompressor.CompressToTargetSize(rawPdfTemp, pdfTempPath, targetBytes);
 
-            // Clean up intermediate raw PDF
-            try { if (File.Exists(rawPdfTemp)) File.Delete(rawPdfTemp); } catch { }
-
-            // If compressor did not produce output, fallback to raw PDF
-            if (!compressed || !File.Exists(pdfTempPath))
+            if (compressed && File.Exists(pdfTempPath) && new FileInfo(pdfTempPath).Length > 0)
             {
-                if (File.Exists(rawPdfTemp))
-                {
-                    File.Move(rawPdfTemp, pdfTempPath, overwrite: true);
-                    return true;
-                }
+                CleanupTemp(rawPdfTemp);
+                return true;
             }
 
-            return compressed;
+            // If compressor did not produce valid output, fallback to the raw PDF
+            if (File.Exists(rawPdfTemp) && new FileInfo(rawPdfTemp).Length > 0)
+            {
+                File.Move(rawPdfTemp, pdfTempPath, overwrite: true);
+                return true;
+            }
+
+            CleanupTemp(rawPdfTemp);
+            return false;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to convert image {ImagePath} to PDF", imagePath);
-            try { if (File.Exists(rawPdfTemp)) File.Delete(rawPdfTemp); } catch { }
+            CleanupTemp(rawPdfTemp);
             return false;
         }
     }

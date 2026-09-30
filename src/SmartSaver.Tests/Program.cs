@@ -5924,7 +5924,35 @@ flowchart TD
                 if (!Encoding.ASCII.GetString(jpgPdfBytes, 0, 5).StartsWith("%PDF-"))
                     throw new Exception("JPEG to PDF produced non-PDF bytes");
 
-                Console.WriteLine("PASSED (Genuine %PDF-1.4 header, Edge & Acrobat compatible, verified via PdfReader)");
+                // 8. Test ImagesToPdfAsync with multiple mixed images (PNG + JPEG)
+                string multiPdf = Path.Combine(testDir, "TestMulti_Images.pdf");
+                var multiResult = await engine.ImagesToPdfAsync(new[] { testPng, testJpg }, multiPdf);
+                if (!multiResult.Success || !File.Exists(multiPdf))
+                    throw new Exception("ImagesToPdfAsync failed for mixed images");
+
+                using (var multiDoc = PdfSharpCore.Pdf.IO.PdfReader.Open(multiPdf, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.ReadOnly))
+                {
+                    if (multiDoc.PageCount != 2)
+                        throw new Exception($"Expected 2 pages in multi-image PDF, found {multiDoc.PageCount}");
+                }
+
+                // 9. Test CompressFileAsync with Image -> PDF and targetBytes
+                string compPdf = Path.Combine(testDir, "TestImage_Compressed.pdf");
+                var compResult = await engine.CompressFileAsync(testPng, compPdf, 50 * 1024, ".pdf");
+                if (!compResult.Success || !File.Exists(compPdf))
+                    throw new Exception("Image to PDF compression failed");
+
+                var compPdfBytes = File.ReadAllBytes(compPdf);
+                if (!Encoding.ASCII.GetString(compPdfBytes, 0, 5).StartsWith("%PDF-"))
+                    throw new Exception("Compressed Image to PDF produced non-PDF bytes");
+
+                using (var compDoc = PdfSharpCore.Pdf.IO.PdfReader.Open(compPdf, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.ReadOnly))
+                {
+                    if (compDoc.PageCount != 1)
+                        throw new Exception($"Expected 1 page in compressed PDF, found {compDoc.PageCount}");
+                }
+
+                Console.WriteLine("PASSED (Genuine %PDF-1.4 header, Edge & Acrobat compatible, multi-image & compression verified via PdfReader)");
                 passed++;
             }
             catch (Exception ex)

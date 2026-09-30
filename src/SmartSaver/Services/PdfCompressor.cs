@@ -310,6 +310,7 @@ public sealed class PdfCompressor
 
         string tempPdf = Path.Combine(Path.GetTempPath(), $"dasmo_img2pdf_{Guid.NewGuid():N}.pdf");
 
+        var xImagesToDispose = new List<IDisposable>();
         try
         {
             using (var doc = new PdfDocument())
@@ -322,20 +323,23 @@ public sealed class PdfCompressor
                         byte[]? cleanBytes = null;
                         try
                         {
-                            using var sImg = SixLabors.ImageSharp.Image.Load(imgPath);
+                            using var fs = new FileStream(imgPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                            using var sImg = SixLabors.ImageSharp.Image.Load(fs);
                             sImg.Mutate(ctx => ctx.AutoOrient());
                             using var ms = new MemoryStream();
-                            if (Path.GetExtension(imgPath).Equals(".png", StringComparison.OrdinalIgnoreCase))
-                                sImg.SaveAsPng(ms);
-                            else
+                            if (Path.GetExtension(imgPath).Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                                Path.GetExtension(imgPath).Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
                                 sImg.SaveAsJpeg(ms, new JpegEncoder { Quality = 95 });
+                            else
+                                sImg.SaveAsPng(ms);
                             cleanBytes = ms.ToArray();
                         }
                         catch { }
 
-                        using var xImg = cleanBytes != null 
+                        var xImg = cleanBytes != null 
                             ? XImage.FromStream(() => new MemoryStream(cleanBytes))
                             : XImage.FromFile(imgPath);
+                        xImagesToDispose.Add(xImg);
 
                         if (fitA4)
                         {
@@ -404,6 +408,8 @@ public sealed class PdfCompressor
         }
         finally
         {
+            foreach (var item in xImagesToDispose)
+                try { item.Dispose(); } catch { }
             DeleteSafe(tempPdf);
         }
     }
