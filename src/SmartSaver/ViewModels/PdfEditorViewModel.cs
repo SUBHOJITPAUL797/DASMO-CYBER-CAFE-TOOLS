@@ -643,16 +643,27 @@ public class PdfEditorViewModel : ViewModelBase
                     {
                         _isSuppressingItemPropertySync = true;
                         double padX = Math.Max(1.0, textItem.FontSizePt * 0.1);
-                        whiteout.X = Math.Max(0, textItem.X - padX);
-                        whiteout.Y = Math.Max(0, textItem.Y - 1.0);
+                        double origX = textItem.OriginalBlockX > 0 ? textItem.OriginalBlockX : textItem.X;
+                        double origY = textItem.OriginalBlockY > 0 ? textItem.OriginalBlockY : textItem.Y;
+                        double origW = textItem.OriginalBlockWidth > 0 ? textItem.OriginalBlockWidth : textItem.Width;
+                        double origH = textItem.OriginalBlockHeight > 0 ? textItem.OriginalBlockHeight : textItem.Height;
 
-                        // Whiteout covers at least the original text (so original text doesn't show),
-                        // but expands to cover the replacement text if it is longer.
-                        // If text shrinks, whiteout shrinks down to the original text width (never staying oversized).
-                        double minWhiteoutWidth = (textItem.OriginalBlockWidth > 0 ? textItem.OriginalBlockWidth : 15.0) + padX * 2 + 2.0;
-                        double dynamicWhiteoutWidth = textItem.Width + padX * 2;
-                        whiteout.Width = Math.Max(minWhiteoutWidth, dynamicWhiteoutWidth);
-                        whiteout.Height = Math.Max(textItem.Height + 2.0, (textItem.OriginalBlockHeight > 0 ? textItem.OriginalBlockHeight : 10.0) + 2.0);
+                        // The whiteout was created to erase the original text on the background PDF bitmap.
+                        // Its origin MUST stay anchored at the original text's location on the page!
+                        whiteout.X = Math.Max(0, origX - padX);
+                        whiteout.Y = Math.Max(0, origY - 1.0);
+
+                        // If textItem is still at its original position, expand whiteout to cover replacement text as it grows
+                        if (Math.Abs(textItem.X - origX) <= 2.0)
+                        {
+                            whiteout.Width = Math.Max(origW + padX * 2 + 2.0, textItem.Width + padX * 2);
+                        }
+                        else
+                        {
+                            // If textItem was shifted to the right, whiteout still conceals the original background text
+                            whiteout.Width = origW + padX * 2 + 2.0;
+                        }
+                        whiteout.Height = Math.Max(origH + 2.0, textItem.Height + 2.0);
                     }
                     finally
                     {
@@ -673,6 +684,14 @@ public class PdfEditorViewModel : ViewModelBase
         SaveCurrentEditsToStore(immediateDiskSave: false);
     }
 
+    private class ReflowElement
+    {
+        public double X { get; set; }
+        public double Width { get; set; }
+        public PdfTextItem? TextItem { get; set; }
+        public SmartSaver.Models.PdfExtractedTextBlock? Block { get; set; }
+    }
+
     private bool _isShiftingLineItems;
     private void ShiftSubsequentItemsOnLine(PdfTextItem textItem)
     {
@@ -681,90 +700,117 @@ public class PdfEditorViewModel : ViewModelBase
         {
             _isShiftingLineItems = true;
             _isSuppressingItemPropertySync = true;
-            double rightEdge = textItem.X + textItem.Width;
 
-            bool IsSameLine(double otherBaselineY, double otherY)
+            // Natural word spacing proportional to font size (approx. 4 to 6 pt)
+            double minSpacing = Math.Max(4.0, textItem.FontSizePt * 0.35);
+
+            bool IsSameLine(double otherBaselineY, double otherY, double otherFontSize)
             {
                 if (textItem.BaseLineY > 0 && otherBaselineY > 0)
-                    return Math.Abs(textItem.BaseLineY - otherBaselineY) <= 3.0;
-                return Math.Abs(textItem.Y - otherY) <= Math.Max(4.0, textItem.FontSizePt * 0.4);
+                    return Math.Abs(textItem.BaseLineY - otherBaselineY) <= Math.Max(3.5, textItem.FontSizePt * 0.35);
+                return Math.Abs(textItem.Y - otherY) <= Math.Max(5.0, textItem.FontSizePt * 0.5);
             }
 
-            // 1. Shift any existing edit items to the right on the same line
-            foreach (var other in CurrentPageEdits.OfType<PdfTextItem>().Where(t => t != textItem && t.X > textItem.X).ToList())
+            // Gather all elements strictly to the right of textItem on the same line
+            var elements = new List<ReflowElement>();
+
+            foreach (var other in CurrentPageEdits.OfType<PdfTextItem>())
             {
-                if (IsSameLine(other.BaseLineY, other.Y))
+                if (other != textItem && other.X > textItem.X && IsSameLine(other.BaseLineY, other.Y, other.FontSizePt))
                 {
-                    double requiredX = rightEdge + 5.0;
-                    if (other.X < requiredX)
+                    elements.Add(new ReflowElement { X = other.X, Width = other.Width, TextItem = other });
+                }
+            }
+
+            foreach (var block in ExtractedTextBlocks)
+            {
+                if (block.CanvasX > textItem.X && IsSameLine(block.BaseLineY, block.CanvasY, block.FontSizePt))
+                {
+                    double w = Math.Max(block.PdfWidth, PdfTextItem.EstimateTextWidth(block.OriginalText, block.FontFamily, block.FontSizePt, block.IsBold));
+                    elements.Add(new ReflowElement { X = block.CanvasX, Width = w, Block = block });
+                }
+            }
+
+            // Sort in left-to-right reading order
+            elements.Sort((a, b) => a.X.CompareTo(b.X));
+
+            double cursorRight = textItem.X + textItem.Width;
+
+            foreach (var elem in elements)
+            {
+                double minAllowedX = cursorRight + minSpacing;
+                if (elem.X < minAllowedX)
+                {
+                    // Collision! Shift this element right to minAllowedX
+                    if (elem.TextItem != null)
                     {
-                        double shift = requiredX - other.X;
-                        other.X += shift;
-                        if (!string.IsNullOrEmpty(other.LinkedWhiteoutId))
+                        elem.TextItem.X = minAllowedX;
+                        // Note: elem.TextItem.LinkedWhiteoutId stays anchored at original background coordinates!
+                        cursorRight = elem.TextItem.X + elem.TextItem.Width;
+                    }
+                    else if (elem.Block != null)
+                    {
+                        var block = elem.Block;
+                        string bgColor = SampleBackgroundColor(block.CanvasX, block.CanvasY, block.PdfWidth, block.PdfHeight);
+                        double padX = Math.Max(1.0, block.FontSizePt * 0.1);
+
+                        var whiteout = new PdfWhiteoutItem
                         {
-                            var w = CurrentPageEdits.OfType<PdfWhiteoutItem>().FirstOrDefault(x => x.Id == other.LinkedWhiteoutId);
-                            if (w != null) w.X += shift;
+                            PageIndex = CurrentPageIndex,
+                            X = Math.Max(0, block.CanvasX - padX),
+                            Y = Math.Max(0, block.CanvasY - 1.0),
+                            Width = block.PdfWidth + padX * 2 + 2.0,
+                            Height = block.PdfHeight + 2.0,
+                            FillColorHex = bgColor,
+                            IsHitTestVisible = false
+                        };
+                        CurrentPageEdits.Add(whiteout);
+
+                        string fontFam = block.FontFamily;
+                        if (BengaliTextHelper.ContainsBengali(block.OriginalText) &&
+                            (fontFam == "Arial" || fontFam == "Times New Roman" || string.IsNullOrWhiteSpace(fontFam)))
+                        {
+                            fontFam = BengaliTextHelper.PreferredBengaliFont;
                         }
+
+                        var promoted = new PdfTextItem
+                        {
+                            PageIndex = CurrentPageIndex,
+                            X = minAllowedX,
+                            Y = block.CanvasY,
+                            BaseLineY = block.BaseLineY,
+                            FontFamily = fontFam,
+                            FontSizePt = block.FontSizePt,
+                            IsBold = block.IsBold,
+                            IsItalic = block.IsItalic,
+                            TextColorHex = block.ColorHex,
+                            BackgroundColorHex = bgColor,
+                            HasOpaqueBackground = false,
+                            LinkedWhiteoutId = whiteout.Id,
+                            OriginalTextToRedact = block.OriginalText,
+                            OriginalBlockX = block.CanvasX,
+                            OriginalBlockY = block.CanvasY,
+                            OriginalBlockWidth = block.PdfWidth,
+                            OriginalBlockHeight = block.PdfHeight,
+                            Text = block.OriginalText,
+                            Height = Math.Max(block.PdfHeight, block.FontSizePt * 1.3)
+                        };
+                        CurrentPageEdits.Add(promoted);
+                        ExtractedTextBlocks.Remove(block);
+
+                        cursorRight = promoted.X + promoted.Width;
                     }
                 }
-            }
-
-            // 2. Shift / promote any unedited extracted blocks to the right on the same line
-            var collidingBlocks = ExtractedTextBlocks
-                .Where(b => b.CanvasX > textItem.X && IsSameLine(b.BaseLineY, b.CanvasY) && b.CanvasX < rightEdge + 5.0)
-                .OrderBy(b => b.CanvasX)
-                .ToList();
-
-            foreach (var block in collidingBlocks)
-            {
-                double requiredX = rightEdge + 5.0;
-                string bgColor = SampleBackgroundColor(block.CanvasX, block.CanvasY, block.PdfWidth, block.PdfHeight);
-                double padX = Math.Max(1.0, block.FontSizePt * 0.1);
-
-                var whiteout = new PdfWhiteoutItem
+                else
                 {
-                    PageIndex = CurrentPageIndex,
-                    X = Math.Max(0, block.CanvasX - padX),
-                    Y = Math.Max(0, block.CanvasY - 1.0),
-                    Width = block.PdfWidth + padX * 2 + 2.0,
-                    Height = block.PdfHeight + 2.0,
-                    FillColorHex = bgColor,
-                    IsHitTestVisible = false
-                };
-                CurrentPageEdits.Add(whiteout);
-
-                string fontFam = block.FontFamily;
-                if (BengaliTextHelper.ContainsBengali(block.OriginalText) &&
-                    (fontFam == "Arial" || fontFam == "Times New Roman" || string.IsNullOrWhiteSpace(fontFam)))
-                {
-                    fontFam = BengaliTextHelper.PreferredBengaliFont;
+                    // No collision: this and all subsequent sorted elements are already far enough to the right
+                    break;
                 }
-
-                var promoted = new PdfTextItem
-                {
-                    PageIndex = CurrentPageIndex,
-                    X = requiredX,
-                    Y = block.CanvasY,
-                    BaseLineY = block.BaseLineY,
-                    FontFamily = fontFam,
-                    FontSizePt = block.FontSizePt,
-                    IsBold = block.IsBold,
-                    IsItalic = block.IsItalic,
-                    TextColorHex = block.ColorHex,
-                    BackgroundColorHex = bgColor,
-                    HasOpaqueBackground = false,
-                    LinkedWhiteoutId = whiteout.Id,
-                    OriginalTextToRedact = block.OriginalText,
-                    OriginalBlockWidth = block.PdfWidth,
-                    OriginalBlockHeight = block.PdfHeight,
-                    Text = block.OriginalText,
-                    Height = Math.Max(block.PdfHeight, block.FontSizePt * 1.3)
-                };
-                CurrentPageEdits.Add(promoted);
-                ExtractedTextBlocks.Remove(block);
-
-                rightEdge = promoted.X + promoted.Width;
             }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error during ShiftSubsequentItemsOnLine");
         }
         finally
         {
@@ -1146,23 +1192,27 @@ public class PdfEditorViewModel : ViewModelBase
             }
 
             // Restore the original block to ExtractedTextBlocks so the user can immediately click to edit it again
-            if (!string.IsNullOrEmpty(ti.OriginalTextToRedact) &&
-                !ExtractedTextBlocks.Any(b => Math.Abs(b.CanvasX - ti.X) < 1.5 && Math.Abs(b.CanvasY - ti.Y) < 1.5))
+            if (!string.IsNullOrEmpty(ti.OriginalTextToRedact))
             {
-                ExtractedTextBlocks.Add(new SmartSaver.Models.PdfExtractedTextBlock
+                double restoreX = ti.OriginalBlockX > 0 ? ti.OriginalBlockX : ti.X;
+                double restoreY = ti.OriginalBlockY > 0 ? ti.OriginalBlockY : ti.Y;
+                if (!ExtractedTextBlocks.Any(b => Math.Abs(b.CanvasX - restoreX) < 1.5 && Math.Abs(b.CanvasY - restoreY) < 1.5))
                 {
-                    OriginalText = ti.OriginalTextToRedact,
-                    CanvasX      = ti.X,
-                    CanvasY      = ti.Y,
-                    BaseLineY    = ti.BaseLineY,
-                    PdfWidth     = ti.OriginalBlockWidth > 0 ? ti.OriginalBlockWidth : ti.Width,
-                    PdfHeight    = ti.OriginalBlockHeight > 0 ? ti.OriginalBlockHeight : ti.Height,
-                    FontFamily   = ti.FontFamily,
-                    FontSizePt   = ti.FontSizePt,
-                    IsBold       = ti.IsBold,
-                    IsItalic     = ti.IsItalic,
-                    ColorHex     = ti.TextColorHex
-                });
+                    ExtractedTextBlocks.Add(new SmartSaver.Models.PdfExtractedTextBlock
+                    {
+                        OriginalText = ti.OriginalTextToRedact,
+                        CanvasX      = restoreX,
+                        CanvasY      = restoreY,
+                        BaseLineY    = ti.BaseLineY,
+                        PdfWidth     = ti.OriginalBlockWidth > 0 ? ti.OriginalBlockWidth : ti.Width,
+                        PdfHeight    = ti.OriginalBlockHeight > 0 ? ti.OriginalBlockHeight : ti.Height,
+                        FontFamily   = ti.FontFamily,
+                        FontSizePt   = ti.FontSizePt,
+                        IsBold       = ti.IsBold,
+                        IsItalic     = ti.IsItalic,
+                        ColorHex     = ti.TextColorHex
+                    });
+                }
             }
         }
 
@@ -1382,6 +1432,8 @@ public class PdfEditorViewModel : ViewModelBase
                 BackgroundColorHex = t.BackgroundColorHex,
                 LinkedWhiteoutId = t.LinkedWhiteoutId,
                 OriginalTextToRedact = t.OriginalTextToRedact,
+                OriginalBlockX = t.OriginalBlockX,
+                OriginalBlockY = t.OriginalBlockY,
                 OriginalBlockWidth = t.OriginalBlockWidth,
                 OriginalBlockHeight = t.OriginalBlockHeight,
                 IsHitTestVisible = t.IsHitTestVisible,
@@ -1878,7 +1930,11 @@ public class PdfEditorViewModel : ViewModelBase
             TextColorHex         = block.ColorHex,
             BackgroundColorHex   = bgColor,
             HasOpaqueBackground  = false,  // transparent bg — whiteout is separate
-            OriginalTextToRedact = block.OriginalText
+            OriginalTextToRedact = block.OriginalText,
+            OriginalBlockX       = block.CanvasX,
+            OriginalBlockY       = block.CanvasY,
+            OriginalBlockWidth   = block.PdfWidth,
+            OriginalBlockHeight  = block.PdfHeight
         };
         CurrentPageEdits.Add(textItem);
 
@@ -1940,6 +1996,8 @@ public class PdfEditorViewModel : ViewModelBase
             HasOpaqueBackground  = false,
             LinkedWhiteoutId     = whiteout.Id,
             OriginalTextToRedact = block.OriginalText,
+            OriginalBlockX       = block.CanvasX,
+            OriginalBlockY       = block.CanvasY,
             OriginalBlockWidth   = block.PdfWidth,
             OriginalBlockHeight  = block.PdfHeight,
             Height               = Math.Max(block.PdfHeight, block.FontSizePt * 1.3),
@@ -1947,6 +2005,10 @@ public class PdfEditorViewModel : ViewModelBase
         };
         CurrentPageEdits.Add(textItem);
         SelectedItem = textItem;
+        ExtractedTextBlocks.Remove(block);
+
+        // Auto-shift if textItem initial measured width collides with subsequent blocks
+        ShiftSubsequentItemsOnLine(textItem);
 
         // Explicitly sync toolbar properties so B / I buttons and font selectors immediately reflect the extracted block
         _isBold = block.IsBold;
@@ -1962,7 +2024,6 @@ public class PdfEditorViewModel : ViewModelBase
 
         SaveCurrentEditsToStore(immediateDiskSave: true);
 
-        ExtractedTextBlocks.Remove(block);
         StatusMessage = $"✏️ Editing '{block.OriginalText}' ({fontFam} {block.FontSizePt:F1}pt, Bold={block.IsBold}). Type your replacement text.";
 
         return textItem;

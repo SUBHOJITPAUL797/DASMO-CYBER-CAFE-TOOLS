@@ -56,6 +56,8 @@ public class PdfEditItemDto
     public string? LinkedWhiteoutId { get; set; }
     public string? OriginalTextToRedact { get; set; }
     public double BaseLineY { get; set; }
+    public double OriginalBlockX { get; set; }
+    public double OriginalBlockY { get; set; }
     public double OriginalBlockWidth { get; set; }
     public double OriginalBlockHeight { get; set; }
 
@@ -310,6 +312,8 @@ public class PdfDraftService
                 dto.LinkedWhiteoutId = t.LinkedWhiteoutId;
                 dto.OriginalTextToRedact = t.OriginalTextToRedact;
                 dto.BaseLineY = t.BaseLineY;
+                dto.OriginalBlockX = t.OriginalBlockX;
+                dto.OriginalBlockY = t.OriginalBlockY;
                 dto.OriginalBlockWidth = t.OriginalBlockWidth;
                 dto.OriginalBlockHeight = t.OriginalBlockHeight;
                 break;
@@ -371,6 +375,8 @@ public class PdfDraftService
                     BackgroundColorHex = dto.BackgroundColorHex ?? "#FFFFFF",
                     LinkedWhiteoutId = dto.LinkedWhiteoutId,
                     OriginalTextToRedact = dto.OriginalTextToRedact,
+                    OriginalBlockX = dto.OriginalBlockX,
+                    OriginalBlockY = dto.OriginalBlockY,
                     OriginalBlockWidth = dto.OriginalBlockWidth,
                     OriginalBlockHeight = dto.OriginalBlockHeight,
                     BaseLineY = dto.BaseLineY,

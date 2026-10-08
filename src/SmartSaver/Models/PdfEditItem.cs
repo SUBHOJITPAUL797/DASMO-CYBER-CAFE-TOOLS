@@ -331,6 +331,22 @@ public class PdfTextItem : PdfEditItem
     /// </summary>
     public string? OriginalTextToRedact { get; set; }
 
+    private double _originalBlockX;
+    /// <summary>Original PDF X coordinate of the extracted text block in points.</summary>
+    public double OriginalBlockX
+    {
+        get => _originalBlockX;
+        set => SetProperty(ref _originalBlockX, Math.Round(value, 2));
+    }
+
+    private double _originalBlockY;
+    /// <summary>Original PDF Y coordinate of the extracted text block in points.</summary>
+    public double OriginalBlockY
+    {
+        get => _originalBlockY;
+        set => SetProperty(ref _originalBlockY, Math.Round(value, 2));
+    }
+
     private double _originalBlockWidth;
     /// <summary>Original PDF width of the extracted text block in points.</summary>
     public double OriginalBlockWidth

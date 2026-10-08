@@ -7371,6 +7371,166 @@ flowchart TD
                 failed++;
             }
 
+            // ─────────────────────────────────────────────────────────────────────────
+            // [TEST 87] PDF Editor -> Font Weight Fidelity & Cascading Line Reflow Auto-Shift
+            // ─────────────────────────────────────────────────────────────────────────
+            Console.Write("[TEST 87] PDF Editor -> Font Weight Fidelity & Cascading Line Reflow Auto-Shift... ");
+            try
+            {
+                Exception? staEx87 = null;
+                var staThread87 = new Thread(() =>
+                {
+                    try
+                    {
+                        var vm = new PdfEditorViewModel();
+                        vm.ShowMessage = (_, _) => { };
+                        vm.PageNativeWidth = 595.0;
+                        vm.PageNativeHeight = 842.0;
+
+                        // 1. Verify Normal/Medium Font Extraction Weight Fidelity (NOT Bold)
+                        var regularBlock = new SmartSaver.Models.PdfExtractedTextBlock
+                        {
+                            CanvasX = 50,
+                            CanvasY = 200,
+                            BaseLineY = 212.0,
+                            PdfWidth = 70,
+                            PdfHeight = 14,
+                            FontSizePt = 10.0,
+                            FontFamily = "Times New Roman",
+                            IsBold = false, // Regular/Medium (weight 400/500) must remain non-bold
+                            OriginalText = "Received from",
+                            ColorHex = "#000000"
+                        };
+                        vm.ExtractedTextBlocks.Add(regularBlock);
+
+                        var textItemA = vm.StartEditingExtractedBlock(regularBlock);
+                        if (textItemA == null)
+                            throw new Exception("StartEditingExtractedBlock returned null");
+
+                        // Assert font weight is Normal, toolbar B is OFF, stroke is non-bold
+                        if (textItemA.IsBold)
+                            throw new Exception("textItemA.IsBold was true, expected false for regular text!");
+                        if (textItemA.FontWeightValue != System.Windows.FontWeights.Normal)
+                            throw new Exception($"textItemA.FontWeightValue was {textItemA.FontWeightValue}, expected Normal!");
+                        if (vm.IsBold)
+                            throw new Exception("vm.IsBold was true, expected false for regular text!");
+
+                        // 2. Set up a line of consecutive words/blocks simulating:
+                        // "WBSEDCL" [300, 360] -> "Consumer" [370, 425] -> "No.:" [435, 460] -> "0" [470, 480]
+                        vm.CurrentPageEdits.Clear();
+                        vm.ExtractedTextBlocks.Clear();
+
+                        var block1 = new SmartSaver.Models.PdfExtractedTextBlock
+                        {
+                            CanvasX = 300, CanvasY = 250, BaseLineY = 262.0,
+                            PdfWidth = 60, PdfHeight = 14, FontSizePt = 10.0,
+                            FontFamily = "Times New Roman", IsBold = false,
+                            OriginalText = "WBSEDCL", ColorHex = "#000000"
+                        };
+                        var block2 = new SmartSaver.Models.PdfExtractedTextBlock
+                        {
+                            CanvasX = 370, CanvasY = 250, BaseLineY = 262.0,
+                            PdfWidth = 55, PdfHeight = 14, FontSizePt = 10.0,
+                            FontFamily = "Times New Roman", IsBold = false,
+                            OriginalText = "Consumer", ColorHex = "#000000"
+                        };
+                        var block3 = new SmartSaver.Models.PdfExtractedTextBlock
+                        {
+                            CanvasX = 435, CanvasY = 250, BaseLineY = 262.0,
+                            PdfWidth = 25, PdfHeight = 14, FontSizePt = 10.0,
+                            FontFamily = "Times New Roman", IsBold = false,
+                            OriginalText = "No.:", ColorHex = "#000000"
+                        };
+                        var block4 = new SmartSaver.Models.PdfExtractedTextBlock
+                        {
+                            CanvasX = 470, CanvasY = 250, BaseLineY = 262.0,
+                            PdfWidth = 10, PdfHeight = 14, FontSizePt = 10.0,
+                            FontFamily = "Times New Roman", IsBold = false,
+                            OriginalText = "0", ColorHex = "#000000"
+                        };
+
+                        vm.ExtractedTextBlocks.Add(block1);
+                        vm.ExtractedTextBlocks.Add(block2);
+                        vm.ExtractedTextBlocks.Add(block3);
+                        vm.ExtractedTextBlocks.Add(block4);
+
+                        // User clicks on "WBSEDCL" to edit
+                        var editItem1 = vm.StartEditingExtractedBlock(block1);
+                        if (editItem1 == null) throw new Exception("Failed to edit block1");
+
+                        // 3. User types "DFSFS" into WBSEDCL -> expands width from 60 to 110 pt
+                        editItem1.Text = "WBSEDCLDFSFS";
+                        editItem1.Width = 110.0; // Simulated width expansion triggers line reflow
+
+                        // 4. Verify cascading domino auto-shift across all subsequent items:
+                        // "Consumer", "No.:", "0" must all be shifted to the right with zero collisions!
+                        var promotedItems = vm.CurrentPageEdits.OfType<PdfTextItem>().OrderBy(t => t.X).ToList();
+                        if (promotedItems.Count != 4)
+                            throw new Exception($"Expected 4 PdfTextItems on the line after cascade, found {promotedItems.Count}: " + string.Join(", ", promotedItems.Select(p => $"'{p.Text}'@X={p.X}")));
+
+                        var item1 = promotedItems[0]; // WBSEDCLDFSFS
+                        var item2 = promotedItems[1]; // Consumer
+                        var item3 = promotedItems[2]; // No.:
+                        var item4 = promotedItems[3]; // 0
+
+                        if (item1.Text != "WBSEDCLDFSFS") throw new Exception($"Item 1 text was '{item1.Text}', expected WBSEDCLDFSFS");
+                        if (item2.Text != "Consumer") throw new Exception($"Item 2 text was '{item2.Text}', expected Consumer");
+                        if (item3.Text != "No.:") throw new Exception($"Item 3 text was '{item3.Text}', expected No.:");
+                        if (item4.Text != "0") throw new Exception($"Item 4 text was '{item4.Text}', expected 0");
+
+                        // Verify strictly non-overlapping positions:
+                        if (item2.X < item1.X + item1.Width)
+                            throw new Exception($"Collision! Item 2 ('{item2.Text}') X={item2.X} is inside Item 1 bounds [{item1.X}, {item1.X + item1.Width}]");
+                        if (item3.X < item2.X + item2.Width)
+                            throw new Exception($"Collision! Item 3 ('{item3.Text}') X={item3.X} is inside Item 2 bounds [{item2.X}, {item2.X + item2.Width}]");
+                        if (item4.X < item3.X + item3.Width)
+                            throw new Exception($"Collision! Item 4 ('{item4.Text}') X={item4.X} is inside Item 3 bounds [{item3.X}, {item3.X + item3.Width}]");
+
+                        // 5. Verify LinkedWhiteout bounds:
+                        // Whiteouts covering original text in background bitmap MUST STAY at their original positions!
+                        var whiteout2 = vm.CurrentPageEdits.OfType<PdfWhiteoutItem>().FirstOrDefault(w => w.Id == item2.LinkedWhiteoutId);
+                        if (whiteout2 == null) throw new Exception("Whiteout for item2 (Consumer) not found!");
+                        if (whiteout2.X > 375.0)
+                            throw new Exception($"Whiteout for Consumer moved with text to {whiteout2.X}! Must remain anchored near original CanvasX 370.0 to conceal background!");
+
+                        var whiteout3 = vm.CurrentPageEdits.OfType<PdfWhiteoutItem>().FirstOrDefault(w => w.Id == item3.LinkedWhiteoutId);
+                        if (whiteout3 == null) throw new Exception("Whiteout for item3 (No.:) not found!");
+                        if (whiteout3.X > 440.0)
+                            throw new Exception($"Whiteout for No.: moved with text to {whiteout3.X}! Must remain anchored near original CanvasX 435.0!");
+
+                        // 6. Test further text typing expansion:
+                        // User types more text into item1
+                        double prevItem2X = item2.X;
+                        item1.Width += 30.0; // expands by 30 pt
+                        if (item2.X <= prevItem2X)
+                            throw new Exception($"Subsequent item2 did not shift further right when item1 expanded! Previous X={prevItem2X}, Current X={item2.X}");
+
+                        // 7. Verify DeleteSelectedItem restores block at original position
+                        vm.SelectedItem = item2;
+                        vm.DeleteSelectedItem();
+                        var restored = vm.ExtractedTextBlocks.FirstOrDefault(b => b.OriginalText == "Consumer");
+                        if (restored == null)
+                            throw new Exception("Deleting item2 did not restore 'Consumer' to ExtractedTextBlocks");
+                        if (Math.Abs(restored.CanvasX - 370.0) > 2.0)
+                            throw new Exception($"Restored block 'Consumer' CanvasX is {restored.CanvasX}, expected original 370.0");
+                    }
+                    catch (Exception ex) { staEx87 = ex; }
+                });
+                staThread87.SetApartmentState(ApartmentState.STA);
+                staThread87.Start();
+                staThread87.Join(TimeSpan.FromSeconds(15));
+                if (staThread87.IsAlive) { staThread87.Interrupt(); throw new Exception("Test 87 timed out (15s)"); }
+                if (staEx87 != null) throw staEx87;
+
+                Console.WriteLine("PASSED (Regular Font Weight Fidelity Verified, Multi-Item Cascading Line Reflow Verified, Whiteouts Firmly Anchored at Origin, 0 Collisions)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

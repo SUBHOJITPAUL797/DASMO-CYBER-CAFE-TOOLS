@@ -711,7 +711,7 @@ public class PdfEditorService
                     fontSize = Math.Max(4, Math.Abs(firstLetter.PointSize));
                     if (firstLetter.Font != null)
                     {
-                        isBold = (firstLetter.Font.IsBold == true) || (firstLetter.Font.Weight >= 500);
+                        isBold = (firstLetter.Font.IsBold == true) || (firstLetter.Font.Weight >= 650);
                         isItalic = firstLetter.Font.IsItalic == true;
                     }
                     if (BengaliTextHelper.ContainsBengali(text))
@@ -924,8 +924,8 @@ public class PdfEditorService
         if (!isBold)
         {
             isBold = fn.Contains("BOLD") || fn.Contains("BLACK") || fn.Contains("HEAVY") || 
-                     fn.Contains("DEMI") || fn.Contains("MEDIUM") || fn.Contains("SEMIBOLD") || 
-                     fn.Contains("SBOLD") || fn.Contains("FAT") || fn.Contains("DARK");
+                     fn.Contains("DEMIBOLD") || fn.Contains("DEMI-BOLD") || fn.Contains("SEMIBOLD") || 
+                     fn.Contains("SEMI-BOLD") || fn.Contains("SBOLD") || fn.Contains("FAT") || fn.Contains("DARK");
         }
         if (!isItalic)
         {
