@@ -429,33 +429,60 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
         bool isBgra,
         EnhancementOptions options)
     {
+        bool whiten = options.WhitenBackground;
+        bool darken = options.DarkenText;
+        if (!whiten && !darken)
+        {
+            // Original (No Filter) preset: completely untouched raw pixels!
+            return;
+        }
+
         int sb = Math.Max(8, options.BlockSize);
         int gridW = Math.Max(1, (width + sb - 1) / sb);
         int gridH = Math.Max(1, (height + sb - 1) / sb);
 
         byte[] contrastLut = BuildContrastLut(options);
-        bool whiten = options.WhitenBackground;
-        bool darken = options.DarkenText;
         bool preserveColor = options.PreserveColor;
+        bool protectFaces = options.ProtectFacesAndPhotos;
 
         float chromaLow = options.ColorThresholdLow;
         float chromaHigh = Math.Max(chromaLow + 0.1f, options.ColorThresholdHigh);
         float chromaRangeInv = 1.0f / (chromaHigh - chromaLow);
         float satBoost = options.SaturationBoost;
 
-        // Pass 1: Spatially adaptive 2D background grid estimation
-        byte[,] grid = ComputeBackgroundGrid(width, height, sb, gridW, gridH, (x, y) =>
+        // Pass 1: Spatially adaptive 2D background grid estimation & Face/Photo Block Detection
+        bool[,] rawPhotoBlocks = new bool[gridH, gridW];
+        bool hasAnyFace = false;
+
+        byte[,] grid = ComputeBackgroundGridWithPhotoDetection(
+            pPixels, width, height, stride, isBgra, sb, gridW, gridH, protectFaces, rawPhotoBlocks, ref hasAnyFace);
+
+        // Dilate photo blocks to encompass hair, ears, clothing, and ID photo borders
+        bool[,] dilatedPhotoBlocks = new bool[gridH, gridW];
+        if (protectFaces && hasAnyFace)
         {
-            byte* px = pPixels + y * stride + (x << 2);
-            if (isBgra)
+            int dilateRadius = Math.Min(gridW, gridH) <= 10 ? 1 : 2;
+            for (int gy = 0; gy < gridH; gy++)
             {
-                return (byte)((77 * px[2] + 150 * px[1] + 29 * px[0]) >> 8);
+                for (int gx = 0; gx < gridW; gx++)
+                {
+                    if (rawPhotoBlocks[gy, gx])
+                    {
+                        for (int dy = -dilateRadius; dy <= dilateRadius; dy++)
+                        {
+                            int ny = gy + dy;
+                            if (ny < 0 || ny >= gridH) continue;
+                            for (int dx = -dilateRadius; dx <= dilateRadius; dx++)
+                            {
+                                int nx = gx + dx;
+                                if (nx < 0 || nx >= gridW) continue;
+                                dilatedPhotoBlocks[ny, nx] = true;
+                            }
+                        }
+                    }
+                }
             }
-            else
-            {
-                return (byte)((77 * px[0] + 150 * px[1] + 29 * px[2]) >> 8);
-            }
-        });
+        }
 
         // Pass 2: Row-wise Parallel.For bilinear interpolation and pixel enhancement
         Parallel.For(0, height, y =>
@@ -469,6 +496,8 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
                 ProcessBgraRow(
                     rowPtr,
                     width,
+                    y,
+                    sb,
                     bgRow,
                     DivLut,
                     contrastLut,
@@ -478,13 +507,17 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
                     chromaLow,
                     chromaHigh,
                     chromaRangeInv,
-                    satBoost);
+                    satBoost,
+                    dilatedPhotoBlocks,
+                    protectFaces && hasAnyFace);
             }
             else
             {
                 ProcessRgbaRow(
                     rowPtr,
                     width,
+                    y,
+                    sb,
                     bgRow,
                     DivLut,
                     contrastLut,
@@ -494,9 +527,143 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
                     chromaLow,
                     chromaHigh,
                     chromaRangeInv,
-                    satBoost);
+                    satBoost,
+                    dilatedPhotoBlocks,
+                    protectFaces && hasAnyFace);
             }
         });
+    }
+
+    /// <summary>
+    /// Intelligently checks if an RGB pixel represents human skin tone across diverse ethnicities.
+    /// Uses Kovac / Peer digital forensics chrominance and luminance bounds.
+    /// </summary>
+    public static bool IsSkinTone(byte r, byte g, byte b)
+    {
+        if (r < 60 || g < 35 || b < 20) return false;
+        if (r <= g) return false;
+        if ((r - g) < 8) return false;
+
+        int y = (77 * r + 150 * g + 29 * b) >> 8;
+        int cb = 128 + ((-43 * r - 85 * g + 128 * b) >> 8);
+        int cr = 128 + ((128 * r - 107 * g - 21 * b) >> 8);
+
+        return cb >= 77 && cb <= 127 && cr >= 133 && cr <= 175 && y >= 35 && y <= 240;
+    }
+
+    private static unsafe byte[,] ComputeBackgroundGridWithPhotoDetection(
+        byte* pPixels,
+        int width,
+        int height,
+        int stride,
+        bool isBgra,
+        int sb,
+        int gridW,
+        int gridH,
+        bool protectFaces,
+        bool[,] rawPhotoBlocks,
+        ref bool hasAnyFace)
+    {
+        byte[,] rawGrid = new byte[gridH, gridW];
+        Span<byte> samples = stackalloc byte[64];
+        bool detectedFace = false;
+
+        for (int gy = 0; gy < gridH; gy++)
+        {
+            int y0 = gy * sb;
+            int blockH = Math.Min(sb, height - y0);
+            int stepY = Math.Max(1, blockH / 8);
+
+            for (int gx = 0; gx < gridW; gx++)
+            {
+                int x0 = gx * sb;
+                int blockW = Math.Min(sb, width - x0);
+                int stepX = Math.Max(1, blockW / 8);
+
+                int sampleCount = 0;
+                int skinCount = 0;
+
+                for (int sy = 0; sy < 8; sy++)
+                {
+                    int py = Math.Min(y0 + sy * stepY, y0 + blockH - 1);
+                    byte* row = pPixels + py * stride;
+
+                    for (int sx = 0; sx < 8; sx++)
+                    {
+                        int px = Math.Min(x0 + sx * stepX, x0 + blockW - 1);
+                        byte b = isBgra ? row[px * 4 + 0] : row[px * 4 + 2];
+                        byte g = row[px * 4 + 1];
+                        byte r = isBgra ? row[px * 4 + 2] : row[px * 4 + 0];
+
+                        byte lum = (byte)((77 * r + 150 * g + 29 * b) >> 8);
+                        samples[sampleCount++] = lum;
+
+                        if (protectFaces && IsSkinTone(r, g, b))
+                        {
+                            skinCount++;
+                        }
+                    }
+                }
+
+                if (protectFaces && skinCount >= 2)
+                {
+                    rawPhotoBlocks[gy, gx] = true;
+                    detectedFace = true;
+                }
+
+                // 92nd-percentile luminance representing local paper background
+                samples.Slice(0, sampleCount).Sort();
+                int p92Idx = Math.Min(sampleCount - 1, (int)(sampleCount * 0.92f));
+                rawGrid[gy, gx] = samples[p92Idx];
+            }
+        }
+
+        hasAnyFace = detectedFace;
+
+        // Calculate global paper baseline across grid to protect passport photos & dark seals
+        int totalNodes = gridW * gridH;
+        byte[] allNodes = new byte[totalNodes];
+        int nIdx = 0;
+        for (int gy = 0; gy < gridH; gy++)
+        {
+            for (int gx = 0; gx < gridW; gx++)
+            {
+                allNodes[nIdx++] = rawGrid[gy, gx];
+            }
+        }
+        Array.Sort(allNodes);
+        byte docPaperBaseline = allNodes[Math.Min(totalNodes - 1, (int)(totalNodes * 0.85f))];
+        byte minAllowedBg = Math.Max((byte)40, (byte)(docPaperBaseline * 0.60f));
+
+        // 3x3 local neighborhood median filter and background floor clamping
+        byte[,] filteredGrid = new byte[gridH, gridW];
+        Span<byte> window = stackalloc byte[9];
+
+        for (int gy = 0; gy < gridH; gy++)
+        {
+            for (int gx = 0; gx < gridW; gx++)
+            {
+                int winCount = 0;
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    int ny = gy + dy;
+                    if (ny < 0 || ny >= gridH) continue;
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        int nx = gx + dx;
+                        if (nx < 0 || nx >= gridW) continue;
+                        window[winCount++] = rawGrid[ny, nx];
+                    }
+                }
+
+                window.Slice(0, winCount).Sort();
+                byte medianVal = window[winCount / 2];
+                byte combined = Math.Max(rawGrid[gy, gx], medianVal);
+                filteredGrid[gy, gx] = Math.Max(combined, minAllowedBg);
+            }
+        }
+
+        return filteredGrid;
     }
 
     private static byte[,] ComputeBackgroundGrid(
@@ -644,6 +811,8 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
     private static unsafe void ProcessRgbaRow(
         byte* rowPtr,
         int width,
+        int y,
+        int sb,
         ReadOnlySpan<byte> bgRow,
         byte[] divLut,
         byte[] contrastLut,
@@ -653,8 +822,13 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
         float chromaLow,
         float chromaHigh,
         float chromaRangeInv,
-        float satBoost)
+        float satBoost,
+        bool[,] dilatedPhotoBlocks,
+        bool hasFaceProtection)
     {
+        int gy = y / sb;
+        bool hasPhotoBlocksInRow = hasFaceProtection && dilatedPhotoBlocks != null && gy < dilatedPhotoBlocks.GetLength(0);
+
         for (int x = 0; x < width; x++)
         {
             byte* px = rowPtr + (x << 2);
@@ -665,6 +839,32 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
             int maxC = Math.Max(r, Math.Max(g, b));
             int minC = Math.Min(r, Math.Min(g, b));
             int deltaChroma = maxC - minC;
+
+            // Face / ID Photo Protection Check: Keep 100% natural and untouched
+            if (hasFaceProtection)
+            {
+                if (IsSkinTone(r, g, b))
+                {
+                    // Direct skin tone: preserve 100% untouched
+                    continue;
+                }
+
+                int gx = x / sb;
+                if (hasPhotoBlocksInRow && dilatedPhotoBlocks != null && gx < dilatedPhotoBlocks.GetLength(1) && dilatedPhotoBlocks[gy, gx])
+                {
+                    // Inside dilated photo region:
+                    // Protect hair, facial features, and photo subject.
+                    // Only whiten if it is genuinely the neutral paper background.
+                    int lum = (77 * r + 150 * g + 29 * b) >> 8;
+                    int bgEst = bgRow[x];
+                    bool isNeutralPaper = deltaChroma <= 6 && lum >= Math.Max(150, bgEst - 15);
+                    if (!isNeutralPaper)
+                    {
+                        // True photo content (hair, eyes, clothing, or tinted backdrop): keep 100% untouched
+                        continue;
+                    }
+                }
+            }
 
             byte rNorm, gNorm, bNorm;
             if (whiten)
@@ -724,6 +924,8 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
     private static unsafe void ProcessBgraRow(
         byte* rowPtr,
         int width,
+        int y,
+        int sb,
         ReadOnlySpan<byte> bgRow,
         byte[] divLut,
         byte[] contrastLut,
@@ -733,8 +935,13 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
         float chromaLow,
         float chromaHigh,
         float chromaRangeInv,
-        float satBoost)
+        float satBoost,
+        bool[,] dilatedPhotoBlocks,
+        bool hasFaceProtection)
     {
+        int gy = y / sb;
+        bool hasPhotoBlocksInRow = hasFaceProtection && dilatedPhotoBlocks != null && gy < dilatedPhotoBlocks.GetLength(0);
+
         for (int x = 0; x < width; x++)
         {
             byte* px = rowPtr + (x << 2);
@@ -745,6 +952,32 @@ public sealed class DocumentEnhancerService : IDocumentEnhancerService
             int maxC = Math.Max(r, Math.Max(g, b));
             int minC = Math.Min(r, Math.Min(g, b));
             int deltaChroma = maxC - minC;
+
+            // Face / ID Photo Protection Check: Keep 100% natural and untouched
+            if (hasFaceProtection)
+            {
+                if (IsSkinTone(r, g, b))
+                {
+                    // Direct skin tone: preserve 100% untouched
+                    continue;
+                }
+
+                int gx = x / sb;
+                if (hasPhotoBlocksInRow && dilatedPhotoBlocks != null && gx < dilatedPhotoBlocks.GetLength(1) && dilatedPhotoBlocks[gy, gx])
+                {
+                    // Inside dilated photo region:
+                    // Protect hair, facial features, and photo subject.
+                    // Only whiten if it is genuinely the neutral paper background.
+                    int lum = (77 * r + 150 * g + 29 * b) >> 8;
+                    int bgEst = bgRow[x];
+                    bool isNeutralPaper = deltaChroma <= 6 && lum >= Math.Max(150, bgEst - 15);
+                    if (!isNeutralPaper)
+                    {
+                        // True photo content (hair, eyes, clothing, or tinted backdrop): keep 100% untouched
+                        continue;
+                    }
+                }
+            }
 
             byte rNorm, gNorm, bNorm;
             if (whiten)

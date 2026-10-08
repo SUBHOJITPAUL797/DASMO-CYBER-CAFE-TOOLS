@@ -12,10 +12,11 @@ namespace SmartSaver.Services;
 /// </summary>
 public enum EnhancementPreset
 {
-    Light,      // Mild whitening, gentle darkening (preserves delicate pencil/light lines)
-    Balanced,   // Standard cyber cafe preset: crisp pitch-black text, pure white paper, color stamps protected
-    Strong,     // Deep shadow removal, maximum contrast for faint carbon copies / aged paper
-    Custom      // Operator-customized parameters
+    Original = 0, // 100% Raw untouched original document image (no filter, zero whitening, zero darkening)
+    Light = 1,    // Mild whitening, gentle darkening (preserves delicate pencil/light lines)
+    Balanced = 2, // Standard cyber cafe preset: crisp pitch-black text, pure white paper, color stamps protected
+    Strong = 3,   // Deep shadow removal, maximum contrast for faint carbon copies / aged paper
+    Custom = 4    // Operator-customized parameters
 }
 
 /// <summary>
@@ -30,6 +31,12 @@ public class EnhancementOptions
     public bool DarkenText { get; set; } = true;
     public bool PreserveColor { get; set; } = true;
     public bool PreserveColors { get => PreserveColor; set => PreserveColor = value; }
+
+    /// <summary>
+    /// When true, intelligently detects human faces and ID portrait photos and shields them
+    /// completely from bleaching, whitening, and contrast distortion, preserving 100% natural skin and details.
+    /// </summary>
+    public bool ProtectFacesAndPhotos { get; set; } = true;
 
     /// <summary>
     /// Block grid size for local background surface estimation (e.g. 24, 32, 48). Default 32.
@@ -57,13 +64,13 @@ public class EnhancementOptions
     /// <summary>
     /// Lower chroma threshold (max(RGB)-min(RGB)). Pixels below this are treated as neutral.
     /// </summary>
-    public float ColorThresholdLow { get; set; } = 22f;
+    public float ColorThresholdLow { get; set; } = 8f;
     public int ChromaThresholdLow { get => (int)ColorThresholdLow; set => ColorThresholdLow = value; }
 
     /// <summary>
     /// Upper chroma threshold. Pixels above this are treated as 100% chromatic stamp/photo.
     /// </summary>
-    public float ColorThresholdHigh { get; set; } = 38f;
+    public float ColorThresholdHigh { get; set; } = 20f;
     public int ChromaThresholdHigh { get => (int)ColorThresholdHigh; set => ColorThresholdHigh = value; }
 
     /// <summary>
@@ -86,32 +93,41 @@ public class EnhancementOptions
         Preset = preset;
         switch (preset)
         {
+            case EnhancementPreset.Original:
+                WhitenBackground = false;
+                DarkenText = false;
+                PreserveColor = true;
+                ProtectFacesAndPhotos = true;
+                break;
             case EnhancementPreset.Light:
                 BlockSize = 48;
                 WhiteCutoff = 235;
                 InkCutoff = 65;
                 DarkTarget = 32;
-                ColorThresholdLow = 18f;
-                ColorThresholdHigh = 32f;
+                ColorThresholdLow = 6f;
+                ColorThresholdHigh = 16f;
                 SaturationBoost = 1.05f;
+                ProtectFacesAndPhotos = true;
                 break;
             case EnhancementPreset.Strong:
                 BlockSize = 24;
                 WhiteCutoff = 195;
                 InkCutoff = 105;
                 DarkTarget = 0;
-                ColorThresholdLow = 26f;
-                ColorThresholdHigh = 44f;
+                ColorThresholdLow = 14f;
+                ColorThresholdHigh = 28f;
                 SaturationBoost = 1.25f;
+                ProtectFacesAndPhotos = true;
                 break;
             case EnhancementPreset.Balanced:
                 BlockSize = 32;
                 WhiteCutoff = 220;
                 InkCutoff = 80;
                 DarkTarget = 20;
-                ColorThresholdLow = 22f;
-                ColorThresholdHigh = 38f;
+                ColorThresholdLow = 8f;
+                ColorThresholdHigh = 20f;
                 SaturationBoost = 1.15f;
+                ProtectFacesAndPhotos = true;
                 break;
             case EnhancementPreset.Custom:
                 break;

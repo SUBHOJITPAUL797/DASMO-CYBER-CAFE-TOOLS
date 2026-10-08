@@ -7216,6 +7216,138 @@ flowchart TD
                 failed++;
             }
 
+            // -------------------------------------------------------------
+            // TEST 86: Original Preset, Face/ID Photo Shield & Anti-Bleaching Color Fidelity
+            // -------------------------------------------------------------
+            try
+            {
+                Console.Write("[TEST 86] Original Preset, Face/ID Photo Protection & Anti-Bleach Color Fidelity... ");
+
+                var enhancer = new DocumentEnhancerService();
+
+                // 1. Verify EnhancementPreset.Original guarantees 100% bit-exact raw fidelity
+                using (var rawImg = new Image<Rgba32>(100, 100))
+                {
+                    rawImg.ProcessPixelRows(accessor =>
+                    {
+                        for (int y = 0; y < 100; y++)
+                        {
+                            var row = accessor.GetRowSpan(y);
+                            for (int x = 0; x < 100; x++)
+                            {
+                                row[x] = new Rgba32((byte)(x * 2), (byte)(y * 2), (byte)(x + y), 255);
+                            }
+                        }
+                    });
+
+                    byte[] origBytes;
+                    using (var msOrig = new MemoryStream())
+                    {
+                        rawImg.SaveAsPng(msOrig);
+                        origBytes = msOrig.ToArray();
+                    }
+
+                    var origOptions = new EnhancementOptions(EnhancementPreset.Original);
+                    enhancer.EnhanceImage(rawImg, origOptions);
+
+                    byte[] postBytes;
+                    using (var msPost = new MemoryStream())
+                    {
+                        rawImg.SaveAsPng(msPost);
+                        postBytes = msPost.ToArray();
+                    }
+
+                    if (!origBytes.SequenceEqual(postBytes))
+                        throw new Exception("Original preset modified pixels! Must be 100% bit-exact raw untouched.");
+                }
+
+                // 2. Verify Face & ID Portrait Protection (skin tones and photo region stay natural, 0 white bleaching)
+                using (var docWithPhoto = new Image<Rgba32>(200, 200))
+                {
+                    // Fill background with grayish scanner paper (RGB 200, 200, 200)
+                    docWithPhoto.Mutate(ctx => ctx.BackgroundColor(SixLabors.ImageSharp.Color.FromRgb(200, 200, 200)));
+
+                    // Add an ID card photo region (X: 20..80, Y: 20..90) with skin tones (RGB 195, 140, 105)
+                    docWithPhoto.ProcessPixelRows(accessor =>
+                    {
+                        for (int y = 20; y < 90; y++)
+                        {
+                            var row = accessor.GetRowSpan(y);
+                            for (int x = 20; x < 80; x++)
+                            {
+                                row[x] = new Rgba32(195, 140, 105, 255); // Wheatish/tan skin
+                            }
+                        }
+                    });
+
+                    var balancedOptions = new EnhancementOptions(EnhancementPreset.Balanced)
+                    {
+                        ProtectFacesAndPhotos = true
+                    };
+                    enhancer.EnhanceImage(docWithPhoto, balancedOptions);
+
+                    // Check that skin tone in photo was NOT bleached to white (#FFFFFF)
+                    var skinSample = docWithPhoto[40, 40];
+                    if (skinSample.R > 240 && skinSample.G > 240 && skinSample.B > 240)
+                        throw new Exception($"Skin tone pixel was bleached to white! Got RGB({skinSample.R}, {skinSample.G}, {skinSample.B})");
+
+                    if (skinSample.R != 195 || skinSample.G != 140 || skinSample.B != 105)
+                        throw new Exception($"Skin tone pixel altered by filter: expected (195, 140, 105), got ({skinSample.R}, {skinSample.G}, {skinSample.B})");
+
+                    // Check that paper background outside photo was whitened to clean white (>=250)
+                    var bgSample = docWithPhoto[150, 150];
+                    if (bgSample.R < 245 || bgSample.G < 245 || bgSample.B < 245)
+                        throw new Exception($"Paper background was not whitened! Got RGB({bgSample.R}, {bgSample.G}, {bgSample.B})");
+                }
+
+                // 3. Verify Subtle Color & Floral Pattern Bleach Prevention (deltaChroma > 8 preserved)
+                using (var floralDoc = new Image<Rgba32>(100, 100))
+                {
+                    floralDoc.Mutate(ctx => ctx.BackgroundColor(SixLabors.ImageSharp.Color.FromRgb(205, 205, 205)));
+                    floralDoc.ProcessPixelRows(accessor =>
+                    {
+                        for (int y = 30; y < 70; y++)
+                        {
+                            var row = accessor.GetRowSpan(y);
+                            for (int x = 30; x < 70; x++)
+                            {
+                                row[x] = new Rgba32(230, 205, 205, 255); // Subtle pink floral tint (deltaChroma = 25)
+                            }
+                        }
+                    });
+
+                    var lightOptions = new EnhancementOptions(EnhancementPreset.Balanced);
+                    enhancer.EnhanceImage(floralDoc, lightOptions);
+
+                    var floralSample = floralDoc[45, 45];
+                    // Must retain chromaticity (R > G, R > B) and NOT be collapsed to pure white 255,255,255
+                    if (floralSample.R == 255 && floralSample.G == 255 && floralSample.B == 255)
+                        throw new Exception("Delicate floral color was completely bleached out to #FFFFFF!");
+                    if (floralSample.R <= floralSample.G)
+                        throw new Exception($"Floral color lost hue saturation: R={floralSample.R}, G={floralSample.G}, B={floralSample.B}");
+                }
+
+                // 4. Verify DocumentStackerViewModel preset synchronization
+                var stackerVm = new DocumentStackerViewModel();
+                stackerVm.IsPresetOriginal = true;
+                if (stackerVm.AutoWhiten || stackerVm.PitchBlackText)
+                    throw new Exception("IsPresetOriginal=true must disable AutoWhiten and PitchBlackText");
+                if (!stackerVm.IsPresetOriginal)
+                    throw new Exception("IsPresetOriginal property getter returned false after being set");
+
+                stackerVm.AutoWhiten = true;
+                if (stackerVm.IsPresetOriginal)
+                    throw new Exception("Enabling AutoWhiten must clear IsPresetOriginal");
+
+                Console.WriteLine("PASSED (Original Bit-Exact, Face Photo Shielded 100%, Floral Colors Preserved, Stacker Preset Synced)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

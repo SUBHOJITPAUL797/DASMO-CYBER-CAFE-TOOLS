@@ -592,7 +592,8 @@ public sealed class DocumentStackerService
         {
             WhitenBackground = autoWhiten || pitchBlackText,
             DarkenText = pitchBlackText,
-            PreserveColor = true
+            PreserveColor = true,
+            ProtectFacesAndPhotos = true
         };
         _documentEnhancer.EnhanceImage(image, options);
     }

@@ -591,27 +591,51 @@ public class ImageCropService
                         byte g = srcRow[x * 4 + 1];
                         byte r = srcRow[x * 4 + 2];
 
-                        float newR = r * scale;
-                        float newG = g * scale;
-                        float newB = b * scale;
+                        int maxC = Math.Max(r, Math.Max(g, b));
+                        int minC = Math.Min(r, Math.Min(g, b));
+                        int deltaChroma = maxC - minC;
 
-                        float newLum = 0.299f * newR + 0.587f * newG + 0.114f * newB;
-                        if (newLum >= 210f)
+                        // Check if pixel is skin tone or chromatic color (e.g. photo, stamp, floral artwork)
+                        bool isSkin = (r > 65 && g > 40 && b > 20 && r > g && (r - g) >= 8);
+                        bool isColor = deltaChroma > 12;
+
+                        float newR, newG, newB;
+                        if (isSkin || isColor)
                         {
-                            newR = 255f;
-                            newG = 255f;
-                            newB = 255f;
+                            // In colored or skin regions, preserve original pixel colors and tone faithfully
+                            // Apply only very gentle illumination leveling if shadowed, preserving color ratio
+                            float gentleScale = Math.Min(scale, 1.15f);
+                            newR = r * gentleScale;
+                            newG = g * gentleScale;
+                            newB = b * gentleScale;
                         }
-                        else if (newLum <= 90f)
+                        else
                         {
-                            newR *= 0.85f;
-                            newG *= 0.85f;
-                            newB *= 0.85f;
+                            // Neutral / paper background / dark monochrome text
+                            newR = r * scale;
+                            newG = g * scale;
+                            newB = b * scale;
+
+                            float newLum = 0.299f * newR + 0.587f * newG + 0.114f * newB;
+                            // Only whiten if it is truly near-white neutral paper, NEVER hard-clip at 210
+                            if (newLum >= 242f && deltaChroma <= 8)
+                            {
+                                newR = 255f;
+                                newG = 255f;
+                                newB = 255f;
+                            }
+                            else if (newLum <= 75f)
+                            {
+                                // Deepen text ink gently
+                                newR *= 0.85f;
+                                newG *= 0.85f;
+                                newB *= 0.85f;
+                            }
                         }
 
-                        resRow[x * 4 + 0] = (byte)Math.Clamp(newB, 0, 255);
-                        resRow[x * 4 + 1] = (byte)Math.Clamp(newG, 0, 255);
-                        resRow[x * 4 + 2] = (byte)Math.Clamp(newR, 0, 255);
+                        resRow[x * 4 + 0] = (byte)Math.Clamp((int)Math.Round(newB), 0, 255);
+                        resRow[x * 4 + 1] = (byte)Math.Clamp((int)Math.Round(newG), 0, 255);
+                        resRow[x * 4 + 2] = (byte)Math.Clamp((int)Math.Round(newR), 0, 255);
                         resRow[x * 4 + 3] = 255;
                     }
                 }

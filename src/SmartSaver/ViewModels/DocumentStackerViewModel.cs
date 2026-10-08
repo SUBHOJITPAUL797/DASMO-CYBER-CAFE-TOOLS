@@ -294,8 +294,17 @@ public class DocumentStackerViewModel : ViewModelBase
         {
             if (SetProperty(ref _autoWhiten, value))
             {
+                if (value && _selectedPreset == EnhancementPreset.Original)
+                {
+                    _selectedPreset = EnhancementPreset.Balanced;
+                    OnPropertyChanged(nameof(SelectedPreset));
+                }
                 OnPropertyChanged(nameof(EnableEnhancement));
                 OnPropertyChanged(nameof(IsEnhancementActive));
+                OnPropertyChanged(nameof(IsPresetOriginal));
+                OnPropertyChanged(nameof(IsPresetLight));
+                OnPropertyChanged(nameof(IsPresetBalanced));
+                OnPropertyChanged(nameof(IsPresetStrong));
                 LoadFrontPreview();
                 LoadBackPreview();
             }
@@ -316,7 +325,16 @@ public class DocumentStackerViewModel : ViewModelBase
         {
             if (SetProperty(ref _pitchBlackText, value))
             {
+                if (value && _selectedPreset == EnhancementPreset.Original)
+                {
+                    _selectedPreset = EnhancementPreset.Balanced;
+                    OnPropertyChanged(nameof(SelectedPreset));
+                }
                 OnPropertyChanged(nameof(IsEnhancementActive));
+                OnPropertyChanged(nameof(IsPresetOriginal));
+                OnPropertyChanged(nameof(IsPresetLight));
+                OnPropertyChanged(nameof(IsPresetBalanced));
+                OnPropertyChanged(nameof(IsPresetStrong));
                 LoadFrontPreview();
                 LoadBackPreview();
             }
@@ -333,6 +351,7 @@ public class DocumentStackerViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedPreset, value))
             {
+                OnPropertyChanged(nameof(IsPresetOriginal));
                 OnPropertyChanged(nameof(IsPresetLight));
                 OnPropertyChanged(nameof(IsPresetBalanced));
                 OnPropertyChanged(nameof(IsPresetStrong));
@@ -342,9 +361,28 @@ public class DocumentStackerViewModel : ViewModelBase
         }
     }
 
+    public bool IsPresetOriginal
+    {
+        get => !AutoWhiten && !PitchBlackText;
+        set
+        {
+            if (value)
+            {
+                _selectedPreset = EnhancementPreset.Original;
+                OnPropertyChanged(nameof(SelectedPreset));
+                AutoWhiten = false;
+                PitchBlackText = false;
+                OnPropertyChanged(nameof(IsPresetOriginal));
+                OnPropertyChanged(nameof(IsPresetLight));
+                OnPropertyChanged(nameof(IsPresetBalanced));
+                OnPropertyChanged(nameof(IsPresetStrong));
+            }
+        }
+    }
+
     public bool IsPresetLight
     {
-        get => SelectedPreset == EnhancementPreset.Light;
+        get => SelectedPreset == EnhancementPreset.Light && (AutoWhiten || PitchBlackText);
         set
         {
             if (value)
@@ -357,7 +395,7 @@ public class DocumentStackerViewModel : ViewModelBase
 
     public bool IsPresetBalanced
     {
-        get => SelectedPreset == EnhancementPreset.Balanced;
+        get => SelectedPreset == EnhancementPreset.Balanced && (AutoWhiten || PitchBlackText);
         set
         {
             if (value)
@@ -370,7 +408,7 @@ public class DocumentStackerViewModel : ViewModelBase
 
     public bool IsPresetStrong
     {
-        get => SelectedPreset == EnhancementPreset.Strong;
+        get => SelectedPreset == EnhancementPreset.Strong && (AutoWhiten || PitchBlackText);
         set
         {
             if (value)
@@ -395,8 +433,15 @@ public class DocumentStackerViewModel : ViewModelBase
 
         if (newPreset.HasValue)
         {
-            if (!AutoWhiten && !PitchBlackText) AutoWhiten = true;
-            SelectedPreset = newPreset.Value;
+            if (newPreset.Value == EnhancementPreset.Original)
+            {
+                IsPresetOriginal = true;
+            }
+            else
+            {
+                if (!AutoWhiten && !PitchBlackText) AutoWhiten = true;
+                SelectedPreset = newPreset.Value;
+            }
         }
     });
 
@@ -709,7 +754,8 @@ public class DocumentStackerViewModel : ViewModelBase
                     {
                         WhitenBackground = AutoWhiten || PitchBlackText,
                         DarkenText = PitchBlackText,
-                        PreserveColor = true
+                        PreserveColor = true,
+                        ProtectFacesAndPhotos = true
                     };
                     var enhanced = await Task.Run(() => _enhancerService.EnhanceBitmapSource(rawBmp, options));
                     if (version != _frontPreviewVersion) return;
@@ -804,7 +850,8 @@ public class DocumentStackerViewModel : ViewModelBase
                     {
                         WhitenBackground = AutoWhiten || PitchBlackText,
                         DarkenText = PitchBlackText,
-                        PreserveColor = true
+                        PreserveColor = true,
+                        ProtectFacesAndPhotos = true
                     };
                     var enhanced = await Task.Run(() => _enhancerService.EnhanceBitmapSource(rawBmp, options));
                     if (version != _backPreviewVersion) return;

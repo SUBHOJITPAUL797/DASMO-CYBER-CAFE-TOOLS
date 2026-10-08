@@ -191,6 +191,8 @@
                             <Border Background="#161B26" BorderBrush="#2D3748" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,2,0,4">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="Clean Preset:" FontWeight="SemiBold" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <RadioButton GroupName="EnhancementPresetGroup" Content="📷 Original (No Filter)" IsChecked="{Binding IsPresetOriginal}" FontWeight="SemiBold" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                 ToolTip="Original: 100% Raw untouched document with zero whitening and zero contrast filter"/>
                                     <RadioButton GroupName="EnhancementPresetGroup" Content="Light (Soft)" IsChecked="{Binding IsPresetLight}" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"
                                                  ToolTip="Light: Gentle whitening and contrast, ideal for colored forms, delicate certificates and pencil marks"/>
                                     <RadioButton GroupName="EnhancementPresetGroup" Content="Balanced (Default)" IsChecked="{Binding IsPresetBalanced}" FontWeight="SemiBold" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"
