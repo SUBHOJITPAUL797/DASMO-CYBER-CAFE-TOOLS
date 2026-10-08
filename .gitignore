@@ -30,3 +30,4 @@ DASMO CYBER BROWSER/
 scratch/
 test_out.txt
 .agents/
+*.binlog

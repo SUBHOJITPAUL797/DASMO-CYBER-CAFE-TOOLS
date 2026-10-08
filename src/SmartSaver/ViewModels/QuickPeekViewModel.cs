@@ -98,11 +98,11 @@ public class QuickPeekViewModel : ViewModelBase
     public string NextFileName => CanGoNextFile ? Path.GetFileName(_folderFiles[_currentFileIndex + 1]) : string.Empty;
 
     public string PrevFileToolTip => CanGoPrevFile
-        ? $"Previous File: {PrevFileName} (← / ↑ / P)"
+        ? $"Previous File: {PrevFileName} (↑ / P)"
         : "No previous file";
 
     public string NextFileToolTip => CanGoNextFile
-        ? $"Next File: {NextFileName} (→ / ↓ / N)"
+        ? $"Next File: {NextFileName} (↓ / N)"
         : "No next file";
 
     public ICommand PrevFileCommand { get; }
@@ -129,23 +129,71 @@ public class QuickPeekViewModel : ViewModelBase
         try
         {
             string curExt = Path.GetExtension(currentPath);
-            var files = Directory.EnumerateFiles(dir)
-                .Where(f =>
-                {
-                    string ext = Path.GetExtension(f);
-                    return SupportedPeekExtensions.Contains(ext) || string.Equals(ext, curExt, StringComparison.OrdinalIgnoreCase);
-                })
-                .OrderBy(f => Path.GetFileName(f), NaturalStringComparer.Instance)
-                .ToList();
+            bool IsSupported(string f)
+            {
+                string ext = Path.GetExtension(f);
+                return SupportedPeekExtensions.Contains(ext) || string.Equals(ext, curExt, StringComparison.OrdinalIgnoreCase);
+            }
 
+            List<string>? explorerOrderedFiles = null;
+
+            // 1. Try to query the active Windows Explorer window to get the EXACT visual order the user sees (Date Modified, Name, Grouping, etc.)
+            try
+            {
+                var fromExplorer = ExplorerSelectionHelper.GetFolderFilesFromExplorer(dir);
+                if (fromExplorer != null && fromExplorer.Count > 0)
+                {
+                    explorerOrderedFiles = fromExplorer.Where(IsSupported).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed to query Explorer view order for {Dir}", dir);
+            }
+
+            List<string> files;
+            if (explorerOrderedFiles != null && explorerOrderedFiles.Count > 0)
+            {
+                files = explorerOrderedFiles;
+            }
+            else
+            {
+                // 2. Fallback heuristic when Explorer window is not queryable:
+                // Check if directory is the Downloads folder (where Windows defaults to Date Modified descending - newest files at top)
+                string userDownloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                bool isDownloadsFolder = string.Equals(dir, userDownloads, StringComparison.OrdinalIgnoreCase) ||
+                                         dir.EndsWith("\\Downloads", StringComparison.OrdinalIgnoreCase);
+
+                var rawFiles = Directory.EnumerateFiles(dir).Where(IsSupported);
+
+                if (isDownloadsFolder)
+                {
+                    // Newest files at the top, matching Windows Explorer's default Downloads view
+                    files = rawFiles
+                        .OrderByDescending(f =>
+                        {
+                            try { return File.GetLastWriteTimeUtc(f); } catch { return DateTime.MinValue; }
+                        })
+                        .ToList();
+                }
+                else
+                {
+                    // Natural alphabetical order for regular folders
+                    files = rawFiles
+                        .OrderBy(f => Path.GetFileName(f), NaturalStringComparer.Instance)
+                        .ToList();
+                }
+            }
+
+            // Ensure current file is present in the list
             if (!files.Contains(currentPath, StringComparer.OrdinalIgnoreCase))
             {
-                files.Add(currentPath);
-                files.Sort((a, b) => NaturalStringComparer.Instance.Compare(Path.GetFileName(a), Path.GetFileName(b)));
+                files.Insert(0, currentPath);
             }
 
             _folderFiles = files;
             _currentFileIndex = _folderFiles.FindIndex(f => string.Equals(f, currentPath, StringComparison.OrdinalIgnoreCase));
+            if (_currentFileIndex < 0) _currentFileIndex = 0;
         }
         catch (Exception ex)
         {
@@ -644,6 +692,7 @@ public class QuickPeekViewModel : ViewModelBase
                         PdfPages.Add(bmp);
                         OnPropertyChanged(nameof(CanGoNextPage));
                         OnPropertyChanged(nameof(CurrentPageDisplay));
+                        OnPropertyChanged(nameof(SelectedPdfPage));
                     });
                 }
             }, token);

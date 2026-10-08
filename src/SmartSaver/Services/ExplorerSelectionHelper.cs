@@ -325,6 +325,97 @@ public static class ExplorerSelectionHelper
         }
     }
 
+    /// <summary>
+    /// Queries the open Windows Explorer window displaying folderPath to retrieve its files in the exact visual order shown to the user (e.g. Date Modified, Grouped, Name).
+    /// Returns null if no matching Explorer window is open or if COM access fails.
+    /// </summary>
+    public static List<string>? GetFolderFilesFromExplorer(string folderPath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                return null;
+
+            string normalizedTarget = Path.GetFullPath(folderPath).TrimEnd('\\');
+
+            Type? shellType = Type.GetTypeFromProgID("Shell.Application");
+            if (shellType == null) return null;
+
+            dynamic? shell = Activator.CreateInstance(shellType);
+            if (shell == null) return null;
+
+            dynamic windows = shell.Windows();
+            int count = windows.Count;
+
+            for (int i = 0; i < count; i++)
+            {
+                dynamic? window = windows.Item(i);
+                if (window == null) continue;
+
+                try
+                {
+                    dynamic? doc = window.Document;
+                    if (doc == null) continue;
+
+                    dynamic? folder = doc.Folder;
+                    if (folder == null) continue;
+
+                    string? winPath = null;
+                    try { winPath = folder.Self?.Path; } catch { }
+
+                    if (string.IsNullOrWhiteSpace(winPath))
+                    {
+                        try
+                        {
+                            string? locUrl = window.LocationURL;
+                            if (!string.IsNullOrWhiteSpace(locUrl) && Uri.TryCreate(locUrl, UriKind.Absolute, out Uri? uri) && uri.IsFile)
+                            {
+                                winPath = uri.LocalPath;
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(winPath)) continue;
+
+                    string normalizedWin = Path.GetFullPath(winPath).TrimEnd('\\');
+                    if (string.Equals(normalizedTarget, normalizedWin, StringComparison.OrdinalIgnoreCase))
+                    {
+                        dynamic? items = folder.Items();
+                        if (items != null && items.Count > 0)
+                        {
+                            var list = new List<string>(items.Count);
+                            for (int j = 0; j < items.Count; j++)
+                            {
+                                dynamic? it = items.Item(j);
+                                string? p = it?.Path;
+                                if (!string.IsNullOrEmpty(p) && File.Exists(p))
+                                {
+                                    list.Add(p);
+                                }
+                            }
+                            if (list.Count > 0)
+                            {
+                                Log.Information("ExplorerSelectionHelper: Retrieved {Count} items for '{Folder}' from active Explorer view", list.Count, folderPath);
+                                return list;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "Error reading items from Explorer window {Index}", i);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Could not retrieve folder files from Explorer for {Folder}", folderPath);
+        }
+
+        return null;
+    }
+
     private static string GetWindowClassName(IntPtr hWnd)
     {
         if (hWnd == IntPtr.Zero) return string.Empty;

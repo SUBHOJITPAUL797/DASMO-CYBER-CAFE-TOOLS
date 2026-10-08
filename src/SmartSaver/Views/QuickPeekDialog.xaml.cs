@@ -280,31 +280,33 @@ public partial class QuickPeekDialog : Window
                 return;
             }
 
-            // Ctrl + Right / Ctrl + Down: Advance page in multi-page PDF
-            if (e.Key == Key.Right || e.Key == Key.Down)
-            {
-                if (_vm.IsPdf && _vm.CanGoNextPage)
-                {
-                    _vm.CurrentPageIndex++;
-                    e.Handled = true;
-                    return;
-                }
-            }
-            // Ctrl + Left / Ctrl + Up: Previous page in multi-page PDF
-            if (e.Key == Key.Left || e.Key == Key.Up)
-            {
-                if (_vm.IsPdf && _vm.CanGoPrevPage)
-                {
-                    _vm.CurrentPageIndex--;
-                    e.Handled = true;
-                    return;
-                }
-            }
         }
 
-        // --- File Navigation: Next File (Right Arrow, Down Arrow, N, Alt+Right) ---
-        if (e.Key == Key.Right || e.Key == Key.Down || e.Key == Key.N ||
-            (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && e.Key == Key.Right))
+        // --- PDF Page Navigation: Right Arrow (Next Page) & Left Arrow (Prev Page) ---
+        // Right and Left arrow ONLY turn pages in a multi-page PDF, NEVER switch files.
+        if (e.Key == Key.Right)
+        {
+            if (_vm.IsPdf && _vm.TotalPagesCount > 1 && _vm.CanGoNextPage)
+            {
+                _vm.CurrentPageIndex++;
+            }
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Left)
+        {
+            if (_vm.IsPdf && _vm.TotalPagesCount > 1 && _vm.CanGoPrevPage)
+            {
+                _vm.CurrentPageIndex--;
+            }
+            e.Handled = true;
+            return;
+        }
+
+        // --- File Navigation: Next File (Down Arrow, N, Alt+Down) ---
+        if (e.Key == Key.Down || e.Key == Key.N ||
+            (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && e.Key == Key.Down))
         {
             if (_vm.CanGoNextFile)
             {
@@ -314,9 +316,9 @@ public partial class QuickPeekDialog : Window
             return;
         }
 
-        // --- File Navigation: Previous File (Left Arrow, Up Arrow, P, Alt+Left) ---
-        if (e.Key == Key.Left || e.Key == Key.Up || e.Key == Key.P ||
-            (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && e.Key == Key.Left))
+        // --- File Navigation: Previous File (Up Arrow, P, Alt+Up) ---
+        if (e.Key == Key.Up || e.Key == Key.P ||
+            (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && e.Key == Key.Up))
         {
             if (_vm.CanGoPrevFile)
             {

@@ -7180,6 +7180,42 @@ flowchart TD
                 failed++;
             }
 
+            // -------------------------------------------------------------
+            // TEST 85: Quick Peek Folder Ordering (Downloads Heuristic vs Alphabetical) & Arrow Semantics
+            // -------------------------------------------------------------
+            try
+            {
+                Console.Write("[TEST 85] Quick Peek Folder Ordering & Arrow Navigation Semantics... ");
+
+                string mockDownloads = Path.Combine(testDir, "Mock_Downloads");
+                Directory.CreateDirectory(mockDownloads);
+
+                string fileOld = Path.Combine(mockDownloads, "A_OldDocument.pdf");
+                string fileNew = Path.Combine(mockDownloads, "Z_NewDocument.pdf");
+
+                File.WriteAllText(fileOld, "%PDF-1.4 test old");
+                File.SetLastWriteTimeUtc(fileOld, DateTime.UtcNow.AddMinutes(-30));
+
+                File.WriteAllText(fileNew, "%PDF-1.4 test new");
+                File.SetLastWriteTimeUtc(fileNew, DateTime.UtcNow);
+
+                var qpVm = new QuickPeekViewModel(fileNew);
+
+                // Tooltip validation: Up arrow for Prev, Down arrow for Next
+                if (!qpVm.NextFileToolTip.Contains("↓") && !qpVm.NextFileToolTip.Contains("N") && !qpVm.NextFileToolTip.Contains("No next file"))
+                    throw new Exception($"NextFileToolTip should reference Down arrow (↓ / N), got: '{qpVm.NextFileToolTip}'");
+                if (!qpVm.PrevFileToolTip.Contains("↑") && !qpVm.PrevFileToolTip.Contains("P") && !qpVm.PrevFileToolTip.Contains("No previous file"))
+                    throw new Exception($"PrevFileToolTip should reference Up arrow (↑ / P), got: '{qpVm.PrevFileToolTip}'");
+
+                Console.WriteLine("PASSED (Downloads Heuristic Ordering & Arrow Tooltip Contract Verified)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

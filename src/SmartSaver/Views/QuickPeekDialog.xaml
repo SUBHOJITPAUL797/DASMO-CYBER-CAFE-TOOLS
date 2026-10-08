@@ -154,9 +154,9 @@
                         <!-- PDF Page, Rotation & Zoom Controls Overlay -->
                         <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,15" Background="#EE1E1E2E" CornerRadius="20" Padding="14,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,10,0" ToolTip="Previous Page (Ctrl+← or PageUp)"/>
+                                <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,10,0" ToolTip="Previous Page (← / PageUp)"/>
                                 <TextBlock Text="{Binding CurrentPageDisplay}" VerticalAlignment="Center" FontWeight="SemiBold" Margin="5,0,15,0"/>
-                                <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,15,0" ToolTip="Next Page (Ctrl+→ or PageDown)"/>
+                                <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,15,0" ToolTip="Next Page (→ / PageDown)"/>
 
                                 <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,15,2"/>
 
