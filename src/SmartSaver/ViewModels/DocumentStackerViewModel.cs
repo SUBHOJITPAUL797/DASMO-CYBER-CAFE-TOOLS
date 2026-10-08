@@ -752,7 +752,7 @@ public class DocumentStackerViewModel : ViewModelBase
                 {
                     var options = new EnhancementOptions(SelectedPreset)
                     {
-                        WhitenBackground = AutoWhiten || PitchBlackText,
+                        WhitenBackground = AutoWhiten,
                         DarkenText = PitchBlackText,
                         PreserveColor = true,
                         ProtectFacesAndPhotos = true
@@ -848,7 +848,7 @@ public class DocumentStackerViewModel : ViewModelBase
                 {
                     var options = new EnhancementOptions(SelectedPreset)
                     {
-                        WhitenBackground = AutoWhiten || PitchBlackText,
+                        WhitenBackground = AutoWhiten,
                         DarkenText = PitchBlackText,
                         PreserveColor = true,
                         ProtectFacesAndPhotos = true

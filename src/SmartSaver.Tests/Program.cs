@@ -7339,7 +7339,30 @@ flowchart TD
                 if (stackerVm.IsPresetOriginal)
                     throw new Exception("Enabling AutoWhiten must clear IsPresetOriginal");
 
-                Console.WriteLine("PASSED (Original Bit-Exact, Face Photo Shielded 100%, Floral Colors Preserved, Stacker Preset Synced)");
+                stackerVm.AutoWhiten = false;
+                stackerVm.PitchBlackText = true;
+                if (stackerVm.AutoWhiten)
+                    throw new Exception("PitchBlackText=true must NOT force AutoWhiten=true");
+
+                // 5. Verify ImageCropService.RemoveUnevenShadowsInternal preserves skin tone 100% bit-exact
+                using (var testBitmap = new System.Drawing.Bitmap(100, 100, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                {
+                    using (var g = System.Drawing.Graphics.FromImage(testBitmap))
+                    {
+                        g.Clear(System.Drawing.Color.FromArgb(190, 190, 190));
+                        using (var skinBrush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(195, 140, 105)))
+                        {
+                            g.FillRectangle(skinBrush, 20, 20, 40, 40);
+                        }
+                    }
+
+                    using var shadowCleaned = ImageCropService.RemoveUnevenShadowsInternal(testBitmap);
+                    var cleanedSkin = shadowCleaned.GetPixel(30, 30);
+                    if (cleanedSkin.R != 195 || cleanedSkin.G != 140 || cleanedSkin.B != 105)
+                        throw new Exception($"ImageCropService modified skin pixel: expected (195, 140, 105), got ({cleanedSkin.R}, {cleanedSkin.G}, {cleanedSkin.B})");
+                }
+
+                Console.WriteLine("PASSED (Original Bit-Exact, Face Photo Shielded 100%, Floral Colors Preserved, Stacker Preset Synced, Shadow Removal Skin Untouched)");
                 passed++;
             }
             catch (Exception ex)

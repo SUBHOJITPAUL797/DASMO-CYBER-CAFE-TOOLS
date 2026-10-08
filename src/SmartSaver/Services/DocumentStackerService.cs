@@ -590,7 +590,7 @@ public sealed class DocumentStackerService
 
         var options = new EnhancementOptions(preset)
         {
-            WhitenBackground = autoWhiten || pitchBlackText,
+            WhitenBackground = autoWhiten,
             DarkenText = pitchBlackText,
             PreserveColor = true,
             ProtectFacesAndPhotos = true

@@ -596,15 +596,21 @@ public class ImageCropService
                         int deltaChroma = maxC - minC;
 
                         // Check if pixel is skin tone or chromatic color (e.g. photo, stamp, floral artwork)
-                        bool isSkin = (r > 65 && g > 40 && b > 20 && r > g && (r - g) >= 8);
-                        bool isColor = deltaChroma > 12;
+                        bool isSkin = DocumentEnhancerService.IsSkinTone(r, g, b);
+                        bool isColor = deltaChroma > 10;
 
                         float newR, newG, newB;
-                        if (isSkin || isColor)
+                        if (isSkin)
                         {
-                            // In colored or skin regions, preserve original pixel colors and tone faithfully
-                            // Apply only very gentle illumination leveling if shadowed, preserving color ratio
-                            float gentleScale = Math.Min(scale, 1.15f);
+                            // Human face and ID photo skin tone: 100% untouched raw original pixels
+                            newR = r;
+                            newG = g;
+                            newB = b;
+                        }
+                        else if (isColor)
+                        {
+                            // In colored regions (stamps, floral patterns, seals), apply gentle leveling preserving hue ratio
+                            float gentleScale = Math.Min(scale, 1.10f);
                             newR = r * gentleScale;
                             newG = g * gentleScale;
                             newB = b * gentleScale;
