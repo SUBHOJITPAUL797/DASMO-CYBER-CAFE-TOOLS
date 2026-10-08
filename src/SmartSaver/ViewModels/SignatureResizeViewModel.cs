@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -171,6 +172,35 @@ public class SignatureResizeViewModel : ViewModelBase
     }
 
     // Centimeter Dimensions (defaults to 3.5 x 1.5 cm)
+    private string _widthCmText = "3.5";
+    public string WidthCmText
+    {
+        get => _widthCmText;
+        set
+        {
+            if (SetProperty(ref _widthCmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.5 && parsed <= 50.0)
+                    {
+                        double safeVal = Math.Round(parsed, 2);
+                        if (Math.Abs(_widthCm - safeVal) > 0.0001)
+                        {
+                            _widthCm = safeVal;
+                            OnPropertyChanged(nameof(WidthCm));
+                            OnPropertyChanged(nameof(EffectiveWidthPx));
+                            OnPropertyChanged(nameof(EquivalentPixelsText));
+                            OnPropertyChanged(nameof(CanResize));
+                            TriggerAutoPreview(120);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private double _widthCm = 3.5;
     public double WidthCm
     {
@@ -179,10 +209,41 @@ public class SignatureResizeViewModel : ViewModelBase
         {
             if (SetProperty(ref _widthCm, value))
             {
+                _widthCmText = value.ToString("0.##", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(WidthCmText));
                 OnPropertyChanged(nameof(EffectiveWidthPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
                 TriggerAutoPreview(120);
+            }
+        }
+    }
+
+    private string _heightCmText = "1.5";
+    public string HeightCmText
+    {
+        get => _heightCmText;
+        set
+        {
+            if (SetProperty(ref _heightCmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.5 && parsed <= 50.0)
+                    {
+                        double safeVal = Math.Round(parsed, 2);
+                        if (Math.Abs(_heightCm - safeVal) > 0.0001)
+                        {
+                            _heightCm = safeVal;
+                            OnPropertyChanged(nameof(HeightCm));
+                            OnPropertyChanged(nameof(EffectiveHeightPx));
+                            OnPropertyChanged(nameof(EquivalentPixelsText));
+                            OnPropertyChanged(nameof(CanResize));
+                            TriggerAutoPreview(120);
+                        }
+                    }
+                }
             }
         }
     }
@@ -195,12 +256,22 @@ public class SignatureResizeViewModel : ViewModelBase
         {
             if (SetProperty(ref _heightCm, value))
             {
+                _heightCmText = value.ToString("0.##", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(HeightCmText));
                 OnPropertyChanged(nameof(EffectiveHeightPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
                 TriggerAutoPreview(120);
             }
         }
+    }
+
+    public void NormalizeDimensionTexts()
+    {
+        _widthCmText = _widthCm.ToString("0.##", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(WidthCmText));
+        _heightCmText = _heightCm.ToString("0.##", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(HeightCmText));
     }
 
     public ObservableCollection<int> DpiOptions { get; } = new() { 300, 200, 150 };

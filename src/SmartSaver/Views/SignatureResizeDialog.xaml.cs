@@ -29,6 +29,11 @@ public partial class SignatureResizeDialog : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
+    private void DimensionTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        _viewModel?.NormalizeDimensionTexts();
+    }
+
     private void Window_Drop(object sender, System.Windows.DragEventArgs e)
     {
         if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))

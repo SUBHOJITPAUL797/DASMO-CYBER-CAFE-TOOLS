@@ -132,7 +132,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="26"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Text="{Binding WidthCm, UpdateSourceTrigger=PropertyChanged}" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                        <TextBox Text="{Binding WidthCmText, UpdateSourceTrigger=PropertyChanged}" LostFocus="DimensionTextBox_LostFocus" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                                         <Grid Grid.Column="1" Margin="2,0,0,0">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="*"/>
@@ -151,7 +151,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="26"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Text="{Binding HeightCm, UpdateSourceTrigger=PropertyChanged}" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                        <TextBox Text="{Binding HeightCmText, UpdateSourceTrigger=PropertyChanged}" LostFocus="DimensionTextBox_LostFocus" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                                         <Grid Grid.Column="1" Margin="2,0,0,0">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="*"/>

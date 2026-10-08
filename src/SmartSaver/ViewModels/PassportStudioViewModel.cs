@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -297,6 +298,36 @@ public class PassportStudioViewModel : ViewModelBase
         }
     }
 
+    private string _topMarginMmText = "6";
+    public string TopMarginMmText
+    {
+        get => _topMarginMmText;
+        set
+        {
+            if (SetProperty(ref _topMarginMmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    double maxAllowed = MaxTopMarginMm > 0 ? MaxTopMarginMm : 250.0;
+                    if (parsed >= 0.0 && parsed <= maxAllowed)
+                    {
+                        double safeVal = Math.Round(parsed, 1);
+                        if (Math.Abs(_topMarginMm - safeVal) > 0.001)
+                        {
+                            _topMarginMm = safeVal;
+                            OnPropertyChanged(nameof(TopMarginMm));
+                            OnPropertyChanged(nameof(TopMarginCm));
+                            OnPropertyChanged(nameof(TopMarginText));
+                            UpdateMaxCopies();
+                            TriggerSheetUpdate();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private double _topMarginMm = 6.0;
     public double TopMarginMm
     {
@@ -307,6 +338,8 @@ public class PassportStudioViewModel : ViewModelBase
             double safeVal = double.IsNaN(value) || double.IsInfinity(value) ? 6.0 : Math.Clamp(Math.Round(value, 1), 0.0, maxAllowed);
             if (SetProperty(ref _topMarginMm, safeVal))
             {
+                _topMarginMmText = safeVal.ToString("0.#", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(TopMarginMmText));
                 OnPropertyChanged(nameof(TopMarginCm));
                 OnPropertyChanged(nameof(TopMarginText));
                 UpdateMaxCopies();
@@ -385,6 +418,38 @@ public class PassportStudioViewModel : ViewModelBase
         }
     }
 
+    private string _photoWidthCmText = "3.5";
+    public string PhotoWidthCmText
+    {
+        get => _photoWidthCmText;
+        set
+        {
+            if (SetProperty(ref _photoWidthCmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.5 && parsed <= 30.0)
+                    {
+                        double safeVal = Math.Round(parsed, 2);
+                        if (Math.Abs(_photoWidthCm - safeVal) > 0.0001)
+                        {
+                            _photoWidthCm = safeVal;
+                            OnPropertyChanged(nameof(PhotoWidthCm));
+                            if (_selectedSizePreset != "Custom Size")
+                            {
+                                _selectedSizePreset = "Custom Size";
+                                OnPropertyChanged(nameof(SelectedSizePreset));
+                            }
+                            UpdateMaxCopies();
+                            TriggerSheetUpdate();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private double _photoWidthCm = 3.5;
     public double PhotoWidthCm
     {
@@ -392,7 +457,45 @@ public class PassportStudioViewModel : ViewModelBase
         set
         {
             double safeVal = double.IsNaN(value) || double.IsInfinity(value) ? 3.5 : Math.Clamp(Math.Round(value, 2), 0.5, 30.0);
-            if (SetProperty(ref _photoWidthCm, safeVal)) { UpdateMaxCopies(); TriggerSheetUpdate(); }
+            if (SetProperty(ref _photoWidthCm, safeVal))
+            {
+                _photoWidthCmText = safeVal.ToString("0.##", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(PhotoWidthCmText));
+                UpdateMaxCopies();
+                TriggerSheetUpdate();
+            }
+        }
+    }
+
+    private string _photoHeightCmText = "4.5";
+    public string PhotoHeightCmText
+    {
+        get => _photoHeightCmText;
+        set
+        {
+            if (SetProperty(ref _photoHeightCmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.5 && parsed <= 30.0)
+                    {
+                        double safeVal = Math.Round(parsed, 2);
+                        if (Math.Abs(_photoHeightCm - safeVal) > 0.0001)
+                        {
+                            _photoHeightCm = safeVal;
+                            OnPropertyChanged(nameof(PhotoHeightCm));
+                            if (_selectedSizePreset != "Custom Size")
+                            {
+                                _selectedSizePreset = "Custom Size";
+                                OnPropertyChanged(nameof(SelectedSizePreset));
+                            }
+                            UpdateMaxCopies();
+                            TriggerSheetUpdate();
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -403,7 +506,13 @@ public class PassportStudioViewModel : ViewModelBase
         set
         {
             double safeVal = double.IsNaN(value) || double.IsInfinity(value) ? 4.5 : Math.Clamp(Math.Round(value, 2), 0.5, 30.0);
-            if (SetProperty(ref _photoHeightCm, safeVal)) { UpdateMaxCopies(); TriggerSheetUpdate(); }
+            if (SetProperty(ref _photoHeightCm, safeVal))
+            {
+                _photoHeightCmText = safeVal.ToString("0.##", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(PhotoHeightCmText));
+                UpdateMaxCopies();
+                TriggerSheetUpdate();
+            }
         }
     }
 
@@ -516,14 +625,81 @@ public class PassportStudioViewModel : ViewModelBase
 
     public ObservableCollection<int> SingleDpiOptions { get; } = new() { 200, 300 };
 
+    private string _singleWidthCmText = "3.5";
+    public string SingleWidthCmText
+    {
+        get => _singleWidthCmText;
+        set
+        {
+            if (SetProperty(ref _singleWidthCmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 1.0 && parsed <= 20.0)
+                    {
+                        double safeVal = Math.Round(parsed, 2);
+                        if (Math.Abs(_singleWidthCm - safeVal) > 0.0001)
+                        {
+                            _singleWidthCm = safeVal;
+                            OnPropertyChanged(nameof(SingleWidthCm));
+                            if (_singleExportPresetIndex != 4)
+                            {
+                                _singleExportPresetIndex = 4;
+                                OnPropertyChanged(nameof(SingleExportPresetIndex));
+                            }
+                            TriggerSingleExportPreviewUpdate();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private double _singleWidthCm = 3.5;
     public double SingleWidthCm
     {
         get => _singleWidthCm;
         set
         {
-            if (SetProperty(ref _singleWidthCm, Math.Clamp(value, 1.0, 20.0)))
+            double safeVal = double.IsNaN(value) || double.IsInfinity(value) ? 3.5 : Math.Clamp(Math.Round(value, 2), 1.0, 20.0);
+            if (SetProperty(ref _singleWidthCm, safeVal))
+            {
+                _singleWidthCmText = safeVal.ToString("0.##", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(SingleWidthCmText));
                 TriggerSingleExportPreviewUpdate();
+            }
+        }
+    }
+
+    private string _singleHeightCmText = "4.5";
+    public string SingleHeightCmText
+    {
+        get => _singleHeightCmText;
+        set
+        {
+            if (SetProperty(ref _singleHeightCmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 1.0 && parsed <= 20.0)
+                    {
+                        double safeVal = Math.Round(parsed, 2);
+                        if (Math.Abs(_singleHeightCm - safeVal) > 0.0001)
+                        {
+                            _singleHeightCm = safeVal;
+                            OnPropertyChanged(nameof(SingleHeightCm));
+                            if (_singleExportPresetIndex != 4)
+                            {
+                                _singleExportPresetIndex = 4;
+                                OnPropertyChanged(nameof(SingleExportPresetIndex));
+                            }
+                            TriggerSingleExportPreviewUpdate();
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -533,8 +709,13 @@ public class PassportStudioViewModel : ViewModelBase
         get => _singleHeightCm;
         set
         {
-            if (SetProperty(ref _singleHeightCm, Math.Clamp(value, 1.0, 20.0)))
+            double safeVal = double.IsNaN(value) || double.IsInfinity(value) ? 4.5 : Math.Clamp(Math.Round(value, 2), 1.0, 20.0);
+            if (SetProperty(ref _singleHeightCm, safeVal))
+            {
+                _singleHeightCmText = safeVal.ToString("0.##", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(SingleHeightCmText));
                 TriggerSingleExportPreviewUpdate();
+            }
         }
     }
 
@@ -1077,6 +1258,8 @@ public class PassportStudioViewModel : ViewModelBase
         if (_topMarginMm > MaxTopMarginMm && MaxTopMarginMm > 0)
         {
             _topMarginMm = MaxTopMarginMm;
+            _topMarginMmText = _topMarginMm.ToString("0.#", CultureInfo.InvariantCulture);
+            OnPropertyChanged(nameof(TopMarginMmText));
             OnPropertyChanged(nameof(TopMarginMm));
             OnPropertyChanged(nameof(TopMarginCm));
             OnPropertyChanged(nameof(TopMarginText));
@@ -1084,6 +1267,20 @@ public class PassportStudioViewModel : ViewModelBase
         var cap = _studioService.CalculateCapacity(PaperSize, PhotoWidthCm, PhotoHeightCm, GapMm, MarginMm, IsLandscape, TopMarginMm);
         MaxCopies = cap.total;
         if (CopiesCount > MaxCopies) CopiesCount = Math.Max(1, MaxCopies);
+    }
+
+    public void NormalizeDimensionTexts()
+    {
+        _photoWidthCmText = _photoWidthCm.ToString("0.##", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(PhotoWidthCmText));
+        _photoHeightCmText = _photoHeightCm.ToString("0.##", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(PhotoHeightCmText));
+        _topMarginMmText = _topMarginMm.ToString("0.#", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(TopMarginMmText));
+        _singleWidthCmText = _singleWidthCm.ToString("0.##", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(SingleWidthCmText));
+        _singleHeightCmText = _singleHeightCm.ToString("0.##", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(SingleHeightCmText));
     }
 
     private void TriggerSheetUpdate()

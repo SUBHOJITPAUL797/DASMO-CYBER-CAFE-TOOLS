@@ -7620,6 +7620,101 @@ flowchart TD
                 failed++;
             }
 
+            // ─── TEST 89: Passport Studio & Signature Resize Decimal Dot (.) Typing & Sizing Synchronization ───
+            Console.Write("[TEST 89] Passport Studio & Signature Resize Decimal Dot (.) Typing & Sizing Synchronization... ");
+            try
+            {
+                Exception? staEx89 = null;
+                var staThread89 = new Thread(() =>
+                {
+                    try
+                    {
+                        // 1. PassportStudioViewModel Decimal Dot Typing
+                        var passportVm = new PassportStudioViewModel();
+
+                        if (Math.Abs(passportVm.PhotoWidthCm - 3.5) > 0.001 || passportVm.PhotoWidthCmText != "3.5")
+                            throw new Exception($"Initial PhotoWidthCm mismatch: {passportVm.PhotoWidthCm} / '{passportVm.PhotoWidthCmText}'");
+
+                        // Simulate typing '2'
+                        passportVm.PhotoWidthCmText = "2";
+                        if (Math.Abs(passportVm.PhotoWidthCm - 2.0) > 0.001 || passportVm.PhotoWidthCmText != "2")
+                            throw new Exception($"Typing '2' failed: width={passportVm.PhotoWidthCm}, text='{passportVm.PhotoWidthCmText}'");
+
+                        // Simulate typing '.' -> MUST preserve trailing dot so user can type decimals!
+                        passportVm.PhotoWidthCmText = "2.";
+                        if (passportVm.PhotoWidthCmText != "2.")
+                            throw new Exception($"Typing '.' was erased! Expected '2.', got '{passportVm.PhotoWidthCmText}'");
+                        if (Math.Abs(passportVm.PhotoWidthCm - 2.0) > 0.001)
+                            throw new Exception($"Numeric value broke during dot typing: {passportVm.PhotoWidthCm}");
+
+                        // Simulate typing '5' -> becomes '2.5'
+                        passportVm.PhotoWidthCmText = "2.5";
+                        if (Math.Abs(passportVm.PhotoWidthCm - 2.5) > 0.001 || passportVm.PhotoWidthCmText != "2.5")
+                            throw new Exception($"Typing '2.5' failed: width={passportVm.PhotoWidthCm}, text='{passportVm.PhotoWidthCmText}'");
+                        if (passportVm.SelectedSizePreset != "Custom Size")
+                            throw new Exception($"Preset did not switch to Custom Size on custom width: {passportVm.SelectedSizePreset}");
+
+                        // Test comma keypad entry normalization ('3,8' -> 3.8)
+                        passportVm.PhotoHeightCmText = "3,8";
+                        if (Math.Abs(passportVm.PhotoHeightCm - 3.8) > 0.001)
+                            throw new Exception($"Comma normalization failed: height={passportVm.PhotoHeightCm}");
+
+                        // Test LostFocus normalization cleans dangling dot
+                        passportVm.PhotoWidthCmText = "2.";
+                        passportVm.NormalizeDimensionTexts();
+                        if (passportVm.PhotoWidthCmText != "2")
+                            throw new Exception($"LostFocus normalization failed: expected '2', got '{passportVm.PhotoWidthCmText}'");
+
+                        // Test preset selection synchronizes both numeric and text
+                        passportVm.SelectedSizePreset = "Stamp Size (2.5 × 3.0 cm)";
+                        if (Math.Abs(passportVm.PhotoWidthCm - 2.5) > 0.001 || passportVm.PhotoWidthCmText != "2.5")
+                            throw new Exception($"Preset Stamp Size width sync failed: {passportVm.PhotoWidthCm} / '{passportVm.PhotoWidthCmText}'");
+                        if (Math.Abs(passportVm.PhotoHeightCm - 3.0) > 0.001 || passportVm.PhotoHeightCmText != "3")
+                            throw new Exception($"Preset Stamp Size height sync failed: {passportVm.PhotoHeightCm} / '{passportVm.PhotoHeightCmText}'");
+
+                        // 2. Single Photo Export Decimal Dot Typing
+                        passportVm.SingleWidthCmText = "4.";
+                        if (passportVm.SingleWidthCmText != "4.")
+                            throw new Exception($"SingleWidthCmText dot typing erased! Got '{passportVm.SingleWidthCmText}'");
+                        passportVm.SingleWidthCmText = "4.2";
+                        if (Math.Abs(passportVm.SingleWidthCm - 4.2) > 0.001)
+                            throw new Exception($"SingleWidthCm numeric failed: {passportVm.SingleWidthCm}");
+                        if (passportVm.SingleExportPresetIndex != 4)
+                            throw new Exception($"Single preset index did not switch to custom (4): {passportVm.SingleExportPresetIndex}");
+
+                        // 3. SignatureResizeViewModel Decimal Dot Typing
+                        var sigVm = new SignatureResizeViewModel();
+                        sigVm.WidthCmText = "4.";
+                        if (sigVm.WidthCmText != "4.")
+                            throw new Exception($"Signature WidthCmText dot typing erased! Got '{sigVm.WidthCmText}'");
+                        sigVm.WidthCmText = "4.5";
+                        if (Math.Abs(sigVm.WidthCm - 4.5) > 0.001 || sigVm.WidthCmText != "4.5")
+                            throw new Exception($"Signature WidthCmText 4.5 failed: {sigVm.WidthCm} / '{sigVm.WidthCmText}'");
+
+                        sigVm.HeightCmText = "2.";
+                        if (sigVm.HeightCmText != "2.")
+                            throw new Exception($"Signature HeightCmText dot typing erased! Got '{sigVm.HeightCmText}'");
+                        sigVm.HeightCmText = "2.2";
+                        if (Math.Abs(sigVm.HeightCm - 2.2) > 0.001 || sigVm.HeightCmText != "2.2")
+                            throw new Exception($"Signature HeightCmText 2.2 failed: {sigVm.HeightCm} / '{sigVm.HeightCmText}'");
+                    }
+                    catch (Exception ex) { staEx89 = ex; }
+                });
+                staThread89.SetApartmentState(ApartmentState.STA);
+                staThread89.Start();
+                staThread89.Join(TimeSpan.FromSeconds(15));
+                if (staThread89.IsAlive) { staThread89.Interrupt(); throw new Exception("Test 89 timed out (15s)"); }
+                if (staEx89 != null) throw staEx89;
+
+                Console.WriteLine("PASSED (Decimal Dot Preservation Verified, String Buffering Synchronized, Preset Bidirectional Sync Verified)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

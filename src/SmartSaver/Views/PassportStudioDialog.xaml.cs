@@ -33,6 +33,11 @@ public partial class PassportStudioDialog : Window
         }
     }
 
+    private void DimensionTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.NormalizeDimensionTexts();
+    }
+
     public static void ShowStudio(string initialPath = "", Window? owner = null)
     {
         try
