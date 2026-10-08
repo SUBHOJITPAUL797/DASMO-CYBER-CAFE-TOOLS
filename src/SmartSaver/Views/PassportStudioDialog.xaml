@@ -528,11 +528,11 @@
                                         <!-- Min KB & Max KB -->
                                         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,8">
                                             <TextBlock Text="Min File Size (KB):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                            <TextBox Text="{Binding SingleMinKb, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                            <TextBox Text="{Binding SingleMinKbText, UpdateSourceTrigger=PropertyChanged}" LostFocus="SingleKbTextBox_LostFocus" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
                                         </StackPanel>
                                         <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,8">
                                             <TextBlock Text="Max File Size (KB):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                            <TextBox Text="{Binding SingleMaxKb, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                            <TextBox Text="{Binding SingleMaxKbText, UpdateSourceTrigger=PropertyChanged}" LostFocus="SingleKbTextBox_LostFocus" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
                                         </StackPanel>
 
                                         <!-- Resolution (DPI) -->

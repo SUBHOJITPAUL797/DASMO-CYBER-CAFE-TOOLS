@@ -196,7 +196,7 @@
 
                     <!-- Font Size Steppers -->
                     <Button Content="−" Command="{Binding DecreaseFontSizeCommand}" Style="{StaticResource OutlineButton}" Width="26" Height="32" Margin="0,0,2,0" ToolTip="Decrease font size"/>
-                    <TextBox Text="{Binding FontSizePt, UpdateSourceTrigger=PropertyChanged}" Width="36" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontWeight="Bold" ToolTip="Font size in points (pt)"/>
+                    <TextBox Text="{Binding FontSizePtText, UpdateSourceTrigger=PropertyChanged}" LostFocus="FontSizeTextBox_LostFocus" Width="38" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontWeight="Bold" ToolTip="Font size in points (pt)"/>
                     <Button Content="+" Command="{Binding IncreaseFontSizeCommand}" Style="{StaticResource OutlineButton}" Width="26" Height="32" Margin="2,0,6,0" ToolTip="Increase font size"/>
 
                     <!-- Bold & Italic Toggles -->

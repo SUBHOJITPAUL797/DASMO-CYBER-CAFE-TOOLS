@@ -194,4 +194,9 @@ public partial class PrintTrackerStudioWindow : Window
             }
         }
     }
+
+    private void MeterTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        Vm?.NormalizeMeterTexts();
+    }
 }

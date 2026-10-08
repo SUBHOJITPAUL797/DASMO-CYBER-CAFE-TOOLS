@@ -52,7 +52,7 @@
                     <TextBlock Text="Copies:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="13"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
                         <Button Content="-" Command="{Binding DecreaseCopiesCommand}" Style="{StaticResource OutlineButton}" Width="26" Height="30" Padding="0"/>
-                        <TextBox Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" Width="45" Height="30" TextAlignment="Center" VerticalContentAlignment="Center" Margin="2,0"/>
+                        <TextBox Text="{Binding CopiesText, UpdateSourceTrigger=PropertyChanged}" LostFocus="CopiesTextBox_LostFocus" Width="45" Height="30" TextAlignment="Center" VerticalContentAlignment="Center" Margin="2,0"/>
                         <Button Content="+" Command="{Binding IncreaseCopiesCommand}" Style="{StaticResource OutlineButton}" Width="26" Height="30" Padding="0"/>
                     </StackPanel>
 
@@ -109,7 +109,8 @@
                                     <RadioButton Content="Custom Scale:" 
                                                  IsChecked="{Binding SizingMode, Converter={StaticResource StringEquals}, ConverterParameter=CustomScale}" 
                                                  VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                    <TextBox Text="{Binding CustomScalePercent, UpdateSourceTrigger=PropertyChanged}" 
+                                    <TextBox Text="{Binding CustomScalePercentText, UpdateSourceTrigger=PropertyChanged}" 
+                                             LostFocus="CustomScaleTextBox_LostFocus"
                                              IsEnabled="{Binding IsCustomScaleEnabled}" 
                                              Width="55" Height="26" TextAlignment="Center" VerticalContentAlignment="Center"/>
                                     <TextBlock Text="%" VerticalAlignment="Center" Margin="4,0,0,0"/>

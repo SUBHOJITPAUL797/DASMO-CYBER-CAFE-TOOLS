@@ -7715,6 +7715,123 @@ flowchart TD
                 failed++;
             }
 
+            // ─── TEST 90: Studio Tools Clamping Traps & Decimal Dot Input Verification ───
+            Console.Write("[TEST 90] Studio Tools Clamping Traps & Decimal Dot Input Verification... ");
+            try
+            {
+                Exception? staEx90 = null;
+                var staThread90 = new Thread(() =>
+                {
+                    try
+                    {
+                        // 1. PDF Editor Font Size
+                        var pdfVm = new PdfEditorViewModel();
+                        if (pdfVm.FontSizePtText != "12")
+                            throw new Exception($"Initial FontSizePtText expected '12', got '{pdfVm.FontSizePtText}'");
+
+                        // Simulate typing '1' for '10.5' - MUST NOT clamp to 5.0 immediately
+                        pdfVm.FontSizePtText = "1";
+                        if (pdfVm.FontSizePtText != "1")
+                            throw new Exception($"FontSizePtText '1' was clamped or rewritten: '{pdfVm.FontSizePtText}'");
+
+                        // Simulate typing '.' -> MUST preserve dot
+                        pdfVm.FontSizePtText = "10.";
+                        if (pdfVm.FontSizePtText != "10.")
+                            throw new Exception($"FontSizePtText '10.' erased dot: '{pdfVm.FontSizePtText}'");
+
+                        // Simulate typing '5' -> '10.5'
+                        pdfVm.FontSizePtText = "10.5";
+                        if (Math.Abs(pdfVm.FontSizePt - 10.5) > 0.05)
+                            throw new Exception($"FontSizePt numeric sync failed for 10.5: {pdfVm.FontSizePt}");
+
+                        // Normalization on LostFocus
+                        pdfVm.FontSizePtText = "3.";
+                        pdfVm.NormalizeFontSizeText();
+                        if (Math.Abs(pdfVm.FontSizePt - 5.0) > 0.05 || pdfVm.FontSizePtText != "5")
+                            throw new Exception($"NormalizeFontSizeText minimum clamping failed: {pdfVm.FontSizePt} / '{pdfVm.FontSizePtText}'");
+
+                        // 2. Excel Print Studio Margins & Custom Rows
+                        var excelVm = new ExcelPrintStudioViewModel();
+                        // Typing '1' for '15.5' margin - MUST NOT clamp to 2.0 immediately
+                        excelVm.MarginLeftMmText = "1";
+                        if (excelVm.MarginLeftMmText != "1")
+                            throw new Exception($"MarginLeftMmText '1' was clamped or rewritten: '{excelVm.MarginLeftMmText}'");
+
+                        // Preserve dot
+                        excelVm.MarginLeftMmText = "15.";
+                        if (excelVm.MarginLeftMmText != "15.")
+                            throw new Exception($"MarginLeftMmText '15.' erased dot: '{excelVm.MarginLeftMmText}'");
+
+                        excelVm.MarginLeftMmText = "15.5";
+                        if (Math.Abs(excelVm.MarginLeftMm - 15.5) > 0.05)
+                            throw new Exception($"MarginLeftMm numeric sync failed for 15.5: {excelVm.MarginLeftMm}");
+
+                        // Custom rows: typing '2' for '25' - MUST NOT clamp to 5 immediately
+                        excelVm.CustomRowsPerPageText = "2";
+                        if (excelVm.CustomRowsPerPageText != "2")
+                            throw new Exception($"CustomRowsPerPageText '2' was clamped: '{excelVm.CustomRowsPerPageText}'");
+                        excelVm.CustomRowsPerPageText = "25";
+                        if (excelVm.CustomRowsPerPage != 25)
+                            throw new Exception($"CustomRowsPerPage numeric sync failed for 25: {excelVm.CustomRowsPerPage}");
+
+                        // 3. Native Print Custom Scale & Copies
+                        var nativeVm = new NativePrintViewModel(new List<string>(), "Test Job");
+                        // Typing '8' for '80' - MUST NOT clamp to 20 immediately
+                        nativeVm.CustomScalePercentText = "8";
+                        if (nativeVm.CustomScalePercentText != "8")
+                            throw new Exception($"CustomScalePercentText '8' was clamped: '{nativeVm.CustomScalePercentText}'");
+                        nativeVm.CustomScalePercentText = "80";
+                        if (nativeVm.CustomScalePercent != 80)
+                            throw new Exception($"CustomScalePercent numeric sync failed for 80: {nativeVm.CustomScalePercent}");
+
+                        nativeVm.CopiesText = "12";
+                        if (nativeVm.Copies != 12)
+                            throw new Exception($"Copies numeric sync failed for 12: {nativeVm.Copies}");
+
+                        // 4. Passport Studio Single Photo KB Limits
+                        var passportVm = new PassportStudioViewModel();
+                        passportVm.SingleMinKbText = "1";
+                        if (passportVm.SingleMinKbText != "1")
+                            throw new Exception($"SingleMinKbText '1' was rewritten: '{passportVm.SingleMinKbText}'");
+                        passportVm.SingleMaxKbText = "15";
+                        if (passportVm.SingleMaxKb != 15)
+                            throw new Exception($"SingleMaxKb numeric sync failed for 15: {passportVm.SingleMaxKb}");
+
+                        // 5. Printer Audit & Print Tracker Meters
+                        var auditVm = new PrinterAuditViewModel();
+                        auditVm.OpeningMeterText = "";
+                        auditVm.OpeningMeterText = "15000";
+                        if (auditVm.OpeningMeter != 15000)
+                            throw new Exception($"OpeningMeter numeric sync failed: {auditVm.OpeningMeter}");
+                        auditVm.CurrentHardwareMeterText = "15250";
+                        if (auditVm.CurrentHardwareMeter != 15250)
+                            throw new Exception($"CurrentHardwareMeter numeric sync failed: {auditVm.CurrentHardwareMeter}");
+
+                        var trackerVm = new PrintTrackerViewModel();
+                        trackerVm.OpeningMeterText = "5000";
+                        if (trackerVm.OpeningMeter != 5000)
+                            throw new Exception($"Tracker OpeningMeter numeric sync failed: {trackerVm.OpeningMeter}");
+                        trackerVm.CurrentHardwareMeterText = "5100";
+                        if (trackerVm.CurrentHardwareMeter != 5100)
+                            throw new Exception($"Tracker CurrentHardwareMeter numeric sync failed: {trackerVm.CurrentHardwareMeter}");
+                    }
+                    catch (Exception ex) { staEx90 = ex; }
+                });
+                staThread90.SetApartmentState(ApartmentState.STA);
+                staThread90.Start();
+                staThread90.Join(TimeSpan.FromSeconds(15));
+                if (staThread90.IsAlive) { staThread90.Interrupt(); throw new Exception("Test 90 timed out (15s)"); }
+                if (staEx90 != null) throw staEx90;
+
+                Console.WriteLine("PASSED (All Studio Tools String-Buffering, Dot Preservation & Clamping Trap Protections Verified)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

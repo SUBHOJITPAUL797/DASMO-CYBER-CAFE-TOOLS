@@ -38,6 +38,11 @@ public partial class PassportStudioDialog : Window
         ViewModel?.NormalizeDimensionTexts();
     }
 
+    private void SingleKbTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.NormalizeSingleKbTexts();
+    }
+
     public static void ShowStudio(string initialPath = "", Window? owner = null)
     {
         try

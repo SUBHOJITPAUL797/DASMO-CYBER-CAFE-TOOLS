@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -225,14 +226,71 @@ public class ExcelPrintStudioViewModel : ViewModelBase
         set => SetProperty(ref _marginPreset, value);
     }
 
+    private string _marginLeftMmText = "5";
+    public string MarginLeftMmText
+    {
+        get => _marginLeftMmText;
+        set
+        {
+            if (SetProperty(ref _marginLeftMmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.0 && parsed <= 50.0)
+                    {
+                        double safeVal = Math.Round(parsed, 1);
+                        if (Math.Abs(_marginLeftMm - safeVal) > 0.0001)
+                        {
+                            _marginLeftMm = safeVal;
+                            OnPropertyChanged(nameof(MarginLeftMm));
+                            SchedulePreviewUpdate();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private double _marginLeftMm = 5.0;
     public double MarginLeftMm
     {
         get => _marginLeftMm;
         set
         {
-            if (SetProperty(ref _marginLeftMm, Math.Round(Math.Clamp(value, 2.0, 40.0), 1)))
+            double safeVal = Math.Round(Math.Clamp(value, 0.0, 50.0), 1);
+            if (SetProperty(ref _marginLeftMm, safeVal))
+            {
+                _marginLeftMmText = safeVal.ToString("0.#", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(MarginLeftMmText));
                 SchedulePreviewUpdate();
+            }
+        }
+    }
+
+    private string _marginRightMmText = "5";
+    public string MarginRightMmText
+    {
+        get => _marginRightMmText;
+        set
+        {
+            if (SetProperty(ref _marginRightMmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.0 && parsed <= 50.0)
+                    {
+                        double safeVal = Math.Round(parsed, 1);
+                        if (Math.Abs(_marginRightMm - safeVal) > 0.0001)
+                        {
+                            _marginRightMm = safeVal;
+                            OnPropertyChanged(nameof(MarginRightMm));
+                            SchedulePreviewUpdate();
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -242,8 +300,39 @@ public class ExcelPrintStudioViewModel : ViewModelBase
         get => _marginRightMm;
         set
         {
-            if (SetProperty(ref _marginRightMm, Math.Round(Math.Clamp(value, 2.0, 40.0), 1)))
+            double safeVal = Math.Round(Math.Clamp(value, 0.0, 50.0), 1);
+            if (SetProperty(ref _marginRightMm, safeVal))
+            {
+                _marginRightMmText = safeVal.ToString("0.#", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(MarginRightMmText));
                 SchedulePreviewUpdate();
+            }
+        }
+    }
+
+    private string _marginTopMmText = "5";
+    public string MarginTopMmText
+    {
+        get => _marginTopMmText;
+        set
+        {
+            if (SetProperty(ref _marginTopMmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.0 && parsed <= 50.0)
+                    {
+                        double safeVal = Math.Round(parsed, 1);
+                        if (Math.Abs(_marginTopMm - safeVal) > 0.0001)
+                        {
+                            _marginTopMm = safeVal;
+                            OnPropertyChanged(nameof(MarginTopMm));
+                            SchedulePreviewUpdate();
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -253,8 +342,39 @@ public class ExcelPrintStudioViewModel : ViewModelBase
         get => _marginTopMm;
         set
         {
-            if (SetProperty(ref _marginTopMm, Math.Round(Math.Clamp(value, 2.0, 40.0), 1)))
+            double safeVal = Math.Round(Math.Clamp(value, 0.0, 50.0), 1);
+            if (SetProperty(ref _marginTopMm, safeVal))
+            {
+                _marginTopMmText = safeVal.ToString("0.#", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(MarginTopMmText));
                 SchedulePreviewUpdate();
+            }
+        }
+    }
+
+    private string _marginBottomMmText = "5";
+    public string MarginBottomMmText
+    {
+        get => _marginBottomMmText;
+        set
+        {
+            if (SetProperty(ref _marginBottomMmText, value))
+            {
+                string normalized = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 0.0 && parsed <= 50.0)
+                    {
+                        double safeVal = Math.Round(parsed, 1);
+                        if (Math.Abs(_marginBottomMm - safeVal) > 0.0001)
+                        {
+                            _marginBottomMm = safeVal;
+                            OnPropertyChanged(nameof(MarginBottomMm));
+                            SchedulePreviewUpdate();
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -264,8 +384,13 @@ public class ExcelPrintStudioViewModel : ViewModelBase
         get => _marginBottomMm;
         set
         {
-            if (SetProperty(ref _marginBottomMm, Math.Round(Math.Clamp(value, 2.0, 40.0), 1)))
+            double safeVal = Math.Round(Math.Clamp(value, 0.0, 50.0), 1);
+            if (SetProperty(ref _marginBottomMm, safeVal))
+            {
+                _marginBottomMmText = safeVal.ToString("0.#", CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(MarginBottomMmText));
                 SchedulePreviewUpdate();
+            }
         }
     }
 
@@ -574,15 +699,42 @@ public class ExcelPrintStudioViewModel : ViewModelBase
         set { if (value && RowsPerPagePreset != "Custom") RowsPerPagePreset = "Custom"; }
     }
 
+    private string _customRowsPerPageText = "25";
+    public string CustomRowsPerPageText
+    {
+        get => _customRowsPerPageText;
+        set
+        {
+            if (SetProperty(ref _customRowsPerPageText, value))
+            {
+                if (int.TryParse((value ?? string.Empty).Trim(), out int parsed))
+                {
+                    if (parsed >= 1 && parsed <= 200)
+                    {
+                        if (_customRowsPerPage != parsed)
+                        {
+                            _customRowsPerPage = parsed;
+                            OnPropertyChanged(nameof(CustomRowsPerPage));
+                            if (RowsPerPagePreset == "Custom")
+                                SchedulePreviewUpdate();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private int _customRowsPerPage = 25;
     public int CustomRowsPerPage
     {
         get => _customRowsPerPage;
         set
         {
-            int clamped = Math.Clamp(value, 5, 100);
+            int clamped = Math.Clamp(value, 1, 200);
             if (SetProperty(ref _customRowsPerPage, clamped))
             {
+                _customRowsPerPageText = clamped.ToString();
+                OnPropertyChanged(nameof(CustomRowsPerPageText));
                 if (RowsPerPagePreset == "Custom")
                     SchedulePreviewUpdate();
             }
@@ -594,7 +746,7 @@ public class ExcelPrintStudioViewModel : ViewModelBase
         "20" => 20,
         "25" => 25,
         "30" => 30,
-        "Custom" => Math.Max(5, CustomRowsPerPage),
+        "Custom" => Math.Max(1, CustomRowsPerPage),
         _ => 0
     };
 
@@ -957,6 +1109,20 @@ public class ExcelPrintStudioViewModel : ViewModelBase
         SchedulePreviewUpdate();
     }
 
+    public void NormalizeMarginTexts()
+    {
+        _marginLeftMmText = _marginLeftMm.ToString("0.#", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(MarginLeftMmText));
+        _marginRightMmText = _marginRightMm.ToString("0.#", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(MarginRightMmText));
+        _marginTopMmText = _marginTopMm.ToString("0.#", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(MarginTopMmText));
+        _marginBottomMmText = _marginBottomMm.ToString("0.#", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(MarginBottomMmText));
+        _customRowsPerPageText = _customRowsPerPage.ToString();
+        OnPropertyChanged(nameof(CustomRowsPerPageText));
+    }
+
     private void ApplyMarginPreset(string? preset)
     {
         if (string.IsNullOrEmpty(preset)) return;
@@ -995,6 +1161,7 @@ public class ExcelPrintStudioViewModel : ViewModelBase
                 break;
         }
 
+        NormalizeMarginTexts();
         OnPropertyChanged(nameof(MarginLeftMm));
         OnPropertyChanged(nameof(MarginRightMm));
         OnPropertyChanged(nameof(MarginTopMm));
@@ -1226,7 +1393,9 @@ public class ExcelPrintStudioViewModel : ViewModelBase
             {
                 string jobTitle = string.IsNullOrWhiteSpace(DocumentTitle) ? "Excel A4 Print" : DocumentTitle;
                 string preferredOri = Orientation == ExcelPrintOrientation.Landscape ? "Landscape" : (Orientation == ExcelPrintOrientation.Portrait ? "Portrait" : "Auto");
-                NativePrintDialog.ShowPrintDialog(pageImages, jobTitle, preferredPaperSize: "A4", preferredOrientation: preferredOri);
+                var owner = System.Windows.Application.Current?.Windows.OfType<Views.ExcelPrintStudioDialog>().FirstOrDefault(w => w.IsVisible && w.WindowState != WindowState.Minimized)
+                            ?? System.Windows.Application.Current?.MainWindow;
+                NativePrintDialog.ShowPrintDialog(pageImages, jobTitle, owner: owner, preferredPaperSize: "A4", preferredOrientation: preferredOri);
 
                 long origBytes = 0;
                 try { origBytes = new FileInfo(FilePath).Length; } catch { }
@@ -1371,6 +1540,7 @@ public class ExcelPrintStudioViewModel : ViewModelBase
             OnPropertyChanged(nameof(MarginRightMm));
             OnPropertyChanged(nameof(MarginTopMm));
             OnPropertyChanged(nameof(MarginBottomMm));
+            NormalizeMarginTexts();
 
             _repeatHeaderOnEveryPage = draft.RepeatHeaderOnEveryPage;
             OnPropertyChanged(nameof(RepeatHeaderOnEveryPage));

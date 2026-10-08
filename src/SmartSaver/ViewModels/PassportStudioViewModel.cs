@@ -725,8 +725,35 @@ public class PassportStudioViewModel : ViewModelBase
         get => _singleMinKb;
         set
         {
-            if (SetProperty(ref _singleMinKb, Math.Max(1, value)))
+            int safeVal = Math.Max(0, value);
+            if (SetProperty(ref _singleMinKb, safeVal))
+            {
+                _singleMinKbText = safeVal.ToString();
+                OnPropertyChanged(nameof(SingleMinKbText));
                 TriggerSingleExportPreviewUpdate();
+            }
+        }
+    }
+
+    private string _singleMinKbText = "20";
+    public string SingleMinKbText
+    {
+        get => _singleMinKbText;
+        set
+        {
+            if (SetProperty(ref _singleMinKbText, value))
+            {
+                string clean = (value ?? string.Empty).Trim();
+                if (int.TryParse(clean, out int parsed))
+                {
+                    if (parsed >= 0 && parsed <= 5000)
+                    {
+                        _singleMinKb = parsed;
+                        OnPropertyChanged(nameof(SingleMinKb));
+                        TriggerSingleExportPreviewUpdate();
+                    }
+                }
+            }
         }
     }
 
@@ -736,8 +763,56 @@ public class PassportStudioViewModel : ViewModelBase
         get => _singleMaxKb;
         set
         {
-            if (SetProperty(ref _singleMaxKb, Math.Max(2, value)))
+            int safeVal = Math.Max(1, value);
+            if (SetProperty(ref _singleMaxKb, safeVal))
+            {
+                _singleMaxKbText = safeVal.ToString();
+                OnPropertyChanged(nameof(SingleMaxKbText));
                 TriggerSingleExportPreviewUpdate();
+            }
+        }
+    }
+
+    private string _singleMaxKbText = "50";
+    public string SingleMaxKbText
+    {
+        get => _singleMaxKbText;
+        set
+        {
+            if (SetProperty(ref _singleMaxKbText, value))
+            {
+                string clean = (value ?? string.Empty).Trim();
+                if (int.TryParse(clean, out int parsed))
+                {
+                    if (parsed >= 1 && parsed <= 5000)
+                    {
+                        _singleMaxKb = parsed;
+                        OnPropertyChanged(nameof(SingleMaxKb));
+                        TriggerSingleExportPreviewUpdate();
+                    }
+                }
+            }
+        }
+    }
+
+    public void NormalizeSingleKbTexts()
+    {
+        string cleanMin = (_singleMinKbText ?? string.Empty).Trim();
+        if (int.TryParse(cleanMin, out int parsedMin))
+            SingleMinKb = Math.Max(0, parsedMin);
+        else
+        {
+            _singleMinKbText = SingleMinKb.ToString();
+            OnPropertyChanged(nameof(SingleMinKbText));
+        }
+
+        string cleanMax = (_singleMaxKbText ?? string.Empty).Trim();
+        if (int.TryParse(cleanMax, out int parsedMax))
+            SingleMaxKb = Math.Max(SingleMinKb > 0 ? SingleMinKb : 1, parsedMax);
+        else
+        {
+            _singleMaxKbText = SingleMaxKb.ToString();
+            OnPropertyChanged(nameof(SingleMaxKbText));
         }
     }
 

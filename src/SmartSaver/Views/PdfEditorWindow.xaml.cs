@@ -616,5 +616,10 @@ public partial class PdfEditorWindow : Window
         }
     }
 
+    private void FontSizeTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        Vm?.NormalizeFontSizeText();
+    }
+
     #endregion
 }

@@ -522,7 +522,10 @@ public static class PdfRendererService
                 using (var g = System.Drawing.Graphics.FromImage(flattened))
                 {
                     g.Clear(System.Drawing.Color.White);
-                    g.DrawImage(rendered, 0, 0, rendered.Width, rendered.Height);
+                    g.DrawImage(rendered,
+                        new System.Drawing.Rectangle(0, 0, rendered.Width, rendered.Height),
+                        0, 0, rendered.Width, rendered.Height,
+                        System.Drawing.GraphicsUnit.Pixel);
                 }
 
                 string outPath = Path.Combine(outputDirectory, $"page_{i + 1}.png");

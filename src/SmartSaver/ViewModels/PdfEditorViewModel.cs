@@ -371,11 +371,60 @@ public class PdfEditorViewModel : ViewModelBase
         set
         {
             double safeVal = Math.Clamp(Math.Round(value, 1), 5.0, 72.0);
-            if (SetProperty(ref _fontSizePt, safeVal) && SelectedItem is PdfTextItem ti)
+            if (SetProperty(ref _fontSizePt, safeVal))
             {
-                ti.FontSizePt = safeVal;
-                TriggerItemChanged();
+                _fontSizePtText = safeVal.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+                OnPropertyChanged(nameof(FontSizePtText));
+                if (SelectedItem is PdfTextItem ti)
+                {
+                    ti.FontSizePt = safeVal;
+                    TriggerItemChanged();
+                }
             }
+        }
+    }
+
+    private string _fontSizePtText = "12";
+    public string FontSizePtText
+    {
+        get => _fontSizePtText;
+        set
+        {
+            if (SetProperty(ref _fontSizePtText, value))
+            {
+                string clean = (value ?? string.Empty).Trim().Replace(',', '.');
+                if (double.TryParse(clean, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double parsed))
+                {
+                    if (parsed >= 1.0 && parsed <= 300.0)
+                    {
+                        double rounded = Math.Round(parsed, 1);
+                        if (Math.Abs(_fontSizePt - rounded) > 0.05)
+                        {
+                            _fontSizePt = rounded;
+                            OnPropertyChanged(nameof(FontSizePt));
+                            if (SelectedItem is PdfTextItem ti)
+                            {
+                                ti.FontSizePt = rounded;
+                                TriggerItemChanged();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void NormalizeFontSizeText()
+    {
+        string clean = (_fontSizePtText ?? string.Empty).Trim().Replace(',', '.');
+        if (double.TryParse(clean, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double parsed))
+        {
+            FontSizePt = Math.Clamp(parsed, 5.0, 72.0);
+        }
+        else
+        {
+            _fontSizePtText = FontSizePt.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+            OnPropertyChanged(nameof(FontSizePtText));
         }
     }
 
@@ -1382,6 +1431,7 @@ public class PdfEditorViewModel : ViewModelBase
         {
             _selectedFontFamily = ti.FontFamily;
             _fontSizePt = ti.FontSizePt;
+            _fontSizePtText = ti.FontSizePt.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
             _isBold = ti.IsBold;
             _isItalic = ti.IsItalic;
             _textColorHex = ti.TextColorHex;
@@ -1389,6 +1439,7 @@ public class PdfEditorViewModel : ViewModelBase
 
             OnPropertyChanged(nameof(SelectedFontFamily));
             OnPropertyChanged(nameof(FontSizePt));
+            OnPropertyChanged(nameof(FontSizePtText));
             OnPropertyChanged(nameof(IsBold));
             OnPropertyChanged(nameof(IsItalic));
             OnPropertyChanged(nameof(TextColorHex));

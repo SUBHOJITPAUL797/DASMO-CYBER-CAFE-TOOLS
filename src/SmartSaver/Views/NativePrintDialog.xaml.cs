@@ -42,17 +42,32 @@ public partial class NativePrintDialog : Window
         DataContext = _viewModel;
     }
 
+    private void CopiesTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        _viewModel?.NormalizeCopiesText();
+    }
+
+    private void CustomScaleTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        _viewModel?.NormalizeCustomScaleText();
+    }
+
     public static bool ShowPrintDialog(IReadOnlyList<string> imagePaths, string documentTitle = "DASMO Print Job", Window? owner = null, string? preferredPaperSize = null, string? preferredOrientation = null)
     {
         var dlg = new NativePrintDialog(imagePaths, documentTitle, preferredPaperSize, preferredOrientation);
-        if (owner != null && owner.IsVisible && owner.WindowState != WindowState.Minimized)
+        Window? targetOwner = owner;
+        if (targetOwner == null || !targetOwner.IsVisible || targetOwner.WindowState == WindowState.Minimized)
         {
-            dlg.Owner = owner;
-            dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            targetOwner = WpfApplication.Current?.Windows.OfType<Window>()
+                .FirstOrDefault(w => w.IsActive && w.IsVisible && !(w is NativePrintDialog))
+                ?? WpfApplication.Current?.Windows.OfType<Window>()
+                .LastOrDefault(w => w.IsVisible && w.WindowState != WindowState.Minimized && !(w is NativePrintDialog))
+                ?? WpfApplication.Current?.MainWindow;
         }
-        else if (WpfApplication.Current?.MainWindow != null && WpfApplication.Current.MainWindow.IsVisible && WpfApplication.Current.MainWindow.WindowState != WindowState.Minimized)
+
+        if (targetOwner != null && targetOwner.IsVisible && targetOwner.WindowState != WindowState.Minimized)
         {
-            dlg.Owner = WpfApplication.Current.MainWindow;
+            dlg.Owner = targetOwner;
             dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         }
         else
@@ -65,14 +80,19 @@ public partial class NativePrintDialog : Window
     public static bool ShowPrintDialog(ImageSource singleImage, string documentTitle = "DASMO Print Job", Window? owner = null, string? preferredPaperSize = null, string? preferredOrientation = null)
     {
         var dlg = new NativePrintDialog(singleImage, documentTitle, preferredPaperSize, preferredOrientation);
-        if (owner != null && owner.IsVisible && owner.WindowState != WindowState.Minimized)
+        Window? targetOwner = owner;
+        if (targetOwner == null || !targetOwner.IsVisible || targetOwner.WindowState == WindowState.Minimized)
         {
-            dlg.Owner = owner;
-            dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            targetOwner = WpfApplication.Current?.Windows.OfType<Window>()
+                .FirstOrDefault(w => w.IsActive && w.IsVisible && !(w is NativePrintDialog))
+                ?? WpfApplication.Current?.Windows.OfType<Window>()
+                .LastOrDefault(w => w.IsVisible && w.WindowState != WindowState.Minimized && !(w is NativePrintDialog))
+                ?? WpfApplication.Current?.MainWindow;
         }
-        else if (WpfApplication.Current?.MainWindow != null && WpfApplication.Current.MainWindow.IsVisible && WpfApplication.Current.MainWindow.WindowState != WindowState.Minimized)
+
+        if (targetOwner != null && targetOwner.IsVisible && targetOwner.WindowState != WindowState.Minimized)
         {
-            dlg.Owner = WpfApplication.Current.MainWindow;
+            dlg.Owner = targetOwner;
             dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         }
         else

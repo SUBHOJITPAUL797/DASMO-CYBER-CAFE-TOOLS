@@ -63,7 +63,31 @@ public class PrinterAuditViewModel : ViewModelBase
         {
             if (SetProperty(ref _openingMeter, value))
             {
+                _openingMeterText = value.ToString();
+                OnPropertyChanged(nameof(OpeningMeterText));
                 Recalculate();
+            }
+        }
+    }
+
+    private string _openingMeterText = "0";
+    public string OpeningMeterText
+    {
+        get => _openingMeterText;
+        set
+        {
+            if (SetProperty(ref _openingMeterText, value))
+            {
+                string clean = (value ?? string.Empty).Trim();
+                if (int.TryParse(clean, out int parsed) && parsed >= 0)
+                {
+                    if (_openingMeter != parsed)
+                    {
+                        _openingMeter = parsed;
+                        OnPropertyChanged(nameof(OpeningMeter));
+                        Recalculate();
+                    }
+                }
             }
         }
     }
@@ -76,8 +100,57 @@ public class PrinterAuditViewModel : ViewModelBase
         {
             if (SetProperty(ref _currentHardwareMeter, value))
             {
+                _currentHardwareMeterText = value.ToString();
+                OnPropertyChanged(nameof(CurrentHardwareMeterText));
                 Recalculate();
             }
+        }
+    }
+
+    private string _currentHardwareMeterText = "0";
+    public string CurrentHardwareMeterText
+    {
+        get => _currentHardwareMeterText;
+        set
+        {
+            if (SetProperty(ref _currentHardwareMeterText, value))
+            {
+                string clean = (value ?? string.Empty).Trim();
+                if (int.TryParse(clean, out int parsed) && parsed >= 0)
+                {
+                    if (_currentHardwareMeter != parsed)
+                    {
+                        _currentHardwareMeter = parsed;
+                        OnPropertyChanged(nameof(CurrentHardwareMeter));
+                        Recalculate();
+                    }
+                }
+            }
+        }
+    }
+
+    public void NormalizeMeterTexts()
+    {
+        string cleanOp = (_openingMeterText ?? string.Empty).Trim();
+        if (int.TryParse(cleanOp, out int parsedOp) && parsedOp >= 0)
+        {
+            OpeningMeter = parsedOp;
+        }
+        else
+        {
+            _openingMeterText = OpeningMeter.ToString();
+            OnPropertyChanged(nameof(OpeningMeterText));
+        }
+
+        string cleanCur = (_currentHardwareMeterText ?? string.Empty).Trim();
+        if (int.TryParse(cleanCur, out int parsedCur) && parsedCur >= 0)
+        {
+            CurrentHardwareMeter = parsedCur;
+        }
+        else
+        {
+            _currentHardwareMeterText = CurrentHardwareMeter.ToString();
+            OnPropertyChanged(nameof(CurrentHardwareMeterText));
         }
     }
 
@@ -155,6 +228,8 @@ public class PrinterAuditViewModel : ViewModelBase
         var todayRec = _auditService.GetTodayMeter();
         _openingMeter = todayRec.OpeningMeter;
         _currentHardwareMeter = todayRec.ClosingMeter > todayRec.OpeningMeter ? todayRec.ClosingMeter : todayRec.OpeningMeter;
+        _openingMeterText = _openingMeter.ToString();
+        _currentHardwareMeterText = _currentHardwareMeter.ToString();
 
         RefreshLiveStatusCommand = new RelayCommand(async _ => await RefreshStatusAsync());
         SaveOpeningMeterCommand = new RelayCommand(_ =>

@@ -190,7 +190,8 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" Text="{Binding OpeningMeter, UpdateSourceTrigger=PropertyChanged}" 
+                                            <TextBox Grid.Column="0" Text="{Binding OpeningMeterText, UpdateSourceTrigger=PropertyChanged}" 
+                                                     LostFocus="MeterTextBox_LostFocus"
                                                      FontSize="15" FontWeight="Bold" Padding="8,4" VerticalContentAlignment="Center"/>
                                             <Button Grid.Column="1" Content="💾 Set Morning" Command="{Binding SaveOpeningMeterCommand}" 
                                                     Style="{StaticResource CardBtn}" Margin="6,0,0,0" Padding="10,4" Background="#162920" Foreground="#10B981" BorderBrush="#10B981"/>
@@ -208,7 +209,8 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" Text="{Binding CurrentHardwareMeter, UpdateSourceTrigger=PropertyChanged}" 
+                                            <TextBox Grid.Column="0" Text="{Binding CurrentHardwareMeterText, UpdateSourceTrigger=PropertyChanged}" 
+                                                     LostFocus="MeterTextBox_LostFocus"
                                                      FontSize="15" FontWeight="Bold" Padding="8,4" VerticalContentAlignment="Center"/>
                                             <Button Grid.Column="1" Content="💾 Set Closing" Command="{Binding SaveClosingMeterCommand}" 
                                                     Style="{StaticResource CardBtn}" Margin="6,0,0,0" Padding="10,4" Background="#152636" Foreground="#00BCD4" BorderBrush="#00BCD4"/>

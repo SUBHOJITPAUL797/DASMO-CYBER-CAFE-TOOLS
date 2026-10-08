@@ -23,4 +23,12 @@ public partial class PrinterAuditDialog : Window
     {
         Close();
     }
+
+    private void MeterTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is PrinterAuditViewModel vm)
+        {
+            vm.NormalizeMeterTexts();
+        }
+    }
 }

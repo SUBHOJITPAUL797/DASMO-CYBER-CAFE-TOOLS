@@ -79,6 +79,11 @@ public partial class MainWindow : Window
         this.Hide();
     }
 
+    private void SignatureDimensionTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.SignatureResizeVm?.NormalizeDimensionTexts();
+    }
+
     private void GovtCardTab_DragOver(object sender, System.Windows.DragEventArgs e)
     {
         if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))

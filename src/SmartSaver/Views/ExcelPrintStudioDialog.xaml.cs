@@ -98,6 +98,11 @@ public partial class ExcelPrintStudioDialog : Window
     private void FitWidth_Click(object sender, RoutedEventArgs e) => FitWidth();
     private void FitPage_Click(object sender, RoutedEventArgs e) => FitPage();
 
+    private void MarginTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.NormalizeMarginTexts();
+    }
+
     public void FitWidth()
     {
         if (ViewModel.CurrentPreviewImage == null) return;

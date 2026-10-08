@@ -107,7 +107,46 @@ public class NativePrintViewModel : ViewModelBase
         set
         {
             int val = Math.Max(1, Math.Min(999, value));
-            SetProperty(ref _copies, val);
+            if (SetProperty(ref _copies, val))
+            {
+                _copiesText = val.ToString();
+                OnPropertyChanged(nameof(CopiesText));
+            }
+        }
+    }
+
+    private string _copiesText = "1";
+    public string CopiesText
+    {
+        get => _copiesText;
+        set
+        {
+            if (SetProperty(ref _copiesText, value))
+            {
+                string clean = (value ?? string.Empty).Trim();
+                if (int.TryParse(clean, out int parsed))
+                {
+                    if (parsed >= 1 && parsed <= 999)
+                    {
+                        _copies = parsed;
+                        OnPropertyChanged(nameof(Copies));
+                    }
+                }
+            }
+        }
+    }
+
+    public void NormalizeCopiesText()
+    {
+        string clean = (_copiesText ?? string.Empty).Trim();
+        if (int.TryParse(clean, out int parsed))
+        {
+            Copies = Math.Max(1, Math.Min(999, parsed));
+        }
+        else
+        {
+            _copiesText = Copies.ToString();
+            OnPropertyChanged(nameof(CopiesText));
         }
     }
 
@@ -202,8 +241,46 @@ public class NativePrintViewModel : ViewModelBase
             int val = Math.Max(20, Math.Min(400, value));
             if (SetProperty(ref _customScalePercent, val))
             {
+                _customScalePercentText = val.ToString();
+                OnPropertyChanged(nameof(CustomScalePercentText));
                 UpdatePreview();
             }
+        }
+    }
+
+    private string _customScalePercentText = "100";
+    public string CustomScalePercentText
+    {
+        get => _customScalePercentText;
+        set
+        {
+            if (SetProperty(ref _customScalePercentText, value))
+            {
+                string clean = (value ?? string.Empty).Trim();
+                if (int.TryParse(clean, out int parsed))
+                {
+                    if (parsed >= 1 && parsed <= 500)
+                    {
+                        _customScalePercent = Math.Clamp(parsed, 20, 400);
+                        OnPropertyChanged(nameof(CustomScalePercent));
+                        UpdatePreview();
+                    }
+                }
+            }
+        }
+    }
+
+    public void NormalizeCustomScaleText()
+    {
+        string clean = (_customScalePercentText ?? string.Empty).Trim();
+        if (int.TryParse(clean, out int parsed))
+        {
+            CustomScalePercent = Math.Clamp(parsed, 20, 400);
+        }
+        else
+        {
+            _customScalePercentText = CustomScalePercent.ToString();
+            OnPropertyChanged(nameof(CustomScalePercentText));
         }
     }
 
