@@ -510,8 +510,30 @@ public class PdfEditorService
         {
             family = BengaliTextHelper.PreferredBengaliFont;
         }
-        var fontOptions = new XPdfFontOptions(PdfFontEncoding.Unicode);
-        var font = new XFont(family, size, style, fontOptions);
+        XFont font;
+        try
+        {
+            var fontOptions = new XPdfFontOptions(PdfFontEncoding.Unicode);
+            font = new XFont(family, size, style, fontOptions);
+        }
+        catch
+        {
+            try
+            {
+                font = new XFont(family, size, style);
+            }
+            catch
+            {
+                try
+                {
+                    font = new XFont("Arial", size, style, new XPdfFontOptions(PdfFontEncoding.Unicode));
+                }
+                catch
+                {
+                    font = new XFont("Arial", size, style);
+                }
+            }
+        }
 
         var textColor = ParseColor(item.TextColorHex, XColor.FromArgb(0, 0, 0));
         var textBrush = new XSolidBrush(textColor);

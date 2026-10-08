@@ -519,21 +519,39 @@ public class NativePrintViewModel : ViewModelBase
     private void OnPrinterChanged()
     {
         _activeDevModeBytes = null; // Reset driver DEVMODE when switching printers
-        try
+        if (string.IsNullOrEmpty(SelectedPrinter))
         {
-            if (string.IsNullOrEmpty(SelectedPrinter))
-            {
-                PrinterStatus = "No Printer Selected";
-                return;
-            }
+            PrinterStatus = "No Printer Selected";
+            return;
+        }
 
-            var ps = new PrinterSettings { PrinterName = SelectedPrinter };
-            PrinterStatus = ps.IsValid ? "Ready" : "Offline / Unavailable";
-        }
-        catch
+        string printerName = SelectedPrinter;
+        PrinterStatus = "Checking...";
+        _ = Task.Run(() =>
         {
-            PrinterStatus = "Ready";
-        }
+            try
+            {
+                var ps = new PrinterSettings { PrinterName = printerName };
+                bool valid = ps.IsValid;
+                WpfApplication.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    if (SelectedPrinter == printerName)
+                    {
+                        PrinterStatus = valid ? "Ready" : "Offline / Unavailable";
+                    }
+                });
+            }
+            catch
+            {
+                WpfApplication.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    if (SelectedPrinter == printerName)
+                    {
+                        PrinterStatus = "Ready";
+                    }
+                });
+            }
+        });
     }
 
     private void OpenDriverProperties()

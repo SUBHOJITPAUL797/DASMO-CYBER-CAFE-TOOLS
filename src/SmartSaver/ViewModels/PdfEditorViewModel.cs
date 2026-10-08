@@ -529,7 +529,7 @@ public class PdfEditorViewModel : ViewModelBase
         OpenPdfCommand = new RelayCommand(_ => BrowseAndOpenPdf());
         SavePdfCommand = new RelayCommand(async _ => await SavePdfAsync(false), _ => HasDocument && !IsLoading);
         SaveAsPdfCommand = new RelayCommand(async _ => await SavePdfAsync(true), _ => HasDocument && !IsLoading);
-        PrintPdfCommand = new RelayCommand(_ => PrintCurrentPdf(), _ => HasDocument && !IsLoading);
+        PrintPdfCommand = new RelayCommand(async _ => await PrintCurrentPdfAsync(), _ => HasDocument && !IsLoading);
 
         SelectToolCommand = new RelayCommand(p =>
         {
@@ -1661,54 +1661,117 @@ public class PdfEditorViewModel : ViewModelBase
         }
     }
 
-    private void PrintCurrentPdf()
+    public async Task PrintCurrentPdfAsync()
     {
-        if (!HasDocument) return;
+        if (!HasDocument || IsLoading) return;
+
+        IsLoading = true;
+        StatusMessage = "Preparing document for printing...";
+
+        string? tempPrintDir = null;
+        string? tempPrintFile = null;
 
         try
         {
             // First save temp edited copy
             SaveCurrentEditsToStore(immediateDiskSave: true);
-            string tempPrintFile = Path.Combine(Path.GetTempPath(), $"print_{Guid.NewGuid():N}.pdf");
+
+            tempPrintDir = Path.Combine(Path.GetTempPath(), $"dasmo_print_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempPrintDir);
+            tempPrintFile = Path.Combine(tempPrintDir, "print_job.pdf");
+
             var dict = _allEdits.ToDictionary(k => k.Key, v => (IReadOnlyList<PdfEditItem>)v.Value);
             var enhanceOpts = IsPageEnhancementEnabled ? EnhancementOptions.FromPreset(SelectedEnhancementPreset) : null;
-            bool ok = _service.SaveEditsToPdfAsync(
+
+            // 1. Asynchronously save all edits to the temporary print PDF
+            bool ok = await _service.SaveEditsToPdfAsync(
                 FilePath, 
                 tempPrintFile, 
                 dict, 
                 CurrentPassword,
                 enhanceScannedPages: IsPageEnhancementEnabled,
                 enhancementOptions: enhanceOpts
-            ).GetAwaiter().GetResult();
+            );
 
-            if (ok && File.Exists(tempPrintFile))
+            if (!ok || !File.Exists(tempPrintFile))
             {
-                var owner = System.Windows.Application.Current?.Windows.OfType<Views.PdfEditorWindow>().FirstOrDefault()
+                StatusMessage = "Could not generate print document.";
+                WpfMessageBox.Show("Failed to prepare document for printing. Please verify document permissions and try again.", "Print Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            StatusMessage = "Rendering pages for high-clarity 300 DPI print...";
+
+            // 2. Asynchronously render document pages directly to disk at 300 DPI (non-blocking)
+            var pageImages = await Task.Run(() => 
+                PdfRendererService.RenderPdfPagesToDisk(tempPrintFile, tempPrintDir, 300, CurrentPassword));
+
+            if (pageImages == null || pageImages.Count == 0)
+            {
+                // Fallback: render at least the current page preview
+                var fallbackBmp = await _service.RenderPageAsync(tempPrintFile, CurrentPageIndex, 300, CurrentPassword);
+                if (fallbackBmp == null && CurrentPagePreview != null)
+                {
+                    fallbackBmp = CurrentPagePreview;
+                }
+
+                if (fallbackBmp != null)
+                {
+                    string fallbackPng = Path.Combine(tempPrintDir, $"page_{CurrentPageIndex + 1}.png");
+                    await Task.Run(() =>
+                    {
+                        using var fs = new FileStream(fallbackPng, FileMode.Create, FileAccess.Write, FileShare.None);
+                        var encoder = new PngBitmapEncoder();
+                        encoder.Frames.Add(BitmapFrame.Create(fallbackBmp));
+                        encoder.Save(fs);
+                    });
+                    pageImages = new List<string> { fallbackPng };
+                }
+            }
+
+            if (pageImages != null && pageImages.Count > 0)
+            {
+                var owner = System.Windows.Application.Current?.Windows.OfType<Views.PdfEditorWindow>().FirstOrDefault(w => w.IsVisible && w.WindowState != WindowState.Minimized)
                             ?? System.Windows.Application.Current?.MainWindow;
 
-                // Render the edited page at high print quality (300 DPI)
-                var printBmp = _service.RenderPageAsync(tempPrintFile, CurrentPageIndex, 300).GetAwaiter().GetResult();
-                var bmpToPrint = printBmp ?? CurrentPagePreview;
+                string preferredPaper = (PageNativeWidth > 300 && PageNativeHeight > 450) ? "A4 (210 × 297 mm)" : "Letter";
+                string preferredOri = PageNativeWidth > PageNativeHeight ? "Landscape" : "Portrait";
+                string docTitle = $"{Path.GetFileNameWithoutExtension(FileName)}";
 
-                if (IsPageEnhancementEnabled && bmpToPrint != null && !ok)
-                {
-                    bmpToPrint = _enhancerService.EnhanceBitmapSource(bmpToPrint, enhanceOpts);
-                }
+                StatusMessage = "Ready";
 
-                if (bmpToPrint != null)
-                {
-                    string preferredPaper = (PageNativeWidth > 300 && PageNativeHeight > 450) ? "A4 (210 × 297 mm)" : "Letter";
-                    string preferredOri = PageNativeWidth > PageNativeHeight ? "Landscape" : "Portrait";
-                    Views.NativePrintDialog.ShowPrintDialog(bmpToPrint, $"{Path.GetFileNameWithoutExtension(FileName)} (Page {CurrentPageNumber})", owner, preferredPaper, preferredOri);
-                }
-
-                try { File.Delete(tempPrintFile); } catch { }
+                // 3. Show native print dialog with all pages & full operator controls
+                Views.NativePrintDialog.ShowPrintDialog(pageImages, docTitle, owner, preferredPaper, preferredOri);
+            }
+            else
+            {
+                StatusMessage = "Failed to render pages for printing.";
+                WpfMessageBox.Show("Could not render document pages for printing.", "Print Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to launch native print from PdfEditor");
+            StatusMessage = $"Print error: {ex.Message}";
             WpfMessageBox.Show($"Print error: {ex.Message}", "Print Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+            // Clean up temporary print job directory in background after dialog closes
+            if (!string.IsNullOrEmpty(tempPrintDir) && Directory.Exists(tempPrintDir))
+            {
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        System.Threading.Thread.Sleep(3000);
+                        if (Directory.Exists(tempPrintDir))
+                            Directory.Delete(tempPrintDir, recursive: true);
+                    }
+                    catch { }
+                });
+            }
         }
     }
 

@@ -7531,6 +7531,95 @@ flowchart TD
                 failed++;
             }
 
+            // TEST 88: PDF Editor -> Async Native Print Pipeline, Safe Font Fallback & Non-Blocking UI State
+            Console.Write("[TEST 88] PDF Editor -> Async Native Print Pipeline & Safe Font Fallback... ");
+            try
+            {
+                string printDocPdf = Path.Combine(testDir, "test_print_multi.pdf");
+                using (var doc = new PdfSharpCore.Pdf.PdfDocument())
+                {
+                    var page1 = doc.AddPage();
+                    page1.Width = 595;
+                    page1.Height = 842;
+                    var page2 = doc.AddPage();
+                    page2.Width = 595;
+                    page2.Height = 842;
+                    doc.Save(printDocPdf);
+                }
+
+                var editorService = new PdfEditorService(new DocumentEnhancerService());
+
+                // 1. Verify resilient font fallback in SaveEditsToPdfAsync with non-existent / custom font family
+                var testEdits = new Dictionary<int, IReadOnlyList<PdfEditItem>>
+                {
+                    [0] = new List<PdfEditItem>
+                    {
+                        new PdfTextItem
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            PageIndex = 0,
+                            X = 50, Y = 100, Width = 150, Height = 20,
+                            FontSizePt = 12.0,
+                            FontFamily = "NonExistentUnknownCustomFont_XYZ", // Must fall back cleanly without throwing InvalidOperationException
+                            Text = "Clean Print Test Text",
+                            TextColorHex = "#000000"
+                        }
+                    }
+                };
+
+                string outEditedPdf = Path.Combine(testDir, "test_print_out.pdf");
+                bool saveOk = editorService.SaveEditsToPdfAsync(printDocPdf, outEditedPdf, testEdits).GetAwaiter().GetResult();
+                if (!saveOk || !File.Exists(outEditedPdf))
+                    throw new Exception("SaveEditsToPdfAsync failed with custom font name, font fallback ladder did not engage!");
+
+                // 2. Verify RenderPdfPagesToDisk renders both pages cleanly to disk without UI blocking
+                string printOutDir = Path.Combine(testDir, "print_render_dir");
+                var renderedPaths = PdfRendererService.RenderPdfPagesToDisk(outEditedPdf, printOutDir, 300);
+                if (renderedPaths.Count != 2)
+                    throw new Exception($"Expected 2 rendered page images for print, got {renderedPaths.Count}");
+                foreach (var rPath in renderedPaths)
+                {
+                    if (!File.Exists(rPath) || new FileInfo(rPath).Length < 1000)
+                        throw new Exception($"Rendered print image invalid or missing: {rPath}");
+                }
+
+                // 3. STA test for ViewModel async state transitions
+                Exception? staEx88 = null;
+                var staThread88 = new Thread(() =>
+                {
+                    try
+                    {
+                        var vm = new PdfEditorViewModel();
+                        vm.FilePath = outEditedPdf;
+                        vm.TotalPages = 2;
+                        vm.IsLoading = false;
+
+                        if (!vm.PrintPdfCommand.CanExecute(null))
+                            throw new Exception("PrintPdfCommand cannot execute when document is loaded");
+
+                        // Simulate IsLoading state gate
+                        vm.IsLoading = true;
+                        if (vm.PrintPdfCommand.CanExecute(null))
+                            throw new Exception("PrintPdfCommand should be disabled while IsLoading=true");
+                        vm.IsLoading = false;
+                    }
+                    catch (Exception ex) { staEx88 = ex; }
+                });
+                staThread88.SetApartmentState(ApartmentState.STA);
+                staThread88.Start();
+                staThread88.Join(TimeSpan.FromSeconds(15));
+                if (staThread88.IsAlive) { staThread88.Interrupt(); throw new Exception("Test 88 timed out (15s)"); }
+                if (staEx88 != null) throw staEx88;
+
+                Console.WriteLine("PASSED (Font Fallback Ladder Verified, 300 DPI Multi-Page Print Rendering Verified, Non-Blocking Async State Verified)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");
