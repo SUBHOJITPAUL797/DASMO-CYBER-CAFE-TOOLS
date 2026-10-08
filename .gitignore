@@ -24,3 +24,9 @@ tests_archive/
 DASMO-CYBER-CAPTURE/
 SMS-FORWARDER/
 DASMO-DOC-SCANNER+PHOTO PRINT/
+DASMO CYBER BROWSER/
+
+# Scratch, agent artifacts, and test logs
+scratch/
+test_out.txt
+.agents/
