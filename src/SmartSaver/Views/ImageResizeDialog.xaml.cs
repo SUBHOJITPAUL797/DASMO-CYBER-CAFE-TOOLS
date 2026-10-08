@@ -15,6 +15,11 @@ public partial class ImageResizeDialog : Window
         viewModel.RequestClose = Close;
         
         DataContext = viewModel;
+
+        Loaded += (_, _) =>
+        {
+            Helpers.WindowActivationHelper.BringToForeground(this, keepTopmost: true);
+        };
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

@@ -4,7 +4,8 @@
         xmlns:local="clr-namespace:SmartSaver.Converters"
         Title="DASMO CYBER COMPRESSOR — Resize Image" Height="520" Width="490"
         WindowStartupLocation="CenterScreen"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent">
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True">
     
     <Window.Resources>
         <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>

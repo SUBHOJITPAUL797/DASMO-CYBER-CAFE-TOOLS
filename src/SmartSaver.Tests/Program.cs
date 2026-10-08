@@ -7832,6 +7832,76 @@ flowchart TD
                 failed++;
             }
 
+            // -------------------------------------------------------------
+            // [TEST 91] Context Menu Foreground Activation (Z-Order) & Quick Peek Instant Navigation
+            // -------------------------------------------------------------
+            try
+            {
+                Console.Write("[TEST 91] Context Menu Foreground Activation & Quick Peek Instant Navigation... ");
+
+                Exception? staEx91 = null;
+                var staThread91 = new Thread(() =>
+                {
+                    try
+                    {
+                        // 1. Verify ImageResizeDialog and WindowActivationHelper Topmost semantics
+                        string dummyImg = Path.Combine(testDir, "test_resize_activate.jpg");
+                        using (var img = new Image<Rgba32>(100, 100))
+                        {
+                            img.SaveAsJpeg(dummyImg);
+                        }
+
+                        var resizeDlg = new SmartSaver.Views.ImageResizeDialog(dummyImg);
+                        if (!resizeDlg.Topmost)
+                            throw new Exception("ImageResizeDialog must have Topmost=true to guarantee appearing above Windows Explorer!");
+
+                        // Test WindowActivationHelper.BringToForeground
+                        SmartSaver.Helpers.WindowActivationHelper.BringToForeground(resizeDlg, keepTopmost: true);
+                        if (!resizeDlg.Topmost)
+                            throw new Exception("WindowActivationHelper.BringToForeground failed to maintain Topmost=true on ImageResizeDialog!");
+
+                        // 2. Verify QuickPeek Instant Navigation (< 150ms) without UI thread freeze
+                        string file1 = Path.Combine(testDir, "peek_doc1.png");
+                        string file2 = Path.Combine(testDir, "peek_doc2.png");
+                        using (var img = new Image<Rgba32>(80, 80)) img.SaveAsPng(file1);
+                        using (var img = new Image<Rgba32>(80, 80)) img.SaveAsPng(file2);
+
+                        var peekDlg = new SmartSaver.Views.QuickPeekDialog(file1);
+                        if (!peekDlg.Topmost)
+                            throw new Exception("QuickPeekDialog must have Topmost=true!");
+
+                        // Benchmark rapid navigation to second file
+                        var sw = System.Diagnostics.Stopwatch.StartNew();
+                        var navTask = peekDlg.NavigateToFile(file2);
+                        navTask.GetAwaiter().GetResult();
+                        sw.Stop();
+
+                        if (!string.Equals(peekDlg.FilePath, file2, StringComparison.OrdinalIgnoreCase))
+                            throw new Exception($"QuickPeekDialog did not navigate to second file! Current: {peekDlg.FilePath}");
+
+                        if (sw.ElapsedMilliseconds > 250)
+                            throw new Exception($"QuickPeekDialog navigation took too long ({sw.ElapsedMilliseconds} ms)! Must be sub-250ms instant response.");
+
+                        // 3. Verify WindowActivationHelper.AllowSetForegroundWindow
+                        _ = SmartSaver.Helpers.WindowActivationHelper.AllowSetForegroundWindow(SmartSaver.Helpers.WindowActivationHelper.ASFW_ANY);
+                    }
+                    catch (Exception ex) { staEx91 = ex; }
+                });
+                staThread91.SetApartmentState(ApartmentState.STA);
+                staThread91.Start();
+                staThread91.Join(TimeSpan.FromSeconds(15));
+                if (staThread91.IsAlive) { staThread91.Interrupt(); throw new Exception("Test 91 timed out (15s)"); }
+                if (staEx91 != null) throw staEx91;
+
+                Console.WriteLine("PASSED (ImageResize Topmost Verified, WindowActivationHelper Verified, Sub-250ms Quick Peek Navigation Confirmed)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

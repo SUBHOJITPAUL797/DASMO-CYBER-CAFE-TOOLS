@@ -344,9 +344,7 @@ public partial class ExcelPrintStudioDialog : Window
             {
                 dlg.Owner = owner;
             }
-            dlg.Show();
-            dlg.Activate();
-            dlg.Focus();
+            Helpers.WindowActivationHelper.BringToForeground(dlg, keepTopmost: false);
         }
         catch (Exception ex)
         {

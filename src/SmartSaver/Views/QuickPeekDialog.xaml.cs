@@ -82,14 +82,7 @@ public partial class QuickPeekDialog : Window
 
         Loaded += (_, _) =>
         {
-            try
-            {
-                var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-                SetForegroundWindow(hwnd);
-            }
-            catch { }
-            Activate();
-            Focus();
+            Helpers.WindowActivationHelper.BringToForeground(this, keepTopmost: true);
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 UpdatePdfLayout();
@@ -157,6 +150,7 @@ public partial class QuickPeekDialog : Window
 
     public async Task NavigateToFile(string filePath)
     {
+        Helpers.WindowActivationHelper.BringToForeground(this, keepTopmost: true);
         await _vm.NavigateToFileAsync(filePath);
     }
 

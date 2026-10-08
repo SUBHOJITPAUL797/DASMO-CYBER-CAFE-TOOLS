@@ -72,11 +72,11 @@ public static class SingleInstanceHelper
         {
             using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out, PipeOptions.Asynchronous);
             // Connect with a short timeout since it should be local and fast
-            client.Connect(2000);
+            client.Connect(1500);
 
-            byte[] buffer = Encoding.UTF8.GetBytes(message);
-            client.Write(buffer, 0, buffer.Length);
-            client.Flush();
+            using var writer = new StreamWriter(client, Encoding.UTF8);
+            writer.WriteLine(message);
+            writer.Flush();
         }
         catch (TimeoutException)
         {
@@ -99,16 +99,17 @@ public static class SingleInstanceHelper
             {
                 try
                 {
-                    using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
+                    using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                     await server.WaitForConnectionAsync(token);
 
                     using var reader = new StreamReader(server, Encoding.UTF8, leaveOpen: true);
-                    string? message = await reader.ReadToEndAsync(token);
+                    string? message = await reader.ReadLineAsync(token);
 
                     if (!string.IsNullOrEmpty(message))
                     {
                         Log.Information("IPC Message Received: {Message}", message);
-                        MessageReceived?.Invoke(message);
+                        // Dispatch asynchronously so the named pipe loop immediately listens for subsequent requests
+                        _ = Task.Run(() => MessageReceived?.Invoke(message), token);
                     }
                 }
                 catch (OperationCanceledException)
@@ -120,7 +121,7 @@ public static class SingleInstanceHelper
                 {
                     Log.Error(ex, "Error in IPC Named Pipe Server");
                     // Wait a bit before retrying to prevent hot loop on persistent error
-                    await Task.Delay(1000, token);
+                    await Task.Delay(200, token);
                 }
             }
         }, token);

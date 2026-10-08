@@ -384,8 +384,9 @@ public static class ExplorerSelectionHelper
                         dynamic? items = folder.Items();
                         if (items != null && items.Count > 0)
                         {
-                            var list = new List<string>(items.Count);
-                            for (int j = 0; j < items.Count; j++)
+                            int countToRead = Math.Min(items.Count, 250);
+                            var list = new List<string>(countToRead);
+                            for (int j = 0; j < countToRead; j++)
                             {
                                 dynamic? it = items.Item(j);
                                 string? p = it?.Path;

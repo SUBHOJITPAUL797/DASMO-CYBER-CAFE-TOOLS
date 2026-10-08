@@ -81,10 +81,7 @@ public partial class App : System.Windows.Application
                     _mainWindow.ViewModel.SwitchToTab(tab.Value);
                 }
 
-                _mainWindow.Show();
-                _mainWindow.WindowState = WindowState.Normal;
-                _mainWindow.Activate();
-                _mainWindow.Focus();
+                Helpers.WindowActivationHelper.BringToForeground(_mainWindow, keepTopmost: false);
             }
             catch (Exception ex)
             {
@@ -120,12 +117,12 @@ public partial class App : System.Windows.Application
                 var existingWindow = Windows.OfType<DocumentStackerWindow>().FirstOrDefault();
                 if (existingWindow != null)
                 {
-                    existingWindow.Activate();
+                    Helpers.WindowActivationHelper.BringToForeground(existingWindow, keepTopmost: false);
                     return;
                 }
 
                 var stackerWindow = new DocumentStackerWindow();
-                stackerWindow.Show();
+                Helpers.WindowActivationHelper.BringToForeground(stackerWindow, keepTopmost: false);
             }
             catch (Exception ex)
             {
@@ -143,6 +140,17 @@ public partial class App : System.Windows.Application
                 if (!EnsureCloudLicenseApproved())
                 {
                     Log.Warning("Access blocked by Cloud License Gatekeeper");
+                    return;
+                }
+
+                var existing = Windows.OfType<ExcelPrintStudioDialog>().FirstOrDefault();
+                if (existing != null)
+                {
+                    if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    {
+                        existing.ViewModel.LoadFile(path);
+                    }
+                    Helpers.WindowActivationHelper.BringToForeground(existing, keepTopmost: false);
                     return;
                 }
 
@@ -207,6 +215,10 @@ public partial class App : System.Windows.Application
             // Enforce single instance
             if (!SingleInstanceHelper.TryAcquire())
             {
+                // Crucial for Windows Foreground Lockout:
+                // Explorer launched this secondary process, so grant permission to our background instance to take foreground!
+                Helpers.WindowActivationHelper.AllowSetForegroundWindow(Helpers.WindowActivationHelper.ASFW_ANY);
+
                 // Another instance is running — check if we have resize/compress/peek arguments to forward
                 if (e.Args.Length >= 2 && e.Args[0] == "--resize")
                 {
@@ -1109,8 +1121,15 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        var existing = Windows.OfType<ImageResizeDialog>().FirstOrDefault();
+        if (existing != null)
+        {
+            Helpers.WindowActivationHelper.BringToForeground(existing, keepTopmost: true);
+            return;
+        }
+
         var dialog = new ImageResizeDialog(filePath);
-        dialog.Show();
+        Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
     }
 
     public void ShowCompressDialog(string filePath)
@@ -1123,8 +1142,15 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        var existing = Windows.OfType<Views.FileCompressDialog>().FirstOrDefault();
+        if (existing != null)
+        {
+            Helpers.WindowActivationHelper.BringToForeground(existing, keepTopmost: true);
+            return;
+        }
+
         var dialog = new Views.FileCompressDialog(filePath);
-        dialog.Show();
+        Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
     }
 
     public void ShowBatchCompressDialog(IEnumerable<string> filePaths)
@@ -1133,8 +1159,15 @@ public partial class App : System.Windows.Application
         var files = filePaths.Where(File.Exists).ToList();
         if (files.Count == 0) return;
 
+        var existing = Windows.OfType<BatchCompressDialog>().FirstOrDefault();
+        if (existing != null)
+        {
+            Helpers.WindowActivationHelper.BringToForeground(existing, keepTopmost: true);
+            return;
+        }
+
         var dialog = new BatchCompressDialog(files);
-        dialog.Show();
+        Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
     }
 
     public void ShowQuickPeekDialog(string filePath)
@@ -1156,18 +1189,17 @@ public partial class App : System.Windows.Application
                 }
                 else
                 {
+                    // Snap the existing window to the foreground immediately (0ms lag!)
+                    Helpers.WindowActivationHelper.BringToForeground(existingPeek, keepTopmost: true);
+
                     // Seamlessly navigate to the newly selected file inside the open Quick Peek window!
                     _ = existingPeek.NavigateToFile(filePath);
-                    existingPeek.Activate();
-                    existingPeek.Focus();
                     return;
                 }
             }
 
             var dialog = new QuickPeekDialog(filePath);
-            dialog.Show();
-            dialog.Activate();
-            dialog.Focus();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1181,7 +1213,7 @@ public partial class App : System.Windows.Application
         var existingDialog = Windows.OfType<Views.MergePdfDialog>().FirstOrDefault();
         if (existingDialog != null)
         {
-            existingDialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
             if (filePaths != null && filePaths.Any())
             {
                 if (existingDialog.DataContext is MergePdfViewModel vm)
@@ -1193,8 +1225,7 @@ public partial class App : System.Windows.Application
         }
 
         var dialog = new Views.MergePdfDialog(filePaths);
-        dialog.Show();
-        dialog.Activate();
+        Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
     }
 
     private void ShowSplitPdfDialog(string filePath)
@@ -1211,13 +1242,12 @@ public partial class App : System.Windows.Application
                 {
                     vm.AppendPdfFile(filePath);
                 }
-                existingDialog.Activate();
+                Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
                 return;
             }
 
             var dialog = new Views.SplitPdfDialog(filePath);
-            dialog.Show();
-            dialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1237,13 +1267,12 @@ public partial class App : System.Windows.Application
                 {
                     foreach (var f in initialFiles) vm.AddFile(f);
                 }
-                existingDialog.Activate();
+                Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
                 return;
             }
 
             var dialog = new Views.ImageToPdfDialog(initialFiles);
-            dialog.Show();
-            dialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1261,13 +1290,12 @@ public partial class App : System.Windows.Application
             var existingDialog = Windows.OfType<Views.PdfToImageDialog>().FirstOrDefault();
             if (existingDialog != null)
             {
-                existingDialog.Activate();
+                Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
                 return;
             }
 
             var dialog = new Views.PdfToImageDialog(filePath);
-            dialog.Show();
-            dialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1285,13 +1313,12 @@ public partial class App : System.Windows.Application
             var existingDialog = Windows.OfType<Views.ScanEnhancerDialog>().FirstOrDefault();
             if (existingDialog != null)
             {
-                existingDialog.Activate();
+                Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
                 return;
             }
 
             var dialog = new Views.ScanEnhancerDialog(filePath);
-            dialog.Show();
-            dialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1309,13 +1336,12 @@ public partial class App : System.Windows.Application
             var existingDialog = Windows.OfType<Views.PhotoStampDialog>().FirstOrDefault();
             if (existingDialog != null)
             {
-                existingDialog.Activate();
+                Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
                 return;
             }
 
             var dialog = new Views.PhotoStampDialog(filePath);
-            dialog.Show();
-            dialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1338,13 +1364,12 @@ public partial class App : System.Windows.Application
                         vm.LoadFile(filePath);
                     }
                 }
-                existingDialog.Activate();
+                Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
                 return;
             }
 
             var dialog = new Views.SignatureResizeDialog(filePath);
-            dialog.Show();
-            dialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1360,13 +1385,12 @@ public partial class App : System.Windows.Application
             var existingDialog = Windows.OfType<Views.TodayHistoryDialog>().FirstOrDefault();
             if (existingDialog != null)
             {
-                existingDialog.Activate();
+                Helpers.WindowActivationHelper.BringToForeground(existingDialog, keepTopmost: true);
                 return;
             }
 
             var dialog = new Views.TodayHistoryDialog();
-            dialog.Show();
-            dialog.Activate();
+            Helpers.WindowActivationHelper.BringToForeground(dialog, keepTopmost: true);
         }
         catch (Exception ex)
         {
@@ -1388,19 +1412,12 @@ public partial class App : System.Windows.Application
                     {
                         _ = existing.Vm.LoadDocumentAsync(filePath);
                     }
-                    if (existing.WindowState == WindowState.Minimized)
-                    {
-                        existing.WindowState = WindowState.Normal;
-                    }
-                    existing.Activate();
-                    existing.Focus();
+                    Helpers.WindowActivationHelper.BringToForeground(existing, keepTopmost: false);
                     return;
                 }
 
                 var win = new Views.PdfEditorWindow(filePath ?? string.Empty);
-                win.Show();
-                win.Activate();
-                win.Focus();
+                Helpers.WindowActivationHelper.BringToForeground(win, keepTopmost: false);
             }
             catch (Exception ex)
             {
