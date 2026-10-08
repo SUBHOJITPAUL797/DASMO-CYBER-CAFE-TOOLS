@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -103,9 +104,10 @@ public class PassportStudioService
 
     /// <summary>
     /// Processes a single portrait: background replacement, studio lighting, warmth, sharpening.
+    /// Supports pre-computed AI cutout with transparent alpha for pixel-perfect edge/hair fidelity.
     /// Completely decouples unmanaged GDI+ bitmap memory to prevent stream disposal crashes.
     /// </summary>
-    public Bitmap ProcessPortrait(Bitmap src, PassportSheetConfig config)
+    public Bitmap ProcessPortrait(Bitmap src, PassportSheetConfig config, Bitmap? aiCutout = null)
     {
         // Safe deep copy in guaranteed Format32bppArgb to break any stream locks
         Bitmap working;
@@ -136,9 +138,21 @@ public class PassportStudioService
             if (config.BackgroundType != StudioBackgroundType.Original)
             {
                 Color targetBg = GetBackgroundColor(config.BackgroundType, config.CustomColor);
-                var replaced = ReplacePortraitBackground(working, targetBg, config.BackgroundTolerance);
-                working.Dispose();
-                working = replaced;
+
+                if (aiCutout != null)
+                {
+                    // High-Precision AI Cutout Compositing (0ms instant color swap)
+                    var replaced = CompositeOnBackgroundColor(working, aiCutout, targetBg);
+                    working.Dispose();
+                    working = replaced;
+                }
+                else
+                {
+                    // Upgraded Adaptive Native C# Fallback
+                    var replaced = ReplacePortraitBackground(working, targetBg, config.BackgroundTolerance);
+                    working.Dispose();
+                    working = replaced;
+                }
             }
 
             return working;
@@ -148,6 +162,228 @@ public class PassportStudioService
             Log.Error(ex, "Failed to process portrait");
             return working;
         }
+    }
+
+    /// <summary>
+    /// Composites an enhanced subject bitmap with an AI transparent cutout onto a solid background color.
+    /// Uses 32-bit unsafe pointer math with anti-aliased alpha blending for 100% hair-strand fidelity.
+    /// </summary>
+    public unsafe Bitmap CompositeOnBackgroundColor(Bitmap subjectBmp, Bitmap aiCutout, Color bgColor)
+    {
+        int w = subjectBmp.Width;
+        int h = subjectBmp.Height;
+
+        Bitmap dest = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+        dest.SetResolution(subjectBmp.HorizontalResolution, subjectBmp.VerticalResolution);
+
+        // If aiCutout dimensions don't match, scale it cleanly
+        Bitmap effectiveCutout = aiCutout;
+        bool disposeCutout = false;
+        if (aiCutout.Width != w || aiCutout.Height != h)
+        {
+            effectiveCutout = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+            effectiveCutout.SetResolution(subjectBmp.HorizontalResolution, subjectBmp.VerticalResolution);
+            using (var g = Graphics.FromImage(effectiveCutout))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(aiCutout, 0, 0, w, h);
+            }
+            disposeCutout = true;
+        }
+
+        BitmapData subData = subjectBmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        BitmapData cutData = effectiveCutout.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        BitmapData dstData = dest.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+
+        try
+        {
+            byte* subPtr = (byte*)subData.Scan0;
+            byte* cutPtr = (byte*)cutData.Scan0;
+            byte* dstPtr = (byte*)dstData.Scan0;
+            int sStride = subData.Stride;
+            int cStride = cutData.Stride;
+            int dStride = dstData.Stride;
+
+            byte bgB = bgColor.B;
+            byte bgG = bgColor.G;
+            byte bgR = bgColor.R;
+
+            for (int y = 0; y < h; y++)
+            {
+                byte* sRow = subPtr + y * sStride;
+                byte* cRow = cutPtr + y * cStride;
+                byte* dRow = dstPtr + y * dStride;
+
+                for (int x = 0; x < w; x++)
+                {
+                    int px = x * 4;
+                    byte alpha = cRow[px + 3];
+
+                    if (alpha == 0)
+                    {
+                        // 100% background
+                        dRow[px + 0] = bgB;
+                        dRow[px + 1] = bgG;
+                        dRow[px + 2] = bgR;
+                        dRow[px + 3] = 255;
+                    }
+                    else if (alpha == 255)
+                    {
+                        // 100% subject
+                        dRow[px + 0] = sRow[px + 0];
+                        dRow[px + 1] = sRow[px + 1];
+                        dRow[px + 2] = sRow[px + 2];
+                        dRow[px + 3] = 255;
+                    }
+                    else
+                    {
+                        // Smooth anti-aliased edge feathering
+                        float a = alpha / 255.0f;
+                        float invA = 1.0f - a;
+                        dRow[px + 0] = (byte)Math.Clamp(sRow[px + 0] * a + bgB * invA, 0f, 255f);
+                        dRow[px + 1] = (byte)Math.Clamp(sRow[px + 1] * a + bgG * invA, 0f, 255f);
+                        dRow[px + 2] = (byte)Math.Clamp(sRow[px + 2] * a + bgR * invA, 0f, 255f);
+                        dRow[px + 3] = 255;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            subjectBmp.UnlockBits(subData);
+            effectiveCutout.UnlockBits(cutData);
+            dest.UnlockBits(dstData);
+            if (disposeCutout) effectiveCutout.Dispose();
+        }
+
+        return dest;
+    }
+
+    /// <summary>
+    /// Executes AI portrait segmentation on-device via SmartPortraitSegmenter.py.
+    /// Returns a transparent 32-bit ARGB cutout with isolated human silhouette and preserved hair strands.
+    /// </summary>
+    public async Task<Bitmap?> SegmentPortraitAiAsync(Bitmap src, string? hintFilePath = null)
+    {
+        if (src == null) return null;
+
+        string pythonExe = GovtCardExtractorService.FindPythonExecutable();
+        if (string.IsNullOrEmpty(pythonExe) || !File.Exists(pythonExe))
+        {
+            Log.Information("Python executable not found. AI portrait segmentation will use native fallback.");
+            return null;
+        }
+
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string scriptPath = Path.Combine(baseDir, "Services", "SmartPortraitSegmenter.py");
+        if (!File.Exists(scriptPath))
+        {
+            scriptPath = Path.Combine(baseDir, "SmartPortraitSegmenter.py");
+        }
+        if (!File.Exists(scriptPath))
+        {
+            // Dev environment fallback
+            string devPath = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "Services", "SmartPortraitSegmenter.py"));
+            if (File.Exists(devPath)) scriptPath = devPath;
+        }
+        if (!File.Exists(scriptPath))
+        {
+            Log.Warning("SmartPortraitSegmenter.py script not found at {Path}", scriptPath);
+            return null;
+        }
+
+        string tempInput = string.Empty;
+        string tempOutput = Path.Combine(Path.GetTempPath(), $"dasmo_ai_cutout_{Guid.NewGuid():N}.png");
+        bool createdTempInput = false;
+
+        try
+        {
+            tempInput = Path.Combine(Path.GetTempPath(), $"dasmo_ai_in_{Guid.NewGuid():N}.png");
+            lock (src)
+            {
+                using var clone = new Bitmap(src);
+                clone.Save(tempInput, ImageFormat.Png);
+            }
+            string actualInput = tempInput;
+            createdTempInput = true;
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = pythonExe,
+                Arguments = $"\"{scriptPath}\" --input \"{actualInput}\" --output \"{tempOutput}\" --model u2net_human_seg",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            var tcs = new TaskCompletionSource<bool>();
+            using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            proc.Exited += (s, e) => tcs.TrySetResult(proc.ExitCode == 0);
+
+            if (!proc.Start())
+            {
+                Log.Warning("Failed to start Python AI portrait segmenter process.");
+                return null;
+            }
+
+            var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(25000));
+            if (completedTask != tcs.Task)
+            {
+                try { proc.Kill(true); } catch { }
+                Log.Warning("Python AI portrait segmenter timed out after 25s.");
+                return null;
+            }
+
+            if (proc.ExitCode == 0 && File.Exists(tempOutput) && new FileInfo(tempOutput).Length > 0)
+            {
+                var safeBmp = SmartSaver.Helpers.ImageHelper.LoadOrientedBitmap(tempOutput);
+                Log.Information("AI Portrait Segmentation succeeded: {Width}x{Height}", safeBmp.Width, safeBmp.Height);
+                return safeBmp;
+            }
+            else
+            {
+                string err = await proc.StandardError.ReadToEndAsync();
+                Log.Warning("Python AI portrait segmenter exited with code {Code}: {Err}", proc.ExitCode, err);
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed in SegmentPortraitAiAsync");
+            return null;
+        }
+        finally
+        {
+            try { if (createdTempInput && File.Exists(tempInput)) File.Delete(tempInput); } catch { }
+            try { if (File.Exists(tempOutput)) File.Delete(tempOutput); } catch { }
+        }
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static unsafe bool IsPixelBackground(byte* p, int bgR, int bgG, int bgB, float thresholdHigh)
+    {
+        float dr = p[2] - bgR, dg = p[1] - bgG, db = p[0] - bgB;
+        if ((float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db) < thresholdHigh)
+            return true;
+
+        // Check for cyber cafe plastic chair (blue/cyan or bright green plastic chair)
+        byte b = p[0];
+        byte g = p[1];
+        byte r = p[2];
+        bool isBlueChair = (b > 115) && ((b - r) > 30) && ((b - g) > -25);
+        bool isGreenChair = (g > 115) && ((g - r) > 35) && ((g - b) > 25);
+
+        if (isBlueChair || isGreenChair)
+        {
+            // Human skin protection in YCbCr: Cr in [130..180], Cb in [70..130]
+            int cb = (int)(-0.1687f * r - 0.3313f * g + 0.5f * b + 128);
+            int cr = (int)(0.5f * r - 0.4187f * g - 0.0813f * b + 128);
+            bool isSkin = (cr >= 130 && cr <= 180 && cb >= 70 && cb <= 130);
+            if (!isSkin) return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -272,8 +508,7 @@ public class PassportStudioService
             for (int x = 0; x < w; x++)
             {
                 byte* p = ptr + 0 * stride + x * 4;
-                float dr = p[2] - bgR, dg = p[1] - bgG, db = p[0] - bgB;
-                if ((float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db) < thresholdHigh)
+                if (IsPixelBackground(p, bgR, bgG, bgB, thresholdHigh))
                 {
                     mask[x] = 1;
                     q[qTail++] = x;
@@ -287,8 +522,7 @@ public class PassportStudioService
             for (int x = 0; x < w; x++)
             {
                 byte* p = ptr + (h - 1) * stride + x * 4;
-                float dr = p[2] - bgR, dg = p[1] - bgG, db = p[0] - bgB;
-                if ((float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db) < thresholdHigh)
+                if (IsPixelBackground(p, bgR, bgG, bgB, thresholdHigh))
                 {
                     int idx = botRowOffset + x;
                     if (mask[idx] == 0) { mask[idx] = 1; q[qTail++] = idx; }
@@ -304,8 +538,7 @@ public class PassportStudioService
         {
             // Left
             byte* pL = ptr + y * stride + 0 * 4;
-            float drL = pL[2] - bgR, dgL = pL[1] - bgG, dbL = pL[0] - bgB;
-            if ((float)Math.Sqrt(2 * drL * drL + 4 * dgL * dgL + 3 * dbL * dbL) < thresholdHigh)
+            if (IsPixelBackground(pL, bgR, bgG, bgB, thresholdHigh))
             {
                 int idx = y * w;
                 if (mask[idx] == 0) { mask[idx] = 1; q[qTail++] = idx; }
@@ -313,8 +546,7 @@ public class PassportStudioService
 
             // Right
             byte* pR = ptr + y * stride + (w - 1) * 4;
-            float drR = pR[2] - bgR, dgR = pR[1] - bgG, dbR = pR[0] - bgB;
-            if ((float)Math.Sqrt(2 * drR * drR + 4 * dgR * dgR + 3 * dbR * dbR) < thresholdHigh)
+            if (IsPixelBackground(pR, bgR, bgG, bgB, thresholdHigh))
             {
                 int idx = y * w + (w - 1);
                 if (mask[idx] == 0) { mask[idx] = 1; q[qTail++] = idx; }
@@ -335,8 +567,7 @@ public class PassportStudioService
                 if (mask[nIdx] == 0)
                 {
                     byte* nPtr = ptr + (cy - 1) * stride + cx * 4;
-                    float dr = nPtr[2] - bgR, dg = nPtr[1] - bgG, db = nPtr[0] - bgB;
-                    if ((float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db) < thresholdHigh)
+                    if (IsPixelBackground(nPtr, bgR, bgG, bgB, thresholdHigh))
                     {
                         mask[nIdx] = 1;
                         q[qTail++] = nIdx;
@@ -350,8 +581,7 @@ public class PassportStudioService
                 if (mask[nIdx] == 0)
                 {
                     byte* nPtr = ptr + (cy + 1) * stride + cx * 4;
-                    float dr = nPtr[2] - bgR, dg = nPtr[1] - bgG, db = nPtr[0] - bgB;
-                    if ((float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db) < thresholdHigh)
+                    if (IsPixelBackground(nPtr, bgR, bgG, bgB, thresholdHigh))
                     {
                         mask[nIdx] = 1;
                         q[qTail++] = nIdx;
@@ -365,8 +595,7 @@ public class PassportStudioService
                 if (mask[nIdx] == 0)
                 {
                     byte* nPtr = ptr + cy * stride + (cx - 1) * 4;
-                    float dr = nPtr[2] - bgR, dg = nPtr[1] - bgG, db = nPtr[0] - bgB;
-                    if ((float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db) < thresholdHigh)
+                    if (IsPixelBackground(nPtr, bgR, bgG, bgB, thresholdHigh))
                     {
                         mask[nIdx] = 1;
                         q[qTail++] = nIdx;
@@ -380,8 +609,7 @@ public class PassportStudioService
                 if (mask[nIdx] == 0)
                 {
                     byte* nPtr = ptr + cy * stride + (cx + 1) * 4;
-                    float dr = nPtr[2] - bgR, dg = nPtr[1] - bgG, db = nPtr[0] - bgB;
-                    if ((float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db) < thresholdHigh)
+                    if (IsPixelBackground(nPtr, bgR, bgG, bgB, thresholdHigh))
                     {
                         mask[nIdx] = 1;
                         q[qTail++] = nIdx;
@@ -415,10 +643,11 @@ public class PassportStudioService
                 int m = mask[rowOffset + x];
                 if (m == 1)
                 {
+                    bool isChair = (b > 115 && (b - r) > 30 && (b - g) > -25) || (g > 115 && (g - r) > 35 && (g - b) > 25);
                     float dr = r - bgR, dg = g - bgG, db = b - bgB;
                     float dist = (float)Math.Sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db);
 
-                    if (dist < thresholdLow)
+                    if (isChair || dist < thresholdLow)
                     {
                         dRow[x * 4 + 0] = newBg.B;
                         dRow[x * 4 + 1] = newBg.G;
@@ -428,7 +657,7 @@ public class PassportStudioService
                     else
                     {
                         // Transition edge: smooth anti-aliased alpha blend
-                        float alpha = (dist - thresholdLow) / (thresholdHigh - thresholdLow);
+                        float alpha = Math.Clamp((dist - thresholdLow) / (thresholdHigh - thresholdLow), 0f, 1f);
                         dRow[x * 4 + 0] = (byte)Math.Clamp(b * alpha + newBg.B * (1f - alpha), 0, 255);
                         dRow[x * 4 + 1] = (byte)Math.Clamp(g * alpha + newBg.G * (1f - alpha), 0, 255);
                         dRow[x * 4 + 2] = (byte)Math.Clamp(r * alpha + newBg.R * (1f - alpha), 0, 255);
@@ -804,7 +1033,8 @@ public class PassportStudioService
     public SinglePhotoExportResult ExportSinglePassportPhoto(
         Bitmap src,
         PassportSheetConfig sheetConfig,
-        SinglePhotoExportConfig exportConfig)
+        SinglePhotoExportConfig exportConfig,
+        Bitmap? aiCutout = null)
     {
         if (src == null)
         {
@@ -814,7 +1044,7 @@ public class PassportStudioService
         try
         {
             // 1. Process portrait with user's selected background color, lighting, warmth, auto-enhance
-            using var processedPortrait = ProcessPortrait(src, sheetConfig);
+            using var processedPortrait = ProcessPortrait(src, sheetConfig, aiCutout);
 
             // 2. Calculate pixel dimensions based on cm and DPI
             int targetW = Math.Max(50, (int)Math.Round((exportConfig.WidthCm / 2.54) * exportConfig.Dpi));

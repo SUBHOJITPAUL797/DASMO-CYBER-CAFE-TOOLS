@@ -19,9 +19,6 @@
                 <RowDefinition Height="54"/>
             </Grid.RowDefinitions>
 
-            <!-- Background Texture -->
-            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.30" IsHitTestVisible="False" Grid.RowSpan="4"/>
-
             <!-- Title Bar -->
             <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
@@ -87,13 +84,13 @@
                                     <!-- Time -->
                                     <TextBlock Grid.Column="3" Text="{Binding TimeFormatted}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right"/>
 
-                                    <!-- Quick Resume Button for PDFs -->
+                                    <!-- Quick Resume Button for PDFs & Excel Drafts -->
                                     <Button Grid.Column="4" Content="{Binding ResumeButtonText}" Style="{StaticResource ChipButton}"
-                                            Visibility="{Binding IsPdf, Converter={StaticResource BoolToVis}}"
+                                            Visibility="{Binding CanResume, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding DataContext.ResumeInEditorCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                             CommandParameter="{Binding}"
                                             Background="#2E7D32" Foreground="White" Padding="8,2" Margin="10,0,0,0"
-                                            ToolTip="Resume in PDF Editor Studio (restores any draft edits)"/>
+                                            ToolTip="Resume or continue work (restores filters, ranges, or edits)"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>

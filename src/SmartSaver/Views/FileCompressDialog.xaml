@@ -20,9 +20,6 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Photo Background Layer -->
-            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.35" IsHitTestVisible="False" Grid.RowSpan="3"/>
-
             <!-- Title Bar -->
             <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
@@ -180,15 +177,6 @@
                     </Border>
                 </StackPanel>
             </ScrollViewer>
-
-            <!-- Soft Background Owner Portrait Watermark -->
-            <Grid Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Opacity="0.06" IsHitTestVisible="False" Margin="0,0,15,15">
-                <Image Source="pack://application:,,,/Resources/owner_portrait.png" Width="180" Height="180" Stretch="UniformToFill">
-                    <Image.Clip>
-                        <EllipseGeometry Center="90,90" RadiusX="85" RadiusY="85"/>
-                    </Image.Clip>
-                </Image>
-            </Grid>
 
             <!-- Bottom Buttons & Auto-Detect CheckBox -->
             <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,10,10" 

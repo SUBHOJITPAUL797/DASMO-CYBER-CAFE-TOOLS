@@ -20,9 +20,6 @@
                 <RowDefinition Height="68"/>
             </Grid.RowDefinitions>
 
-            <!-- Background Texture Layer -->
-            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.25" IsHitTestVisible="False" Grid.RowSpan="3"/>
-
             <!-- Custom Title Bar -->
             <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
@@ -173,14 +170,15 @@
                     <GroupBox Header="1. Print Layout &amp; Card Size Sizing" Margin="0,0,0,10">
                         <StackPanel Margin="0,4">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <RadioButton Content="🪪 Pocket ID Card (8.5 × 5.5 cm Wallet Size)" IsChecked="{Binding IsStandardIdCard}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Exact 8.5cm length x 5.5cm width Indian standard ID card for wallet cutting and lamination"/>
-                                <RadioButton Content="📜 Large Half-A4 (Full Half Page — Xerox for Forms &amp; KYC)" IsChecked="{Binding IsHalfA4}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Enlarges card across top or bottom half of A4 for clear readability on official bank &amp; job application forms"/>
-                                <RadioButton Content="📄 Full A4 Entire Page" IsChecked="{Binding IsFullA4Sheet}" ToolTip="Fits a single document or scanned sheet across the entire A4 paper"/>
+                                <RadioButton GroupName="LayoutModeGroup" Content="🪪 Pocket ID Card (8.5 × 5.5 cm Wallet Size)" IsChecked="{Binding IsStandardIdCard}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Exact 8.5cm length x 5.5cm width Indian standard ID card for wallet cutting and lamination"/>
+                                <RadioButton GroupName="LayoutModeGroup" Content="📜 Large Half-A4 (Full Half Page — Xerox for Forms &amp; KYC)" IsChecked="{Binding IsHalfA4}" FontWeight="SemiBold" Margin="0,0,14,0" ToolTip="Enlarges card across top or bottom half of A4 for clear readability on official bank &amp; job application forms"/>
+                                <RadioButton GroupName="LayoutModeGroup" Content="📄 Full A4 Entire Page" IsChecked="{Binding IsFullA4Sheet}" ToolTip="Fits a single document or scanned sheet across the entire A4 paper"/>
                             </StackPanel>
 
                             <WrapPanel Margin="0,2,0,0">
-                                <CheckBox Content="✨ Auto-Whiten Paper &amp; Remove Shadows" 
-                                          IsChecked="{Binding AutoWhiten}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,16,4"/>
+                                <CheckBox Content="✨ 1-Click Auto Clean &amp; Whiten Paper" 
+                                          IsChecked="{Binding AutoWhiten}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,16,4"
+                                          ToolTip="Adaptive shadow removal and paper whitening to pure white #FFFFFF while preserving color stamps &amp; photos"/>
                                 <CheckBox Content="🖤 Pitch Black Text Boost (Faded Docs &amp; Xerox)" 
                                           IsChecked="{Binding PitchBlackText}" FontWeight="Bold" Foreground="#00E5FF" Margin="0,0,16,4"
                                           ToolTip="Transforms faded, gray, low-contrast text into rich deep pitch black while making paper pure white"/>
@@ -188,6 +186,19 @@
                                           IsChecked="{Binding SameSizeBothCards}" Visibility="{Binding IsStandardIdCard, Converter={StaticResource BoolToVis}}"
                                           FontWeight="SemiBold" Margin="0,0,16,4" ToolTip="Locks front and back cards to identical physical dimensions"/>
                             </WrapPanel>
+
+                            <!-- 1-Click Clean & Whiten Presets -->
+                            <Border Background="#161B26" BorderBrush="#2D3748" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,2,0,4">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Clean Preset:" FontWeight="SemiBold" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <RadioButton GroupName="EnhancementPresetGroup" Content="Light (Soft)" IsChecked="{Binding IsPresetLight}" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                 ToolTip="Light: Gentle whitening and contrast, ideal for colored forms, delicate certificates and pencil marks"/>
+                                    <RadioButton GroupName="EnhancementPresetGroup" Content="Balanced (Default)" IsChecked="{Binding IsPresetBalanced}" FontWeight="SemiBold" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                 ToolTip="Balanced: Standard cyber cafe mode — pure white paper (#FFFFFF), crisp dark text, stamps &amp; photos protected"/>
+                                    <RadioButton GroupName="EnhancementPresetGroup" Content="Strong (Xerox)" IsChecked="{Binding IsPresetStrong}" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"
+                                                 ToolTip="Strong: Deep shadow removal and maximum ink contrast for dark mobile phone shadows and faint Xerox copies"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </GroupBox>
 

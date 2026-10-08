@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -80,6 +81,9 @@ public class SignatureResizeViewModel : ViewModelBase
             if (SetProperty(ref _hasInputImage, value))
             {
                 OnPropertyChanged(nameof(CanResize));
+                OnPropertyChanged(nameof(ShowEmptyState));
+                OnPropertyChanged(nameof(ShowLoadingState));
+                OnPropertyChanged(nameof(ShowResultState));
             }
         }
     }
@@ -107,6 +111,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(EffectiveWidthPx));
                 OnPropertyChanged(nameof(EffectiveHeightPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
+                TriggerAutoPreview(50);
             }
         }
     }
@@ -125,6 +130,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(EffectiveWidthPx));
                 OnPropertyChanged(nameof(EffectiveHeightPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
+                TriggerAutoPreview(50);
             }
         }
     }
@@ -143,6 +149,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(EffectiveWidthPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
+                TriggerAutoPreview(120);
             }
         }
     }
@@ -158,6 +165,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(EffectiveHeightPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
+                TriggerAutoPreview(120);
             }
         }
     }
@@ -174,6 +182,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(EffectiveWidthPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
+                TriggerAutoPreview(120);
             }
         }
     }
@@ -189,6 +198,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(EffectiveHeightPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
+                TriggerAutoPreview(120);
             }
         }
     }
@@ -206,6 +216,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(EffectiveWidthPx));
                 OnPropertyChanged(nameof(EffectiveHeightPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
+                TriggerAutoPreview(80);
             }
         }
     }
@@ -244,43 +255,103 @@ public class SignatureResizeViewModel : ViewModelBase
     public int TargetSizeKB
     {
         get => _targetSizeKB;
-        set => SetProperty(ref _targetSizeKB, value);
+        set
+        {
+            if (SetProperty(ref _targetSizeKB, value))
+            {
+                TriggerAutoPreview(150);
+            }
+        }
     }
 
     private int _minSizeKB = 0;
     public int MinSizeKB
     {
         get => _minSizeKB;
-        set => SetProperty(ref _minSizeKB, value);
+        set
+        {
+            if (SetProperty(ref _minSizeKB, value))
+            {
+                TriggerAutoPreview(150);
+            }
+        }
     }
 
     private bool _cleanBackground = true;
     public bool CleanBackground
     {
         get => _cleanBackground;
-        set => SetProperty(ref _cleanBackground, value);
+        set
+        {
+            if (SetProperty(ref _cleanBackground, value))
+            {
+                TriggerAutoPreview(50);
+            }
+        }
     }
 
     private bool _convertBlueToBlack = true;
     public bool ConvertBlueToBlack
     {
         get => _convertBlueToBlack;
-        set => SetProperty(ref _convertBlueToBlack, value);
+        set
+        {
+            if (SetProperty(ref _convertBlueToBlack, value))
+            {
+                TriggerAutoPreview(50);
+            }
+        }
     }
 
     private bool _autoCrop = true;
     public bool AutoCrop
     {
         get => _autoCrop;
-        set => SetProperty(ref _autoCrop, value);
+        set
+        {
+            if (SetProperty(ref _autoCrop, value))
+            {
+                TriggerAutoPreview(50);
+            }
+        }
     }
 
-    private bool _maintainAspectRatio = false;
+    private bool _maintainAspectRatio = true;
     public bool MaintainAspectRatio
     {
         get => _maintainAspectRatio;
-        set => SetProperty(ref _maintainAspectRatio, value);
+        set
+        {
+            if (SetProperty(ref _maintainAspectRatio, value))
+            {
+                TriggerAutoPreview(50);
+            }
+        }
     }
+
+    private bool _transparentBackground = false;
+    public bool TransparentBackground
+    {
+        get => _transparentBackground;
+        set
+        {
+            if (SetProperty(ref _transparentBackground, value))
+            {
+                if (value)
+                {
+                    SelectedOutputFormat = ".png";
+                }
+                else
+                {
+                    SelectedOutputFormat = ".jpg";
+                }
+                OnPropertyChanged(nameof(IsTransparentPngMode));
+                TriggerAutoPreview(50);
+            }
+        }
+    }
+
+    public bool IsTransparentPngMode => TransparentBackground || SelectedOutputFormat == ".png";
 
     public ObservableCollection<string> OutputFormats { get; } = new() { ".jpg", ".png" };
 
@@ -288,7 +359,18 @@ public class SignatureResizeViewModel : ViewModelBase
     public string SelectedOutputFormat
     {
         get => _selectedOutputFormat;
-        set => SetProperty(ref _selectedOutputFormat, value);
+        set
+        {
+            if (SetProperty(ref _selectedOutputFormat, value))
+            {
+                if (value == ".jpg" && TransparentBackground)
+                {
+                    TransparentBackground = false;
+                }
+                OnPropertyChanged(nameof(IsTransparentPngMode));
+                TriggerAutoPreview(50);
+            }
+        }
     }
     #endregion
 
@@ -296,6 +378,9 @@ public class SignatureResizeViewModel : ViewModelBase
     public ObservableCollection<SignaturePreset> Presets { get; } = new()
     {
         new("⚡ Select Exam / Portal Preset...", 140, 60, true, 20, 0),
+        new("💳 PAN Card Signature (2 × 4.5 cm | 200 DPI | <50 KB)", 4.5, 2.0, false, 30, 10, "Official NSDL & UTIITSL e-PAN portal specification"),
+        new("💳 PAN Card Photo (2.5 × 3.5 cm | 200 DPI | <50 KB)", 2.5, 3.5, false, 30, 10, "Official NSDL & UTIITSL 2.5 x 3.5 cm Photo (<50 KB)"),
+        new("✨ Transparent Signature (PNG | No White Box)", 4.5, 2.0, false, 50, 0, "100% transparent background for printing directly on card patterns"),
         new("✍️ SSC / IBPS Signature (140 × 60 px | 10–20 KB)", 140, 60, true, 20, 10, "Standard SSC, IBPS, Bank PO signature"),
         new("✍️ SSC High-Res Signature (280 × 120 px | 10–20 KB)", 280, 120, true, 20, 10, "2x crisp SSC signature"),
         new("✍️ State PSC / Police (3.5 × 1.5 cm | 10–20 KB)", 3.5, 1.5, false, 20, 10, "State Govt portal centimeter format"),
@@ -315,6 +400,60 @@ public class SignatureResizeViewModel : ViewModelBase
             {
                 if (value.Name.StartsWith("⚡")) return;
 
+                if (value.Name.Contains("PAN Card Photo"))
+                {
+                    IsCentimeterMode = true;
+                    WidthCm = 2.5;
+                    HeightCm = 3.5;
+                    SelectedDpi = 200;
+                    TargetSizeKB = 30;
+                    MinSizeKB = 10;
+                    CleanBackground = false;
+                    ConvertBlueToBlack = false;
+                    AutoCrop = false;
+                    MaintainAspectRatio = true;
+                    TransparentBackground = false;
+                    SelectedOutputFormat = ".jpg";
+                    TriggerAutoPreview(0);
+                    return;
+                }
+
+                if (value.Name.Contains("PAN Card"))
+                {
+                    IsCentimeterMode = true;
+                    WidthCm = 4.5;
+                    HeightCm = 2.0;
+                    SelectedDpi = 200;
+                    TargetSizeKB = 30;
+                    MinSizeKB = 10;
+                    CleanBackground = true;
+                    ConvertBlueToBlack = true;
+                    AutoCrop = true;
+                    MaintainAspectRatio = true;
+                    TransparentBackground = false;
+                    SelectedOutputFormat = ".jpg";
+                    TriggerAutoPreview(0);
+                    return;
+                }
+
+                if (value.Name.Contains("Transparent Signature"))
+                {
+                    IsCentimeterMode = true;
+                    WidthCm = 4.5;
+                    HeightCm = 2.0;
+                    SelectedDpi = 200;
+                    TargetSizeKB = 50;
+                    MinSizeKB = 0;
+                    CleanBackground = true;
+                    ConvertBlueToBlack = true;
+                    AutoCrop = true;
+                    MaintainAspectRatio = true;
+                    TransparentBackground = true;
+                    SelectedOutputFormat = ".png";
+                    TriggerAutoPreview(0);
+                    return;
+                }
+
                 if (value.IsPixel)
                 {
                     IsPixelMode = true;
@@ -330,6 +469,7 @@ public class SignatureResizeViewModel : ViewModelBase
 
                 TargetSizeKB = value.TargetSizeKB;
                 MinSizeKB = value.MinSizeKB;
+                TriggerAutoPreview(0);
             }
         }
     }
@@ -362,8 +502,20 @@ public class SignatureResizeViewModel : ViewModelBase
     public bool HasResult
     {
         get => _hasResult;
-        set => SetProperty(ref _hasResult, value);
+        set
+        {
+            if (SetProperty(ref _hasResult, value))
+            {
+                OnPropertyChanged(nameof(ShowEmptyState));
+                OnPropertyChanged(nameof(ShowLoadingState));
+                OnPropertyChanged(nameof(ShowResultState));
+            }
+        }
     }
+
+    public bool ShowEmptyState => !HasInputImage;
+    public bool ShowLoadingState => HasInputImage && !HasResult;
+    public bool ShowResultState => HasResult;
 
     private BitmapSource? _resultImage;
     public BitmapSource? ResultImage
@@ -392,6 +544,8 @@ public class SignatureResizeViewModel : ViewModelBase
     public ICommand PasteClipboardCommand { get; }
     public ICommand ResizeCommand { get; }
     public ICommand SaveAsCommand { get; }
+    public ICommand SavePanPortalJpegCommand { get; }
+    public ICommand SaveTransparentPngCommand { get; }
     public ICommand CopyResultCommand { get; }
     public ICommand PrintCommand { get; }
     public ICommand ResetCommand { get; }
@@ -421,6 +575,8 @@ public class SignatureResizeViewModel : ViewModelBase
         PasteClipboardCommand = new RelayCommand(_ => PasteFromClipboard());
         ResizeCommand = new RelayCommand(async _ => await ExecuteResizeAsync(), _ => CanResize);
         SaveAsCommand = new RelayCommand(_ => SaveAs(), _ => HasResult && _outputBytes != null);
+        SavePanPortalJpegCommand = new RelayCommand(async _ => await SavePanPortalJpegAsync(), _ => HasInputImage);
+        SaveTransparentPngCommand = new RelayCommand(async _ => await SaveTransparentPngAsync(), _ => HasInputImage);
         CopyResultCommand = new RelayCommand(_ => CopyResultToClipboard(), _ => HasResult && ResultImage != null);
         PrintCommand = new RelayCommand(_ => PrintResult(), _ => HasResult && ResultImage != null);
         ResetCommand = new RelayCommand(_ => Reset());
@@ -467,6 +623,8 @@ public class SignatureResizeViewModel : ViewModelBase
             OnPropertyChanged(nameof(OriginalFileSizeFormatted));
             OnPropertyChanged(nameof(OriginalDimensionsText));
             Log.Information("Signature loaded from {Path}, {W}x{H}, {Size} bytes", path, OriginalWidth, OriginalHeight, OriginalFileSizeBytes);
+
+            TriggerAutoPreview(0);
         }
         catch (Exception ex)
         {
@@ -500,6 +658,8 @@ public class SignatureResizeViewModel : ViewModelBase
 
             OnPropertyChanged(nameof(OriginalFileSizeFormatted));
             OnPropertyChanged(nameof(OriginalDimensionsText));
+
+            TriggerAutoPreview(0);
         }
         catch (Exception ex)
         {
@@ -542,13 +702,68 @@ public class SignatureResizeViewModel : ViewModelBase
         }
     }
 
-    public async Task ExecuteResizeAsync()
+    private CancellationTokenSource? _autoPreviewCts;
+
+    /// <summary>
+    /// Debounces and triggers automatic live preview rendering in background.
+    /// </summary>
+    public void TriggerAutoPreview(int delayMs = 120)
+    {
+        if (_inputBytes == null || _inputBytes.Length == 0) return;
+
+        _autoPreviewCts?.Cancel();
+        _autoPreviewCts?.Dispose();
+        _autoPreviewCts = new CancellationTokenSource();
+        var token = _autoPreviewCts.Token;
+
+        Task.Run(async () =>
+        {
+            if (delayMs > 0)
+            {
+                try { await Task.Delay(delayMs, token); } catch { return; }
+            }
+            if (token.IsCancellationRequested) return;
+
+            var app = System.Windows.Application.Current;
+            if (app?.Dispatcher != null && !app.Dispatcher.HasShutdownStarted)
+            {
+                try
+                {
+                    await app.Dispatcher.InvokeAsync(async () =>
+                    {
+                        if (token.IsCancellationRequested) return;
+                        await ExecuteResizeAsync(isManualSave: false);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "Dispatcher invoke cancelled or interrupted in TriggerAutoPreview");
+                }
+            }
+            else
+            {
+                try
+                {
+                    await ExecuteResizeAsync(isManualSave: false);
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "ExecuteResizeAsync cancelled or interrupted in TriggerAutoPreview");
+                }
+            }
+        }, token);
+    }
+
+    public async Task ExecuteResizeAsync(bool isManualSave = true)
     {
         if (_inputBytes == null || _inputBytes.Length == 0) return;
 
         IsProcessing = true;
-        ProgressText = "Resizing & optimizing signature...";
-        ResultSummary = string.Empty;
+        ProgressText = isManualSave ? "Resizing & optimizing signature..." : "Rendering live preview...";
+        if (isManualSave)
+        {
+            ResultSummary = string.Empty;
+        }
 
         try
         {
@@ -568,7 +783,8 @@ public class SignatureResizeViewModel : ViewModelBase
                 maintainAspectRatio: MaintainAspectRatio,
                 outputExtension: SelectedOutputFormat,
                 dpi: SelectedDpi,
-                convertBlueToBlack: ConvertBlueToBlack);
+                convertBlueToBlack: ConvertBlueToBlack,
+                transparentBackground: TransparentBackground);
 
             if (result.Success && result.OutputBytes != null)
             {
@@ -584,22 +800,102 @@ public class SignatureResizeViewModel : ViewModelBase
                     ? $"{result.Width} × {result.Height} px"
                     : $"{WidthCm:F1} × {HeightCm:F1} cm ({result.Width} × {result.Height} px)";
 
-                ResultSummary = $"✅ Ready! {unitInfo} • {result.OutputSizeFormatted} ({pct:F1}% saved)";
+                string bgTag = TransparentBackground ? " • ✨ Transparent (No White Box)" : " • ⚪ Crisp White BG";
 
-                // Auto-save alongside source file if source is on disk
-                if (!string.IsNullOrWhiteSpace(FilePath) && File.Exists(FilePath))
+                if (isManualSave)
                 {
-                    try
+                    ResultSummary = $"✅ Ready! {unitInfo} • {result.OutputSizeFormatted} ({pct:F1}% saved){bgTag}";
+
+                    // Auto-save alongside source file if source is on disk
+                    if (!string.IsNullOrWhiteSpace(FilePath) && File.Exists(FilePath))
                     {
-                        string dir = Path.GetDirectoryName(FilePath)!;
-                        string nameNoExt = Path.GetFileNameWithoutExtension(FilePath);
-                        string autoPath = Path.Combine(dir, $"{nameNoExt}_resized{SelectedOutputFormat}");
-                        File.WriteAllBytes(autoPath, _outputBytes);
-                        LastSavedPath = autoPath;
-                        OutputHistoryService.Instance.Record(autoPath, "Signature Resizer", result.OriginalSizeBytes, result.OutputSizeBytes);
-                        ResultSummary += $"\nSaved: {Path.GetFileName(autoPath)}";
+                        try
+                        {
+                            string dir = Path.GetDirectoryName(FilePath)!;
+                            string nameNoExt = Path.GetFileNameWithoutExtension(FilePath);
+                            string autoPath = Path.Combine(dir, $"{nameNoExt}_resized{SelectedOutputFormat}");
+                            File.WriteAllBytes(autoPath, _outputBytes);
+                            LastSavedPath = autoPath;
+                            OutputHistoryService.Instance.Record(autoPath, "Signature Resizer", result.OriginalSizeBytes, result.OutputSizeBytes);
+                            ResultSummary += $"\nSaved: {Path.GetFileName(autoPath)}";
+                        }
+                        catch { }
                     }
-                    catch { }
+                }
+                else
+                {
+                    ResultSummary = $"⚡ Live Preview: {unitInfo} • {result.OutputSizeFormatted} ({pct:F1}% saved){bgTag}";
+                }
+            }
+            else
+            {
+                if (isManualSave)
+                {
+                    ResultSummary = $"❌ Failed: {result.Message}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in ExecuteResizeAsync");
+            if (isManualSave)
+            {
+                ResultSummary = $"❌ Error: {ex.Message}";
+            }
+        }
+        finally
+        {
+            IsProcessing = false;
+            ProgressText = string.Empty;
+        }
+    }
+
+    public async Task SavePanPortalJpegAsync()
+    {
+        if (_inputBytes == null || _inputBytes.Length == 0) return;
+
+        IsProcessing = true;
+        ProgressText = "Generating NSDL/UTIITSL PAN Card Upload JPEG (<50 KB, 200 DPI)...";
+
+        try
+        {
+            var result = await _resizeService.ResizePanCardSignatureAsync(
+                _inputBytes,
+                transparentBackground: false,
+                targetBytes: 30 * 1024,
+                minBytes: 10 * 1024);
+
+            if (result.Success && result.OutputBytes != null)
+            {
+                _outputBytes = result.OutputBytes;
+                ResultImage = SignatureResizeService.BytesToBitmapSource(_outputBytes);
+                HasResult = true;
+                TransparentBackground = false;
+                SelectedOutputFormat = ".jpg";
+                ResultSummary = $"✅ NSDL/UTI Ready! 2 × 4.5 cm (354 × 157 px @ 200 DPI) • {result.OutputSizeFormatted} (Portal Limit: <50 KB)";
+
+                string defaultName = string.IsNullOrWhiteSpace(FilePath)
+                    ? "PAN_Signature_NSDL_200DPI.jpg"
+                    : $"{Path.GetFileNameWithoutExtension(FilePath)}_PAN_200DPI.jpg";
+
+                string? savePath = RequestSaveFile?.Invoke("JPEG Image (*.jpg)|*.jpg", defaultName);
+                if (string.IsNullOrWhiteSpace(savePath))
+                {
+                    var dlg = new Microsoft.Win32.SaveFileDialog
+                    {
+                        Title = "Save PAN Portal Signature (NSDL / UTIITSL)",
+                        FileName = defaultName,
+                        Filter = "JPEG Image (*.jpg)|*.jpg|All Files (*.*)|*.*"
+                    };
+                    if (dlg.ShowDialog() == true) savePath = dlg.FileName;
+                }
+
+                if (!string.IsNullOrWhiteSpace(savePath))
+                {
+                    File.WriteAllBytes(savePath, result.OutputBytes);
+                    LastSavedPath = savePath;
+                    OutputHistoryService.Instance.Record(savePath, "PAN Signature Resizer", result.OriginalSizeBytes, result.OutputSizeBytes);
+                    WpfMessageBox.Show($"✅ Official PAN Portal Signature saved successfully!\n\nFile: {Path.GetFileName(savePath)}\nSize: {result.OutputSizeFormatted} (Meets <50 KB limit)\nResolution: 200 DPI (2 × 4.5 cm)\nReady to upload to NSDL / UTIITSL without errors!", "PAN Signature Saved", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             else
@@ -609,7 +905,72 @@ public class SignatureResizeViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error in ExecuteResizeAsync");
+            Log.Error(ex, "Error in SavePanPortalJpegAsync");
+            ResultSummary = $"❌ Error: {ex.Message}";
+        }
+        finally
+        {
+            IsProcessing = false;
+            ProgressText = string.Empty;
+        }
+    }
+
+    public async Task SaveTransparentPngAsync()
+    {
+        if (_inputBytes == null || _inputBytes.Length == 0) return;
+
+        IsProcessing = true;
+        ProgressText = "Removing paper background & generating transparent PNG...";
+
+        try
+        {
+            var result = await _resizeService.ResizePanCardSignatureAsync(
+                _inputBytes,
+                transparentBackground: true,
+                targetBytes: 50 * 1024,
+                minBytes: 0);
+
+            if (result.Success && result.OutputBytes != null)
+            {
+                _outputBytes = result.OutputBytes;
+                ResultImage = SignatureResizeService.BytesToBitmapSource(_outputBytes);
+                HasResult = true;
+                TransparentBackground = true;
+                SelectedOutputFormat = ".png";
+                ResultSummary = $"✨ Transparent Signature Ready! Background 100% removed (No white box) • {result.OutputSizeFormatted}";
+
+                string defaultName = string.IsNullOrWhiteSpace(FilePath)
+                    ? "Transparent_Signature_NoBG.png"
+                    : $"{Path.GetFileNameWithoutExtension(FilePath)}_transparent.png";
+
+                string? savePath = RequestSaveFile?.Invoke("PNG Image (*.png)|*.png", defaultName);
+                if (string.IsNullOrWhiteSpace(savePath))
+                {
+                    var dlg = new Microsoft.Win32.SaveFileDialog
+                    {
+                        Title = "Save Transparent Signature (No Background)",
+                        FileName = defaultName,
+                        Filter = "PNG Image (*.png)|*.png|All Files (*.*)|*.*"
+                    };
+                    if (dlg.ShowDialog() == true) savePath = dlg.FileName;
+                }
+
+                if (!string.IsNullOrWhiteSpace(savePath))
+                {
+                    File.WriteAllBytes(savePath, result.OutputBytes);
+                    LastSavedPath = savePath;
+                    OutputHistoryService.Instance.Record(savePath, "Transparent Signature", result.OriginalSizeBytes, result.OutputSizeBytes);
+                    WpfMessageBox.Show($"✨ Transparent signature saved successfully!\n\nFile: {Path.GetFileName(savePath)}\nBackground: 100% Transparent (Zero white box)\nInk: Pitch-black enhanced ink\n\nPerfect for printing directly onto PAN cards, PVC cards, and certificates!", "Transparent Signature Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            else
+            {
+                ResultSummary = $"❌ Failed: {result.Message}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in SaveTransparentPngAsync");
             ResultSummary = $"❌ Error: {ex.Message}";
         }
         finally
@@ -670,8 +1031,21 @@ public class SignatureResizeViewModel : ViewModelBase
 
         try
         {
-            System.Windows.Clipboard.SetImage(ResultImage);
-            WpfMessageBox.Show("✅ Resized signature copied to clipboard!\nYou can paste it directly into portals or WhatsApp.", "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
+            var dataObj = new System.Windows.DataObject();
+            dataObj.SetImage(ResultImage);
+
+            if (_outputBytes != null && (TransparentBackground || SelectedOutputFormat == ".png"))
+            {
+                // Write PNG stream to clipboard so transparency (alpha channel) is preserved across Windows apps
+                var ms = new MemoryStream(_outputBytes);
+                dataObj.SetData("PNG", ms, false);
+            }
+
+            System.Windows.Clipboard.SetDataObject(dataObj, true);
+            string msg = TransparentBackground
+                ? "✨ Transparent signature copied to clipboard (with alpha transparency)!\nYou can paste directly into Photoshop, Word, or card printing templates without any white background."
+                : "✅ Resized signature copied to clipboard!\nYou can paste it directly into portals or WhatsApp.";
+            WpfMessageBox.Show(msg, "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -752,18 +1126,34 @@ public class SignatureResizeViewModel : ViewModelBase
         if (string.IsNullOrEmpty(key)) return;
         switch (key.ToUpperInvariant())
         {
+            case "PAN":
+            case "PANCARD":
+            case "NSDL":
+            case "UTI":
+            case "PANSIGN":
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Signature") || (p.Name.Contains("PAN Card") && !p.Name.Contains("Photo"))) ?? Presets[1];
+                break;
+            case "PANPHOTO":
+            case "PAN_PHOTO":
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Photo")) ?? Presets[2];
+                break;
+            case "TRANSPARENT":
+            case "NOBG":
+            case "PNG":
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Transparent Signature")) ?? Presets[3];
+                break;
             case "SSC":
             case "IBPS":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("SSC / IBPS")) ?? Presets[1];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("SSC / IBPS")) ?? Presets[4];
                 break;
             case "UPSC":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("UPSC Signature")) ?? Presets[4];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("UPSC Signature")) ?? Presets[6];
                 break;
             case "PSC":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("State PSC")) ?? Presets[3];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("State PSC")) ?? Presets[5];
                 break;
             case "THUMB":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Thumb")) ?? Presets[6];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Thumb")) ?? Presets[8];
                 break;
         }
     }
@@ -784,7 +1174,7 @@ public class SignatureResizeViewModel : ViewModelBase
         ResultSummary = string.Empty;
         LastSavedPath = string.Empty;
 
-        // Reset to Pi7 defaults
+        // Reset to default settings (preserving aspect ratio so signatures are never squeezed)
         IsPixelMode = true;
         WidthPx = 140;
         HeightPx = 60;
@@ -794,8 +1184,11 @@ public class SignatureResizeViewModel : ViewModelBase
         MinSizeKB = 0;
         SelectedDpi = 300;
         CleanBackground = true;
+        ConvertBlueToBlack = true;
         AutoCrop = true;
-        MaintainAspectRatio = false;
+        MaintainAspectRatio = true;
+        TransparentBackground = false;
+        SelectedOutputFormat = ".jpg";
         SelectedPreset = Presets[0];
     }
 }

@@ -20,9 +20,6 @@
                 <RowDefinition Height="64"/>
             </Grid.RowDefinitions>
 
-            <!-- Background Texture Layer -->
-            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.06" IsHitTestVisible="False" Grid.RowSpan="3"/>
-
             <!-- Window Title Bar -->
             <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
@@ -236,7 +233,10 @@
                                       IsChecked="{Binding AutoCrop}" FontWeight="SemiBold" Margin="0,0,0,6"
                                       ToolTip="Trims empty paper margins around the signature so it scales to full crisp size"/>
                             <CheckBox Content="Fit inside bounds (Keep original aspect ratio with white border)" 
-                                      IsChecked="{Binding MaintainAspectRatio}" Margin="0,0,0,4"/>
+                                      IsChecked="{Binding MaintainAspectRatio}" Margin="0,0,0,6"/>
+                            <CheckBox Content="🪄 Transparent Background (PNG — No White Box on PAN / PVC Card)" 
+                                      IsChecked="{Binding TransparentBackground}" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,4"
+                                      ToolTip="Removes paper background completely so only handwriting ink is preserved with transparent alpha channel. Perfect for PAN card printing directly over card pattern lines."/>
                         </StackPanel>
                     </GroupBox>
 
@@ -244,6 +244,9 @@
                     <GroupBox Header="3. Quick Indian Exam &amp; Portal Presets" Margin="0,0,0,10">
                         <StackPanel Margin="0,4">
                             <WrapPanel Margin="0,0,0,6">
+                                <Button Content="💳 PAN Signature (2×4.5 cm)" Command="{Binding QuickPresetCommand}" CommandParameter="PAN" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="Official NSDL &amp; UTI 2 × 4.5 cm Signature | 200 DPI | 10–50 KB"/>
+                                <Button Content="💳 PAN Photo (2.5×3.5 cm)" Command="{Binding QuickPresetCommand}" CommandParameter="PANPHOTO" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="Official NSDL &amp; UTI 2.5 × 3.5 cm Photo | 200 DPI | &lt;50 KB"/>
+                                <Button Content="✨ Transparent (No BG)" Command="{Binding QuickPresetCommand}" CommandParameter="Transparent" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="100% Transparent PNG without white box for card printing"/>
                                 <Button Content="⚡ SSC (10-20 KB)" Command="{Binding QuickPresetCommand}" CommandParameter="SSC" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" ToolTip="140 × 60 px | 10–20 KB"/>
                                 <Button Content="⚡ UPSC (20-50 KB)" Command="{Binding QuickPresetCommand}" CommandParameter="UPSC" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" ToolTip="350 × 350 px | 20–50 KB"/>
                                 <Button Content="⚡ IBPS (10-20 KB)" Command="{Binding QuickPresetCommand}" CommandParameter="IBPS" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" ToolTip="140 × 60 px | 10–20 KB"/>
@@ -254,22 +257,43 @@
                         </StackPanel>
                     </GroupBox>
 
+                    <!-- Live Loading / Generating Preview State -->
+                    <Border Background="#141520" CornerRadius="8" Padding="12" Margin="0,4,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            Visibility="{Binding ShowLoadingState, Converter={StaticResource BoolToVis}}">
+                        <StackPanel HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
+                                <ProgressBar IsIndeterminate="True" Width="40" Height="3" Margin="0,0,8,0" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="⚡ Generating Instant Live Preview..." FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                            </StackPanel>
+                            <Border Background="White" BorderBrush="#888888" BorderThickness="1" CornerRadius="4" Padding="6" HorizontalAlignment="Center" Opacity="0.8">
+                                <Image Source="{Binding InputPreviewImage}" MaxHeight="140" MaxWidth="320" Stretch="Uniform"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Live Result / Preview -->
                     <Border Background="#141520" CornerRadius="8" Padding="12" Margin="0,4,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                             Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Text="{Binding ResultSummary}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                             
+                            <!-- Transparency Badge -->
+                            <Border Background="#064E3B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,0,8" Visibility="{Binding IsTransparentPngMode, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center">
+                                <TextBlock Text="✨ 100% Transparent PNG (No White Box — Pure Isolated Signature)" FontSize="11" FontWeight="Bold" Foreground="#6EE7B7"/>
+                            </Border>
+
                             <Border Background="White" BorderBrush="#888888" BorderThickness="1" CornerRadius="4" Padding="6" HorizontalAlignment="Center">
                                 <Image Source="{Binding ResultImage}" MaxHeight="140" MaxWidth="320" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
                             </Border>
 
                             <!-- Actions for result -->
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-                                <Button Content="💾 Save As..." Style="{StaticResource SecondaryButton}" Command="{Binding SaveAsCommand}" Padding="14,6" Margin="0,0,8,0"/>
-                                <Button Content="📋 Copy to Clipboard" Style="{StaticResource SecondaryButton}" Command="{Binding CopyResultCommand}" Padding="14,6" Margin="0,0,8,0"/>
-                                <Button Content="🖨️ Print" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}" Padding="14,6"/>
-                            </StackPanel>
+                            <WrapPanel HorizontalAlignment="Center" Margin="0,10,0,0">
+                                <Button Content="💳 Save PAN Portal (JPEG)" Style="{StaticResource AccentButton}" Command="{Binding SavePanPortalJpegCommand}" Padding="10,6" Margin="0,0,6,6" FontWeight="Bold" ToolTip="Save strictly 2 × 4.5 cm @ 200 DPI JPEG under 50 KB for NSDL &amp; UTIITSL upload"/>
+                                <Button Content="✨ Save Transparent PNG" Style="{StaticResource SecondaryButton}" Command="{Binding SaveTransparentPngCommand}" Padding="10,6" Margin="0,0,6,6" FontWeight="Bold" ToolTip="Save transparent PNG with isolated handwriting ink (no white box)"/>
+                                <Button Content="💾 Save As..." Style="{StaticResource SecondaryButton}" Command="{Binding SaveAsCommand}" Padding="10,6" Margin="0,0,6,6"/>
+                                <Button Content="📋 Copy to Clipboard" Style="{StaticResource SecondaryButton}" Command="{Binding CopyResultCommand}" Padding="10,6" Margin="0,0,6,6" ToolTip="Copies with PNG alpha channel to clipboard"/>
+                                <Button Content="🖨️ Print" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}" Padding="10,6" Margin="0,0,0,6"/>
+                            </WrapPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>

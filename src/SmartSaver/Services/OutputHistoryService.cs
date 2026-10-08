@@ -20,8 +20,25 @@ public class HistoryRecord
     public string DateFormatted => Timestamp.ToString("dd MMM yyyy");
     public bool FileExists => File.Exists(FilePath);
     public bool IsPdf => !string.IsNullOrEmpty(FilePath) && FilePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
-    public bool HasDraft => PdfDraftService.Instance.HasDraft(FilePath);
-    public string ResumeButtonText => HasDraft ? "⚡ Resume Draft" : "✏️ Resume in Editor";
+    public bool IsExcel => !string.IsNullOrEmpty(FilePath) && (
+        FilePath.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) ||
+        FilePath.EndsWith(".xlsm", StringComparison.OrdinalIgnoreCase) ||
+        FilePath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase) ||
+        FilePath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) ||
+        FilePath.EndsWith(".tsv", StringComparison.OrdinalIgnoreCase) ||
+        Operation.Contains("Excel", StringComparison.OrdinalIgnoreCase));
+    public bool HasDraft => (!string.IsNullOrEmpty(FilePath) && (
+        (IsPdf && PdfDraftService.Instance.HasDraft(FilePath)) ||
+        (IsExcel && ExcelDraftService.Instance.HasDraft(FilePath)) ||
+        PdfDraftService.Instance.HasDraft(FilePath) ||
+        ExcelDraftService.Instance.HasDraft(FilePath)));
+    public bool CanResume => IsPdf || IsExcel || HasDraft;
+    public bool IsDraft => Operation.Contains("Draft", StringComparison.OrdinalIgnoreCase) || 
+                           Operation.Contains("In-Progress", StringComparison.OrdinalIgnoreCase) || 
+                           HasDraft;
+    public string ResumeButtonText => IsExcel 
+        ? (HasDraft ? "⚡ Resume Excel Draft" : "📊 Open in Excel Studio") 
+        : (HasDraft ? "⚡ Resume Draft" : "✏️ Resume in Editor");
 }
 
 public class OutputHistoryService
@@ -120,10 +137,21 @@ public class OutputHistoryService
                 var dispatcher = System.Windows.Application.Current?.Dispatcher;
                 if (dispatcher != null && !dispatcher.CheckAccess())
                 {
-                    // Non-blocking: post to the UI thread's queue and return immediately.
-                    // Dispatcher.Invoke (blocking) deadlocks when the dispatcher thread is not
-                    // pumping messages (e.g. background/STA test threads).
-                    dispatcher.BeginInvoke(addAction);
+                    bool invoked = false;
+                    try
+                    {
+                        if (dispatcher.Thread.IsAlive)
+                        {
+                            dispatcher.Invoke(addAction, System.Windows.Threading.DispatcherPriority.Send, CancellationToken.None, TimeSpan.FromMilliseconds(100));
+                            invoked = true;
+                        }
+                    }
+                    catch { }
+
+                    if (!invoked)
+                    {
+                        addAction();
+                    }
                 }
                 else
                 {

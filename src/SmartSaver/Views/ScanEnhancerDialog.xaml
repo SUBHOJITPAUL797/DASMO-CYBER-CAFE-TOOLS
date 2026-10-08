@@ -21,9 +21,6 @@
                 <RowDefinition Height="64"/>
             </Grid.RowDefinitions>
 
-            <!-- Background Texture -->
-            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.25" IsHitTestVisible="False" Grid.RowSpan="3"/>
-
             <!-- Title Bar -->
             <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">

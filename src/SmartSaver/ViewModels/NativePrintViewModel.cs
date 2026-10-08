@@ -348,7 +348,7 @@ public class NativePrintViewModel : ViewModelBase
     public ICommand DecreaseCopiesCommand { get; }
     #endregion
 
-    public NativePrintViewModel(IReadOnlyList<string> imagePaths, string documentTitle = "DASMO Print Job")
+    public NativePrintViewModel(IReadOnlyList<string> imagePaths, string documentTitle = "DASMO Print Job", string? preferredPaperSize = null, string? preferredOrientation = null)
     {
         _documentTitle = string.IsNullOrWhiteSpace(documentTitle) ? "DASMO Print Job" : documentTitle;
 
@@ -397,13 +397,6 @@ public class NativePrintViewModel : ViewModelBase
         InitializePrinters();
         InitializePaperSizes();
 
-        // Initial preview render
-        UpdatePreview();
-    }
-
-    public NativePrintViewModel(ImageSource singleImage, string documentTitle = "DASMO Print Job", string? preferredPaperSize = null, string? preferredOrientation = null)
-        : this(ConvertImageSourceToTempFile(singleImage), documentTitle)
-    {
         if (!string.IsNullOrEmpty(preferredPaperSize))
         {
             foreach (var item in PaperSizes)
@@ -421,10 +414,31 @@ public class NativePrintViewModel : ViewModelBase
         {
             OrientationMode = preferredOrientation;
         }
-        else if (singleImage is BitmapSource bmp && bmp.PixelWidth > bmp.PixelHeight)
+        else if (_imageBytes.Count > 0)
         {
-            OrientationMode = "Landscape";
+            try
+            {
+                using var ms = new MemoryStream(_imageBytes[0]);
+                using var img = System.Drawing.Image.FromStream(ms);
+                if (img.Width > img.Height)
+                {
+                    OrientationMode = "Landscape";
+                }
+                else
+                {
+                    OrientationMode = "Portrait";
+                }
+            }
+            catch { }
         }
+
+        // Initial preview render
+        UpdatePreview();
+    }
+
+    public NativePrintViewModel(ImageSource singleImage, string documentTitle = "DASMO Print Job", string? preferredPaperSize = null, string? preferredOrientation = null)
+        : this(ConvertImageSourceToTempFile(singleImage), documentTitle, preferredPaperSize, preferredOrientation)
+    {
     }
 
     private static List<string> ConvertImageSourceToTempFile(ImageSource imageSource)
@@ -957,10 +971,30 @@ public class NativePrintViewModel : ViewModelBase
 
                     // Determine orientation
                     bool isLandscape = false;
-                    if (OrientationMode == "Landscape") isLandscape = true;
-                    else if (OrientationMode == "Portrait") isLandscape = false;
+                    if (OrientationMode == "Landscape")
+                    {
+                        isLandscape = true;
+                    }
+                    else if (OrientationMode == "Portrait")
+                    {
+                        isLandscape = false;
+                    }
+                    else // "Auto"
+                    {
+                        if (_imageBytes.Count > 0)
+                        {
+                            try
+                            {
+                                using var msOri = new MemoryStream(_imageBytes[0]);
+                                using var imgOri = System.Drawing.Image.FromStream(msOri);
+                                isLandscape = imgOri.Width > imgOri.Height;
+                            }
+                            catch { }
+                        }
+                    }
 
                     pd.DefaultPageSettings.Landscape = isLandscape;
+                    pd.PrinterSettings.DefaultPageSettings.Landscape = isLandscape;
                     pd.DefaultPageSettings.Color = !IsGrayscale;
                     pd.PrinterSettings.DefaultPageSettings.Color = !IsGrayscale;
 
@@ -988,6 +1022,10 @@ public class NativePrintViewModel : ViewModelBase
                         {
                             e.PageSettings.Landscape = gdiImage.Width > gdiImage.Height;
                         }
+                        else
+                        {
+                            e.PageSettings.Landscape = isLandscape;
+                        }
 
                         System.Drawing.Rectangle pageBounds = e.PageBounds;
                         System.Drawing.Rectangle marginBounds = e.MarginBounds;
@@ -997,16 +1035,21 @@ public class NativePrintViewModel : ViewModelBase
                         float dpiX = gdiImage.HorizontalResolution;
                         float dpiY = gdiImage.VerticalResolution;
 
-                        // Smart DPI detection:
-                        // If DPI is <= 0 or defaulted to standard screen ~96 DPI but image is high-res (e.g. >= 2000px wide for A4),
-                        // clamp to 300 DPI (standard print canvas resolution).
-                        if (dpiX <= 0f || (Math.Abs(dpiX - 96.0f) < 2.0f && gdiImage.Width >= 2000))
+                        // CRITICAL: DPI must always be strictly isotropic (dpiX == dpiY) to preserve 1:1 aspect ratio!
+                        // Never allow asymmetric DPI calculation that stretches, squashes, or distorts document tables.
+                        if (dpiX <= 0f || dpiY <= 0f || Math.Abs(dpiX - dpiY) > 5.0f || (Math.Abs(dpiX - 96.0f) < 2.0f && Math.Max(gdiImage.Width, gdiImage.Height) >= 1800))
                         {
-                            dpiX = 300f;
-                        }
-                        if (dpiY <= 0f || (Math.Abs(dpiY - 96.0f) < 2.0f && gdiImage.Height >= 2500))
-                        {
-                            dpiY = 300f;
+                            if (Math.Max(gdiImage.Width, gdiImage.Height) >= 1800)
+                            {
+                                dpiX = 300f;
+                                dpiY = 300f;
+                            }
+                            else
+                            {
+                                float uniformDpi = (dpiX > 0 && dpiY > 0) ? (dpiX + dpiY) / 2f : (dpiX > 0 ? dpiX : (dpiY > 0 ? dpiY : 96f));
+                                dpiX = uniformDpi;
+                                dpiY = uniformDpi;
+                            }
                         }
 
                         float widthHundredths = (gdiImage.Width / dpiX) * 100f;

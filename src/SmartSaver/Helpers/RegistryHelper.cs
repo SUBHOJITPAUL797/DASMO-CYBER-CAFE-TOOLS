@@ -18,6 +18,11 @@ public static class RegistryHelper
     public static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif" };
 
     /// <summary>
+    /// Shell context menu registry paths for supported spreadsheet extensions
+    /// </summary>
+    public static readonly string[] ExcelExtensions = { ".xlsx", ".xlsm", ".csv", ".tsv", ".xls" };
+
+    /// <summary>
     /// Enables or disables the "Start with Windows" registry entry
     /// </summary>
     public static void SetStartupEnabled(bool enabled)
@@ -113,6 +118,7 @@ public static class RegistryHelper
             RegisterPdfSplitContextMenu();
             RegisterPdfToImageContextMenu();
             RegisterPdfEditContextMenu();
+            RegisterExcelPrintContextMenu();
 
             Log.Information("Shell context menu registered for all tools");
         }
@@ -340,13 +346,50 @@ public static class RegistryHelper
             Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverMerge", throwOnMissingSubKey: false);
             Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverSplit", throwOnMissingSubKey: false);
             Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdf2Img", throwOnMissingSubKey: false);
-            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\SystemFileAssociations\.pdf\shell\SmartSaverPdfEdit", throwOnMissingSubKey: false);
+            // Remove Excel Print keys
+            foreach (string ext in ExcelExtensions)
+            {
+                Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\SystemFileAssociations\{ext}\shell\DasmoExcelPrint", throwOnMissingSubKey: false);
+            }
 
             Log.Information("Shell context menu unregistered");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to unregister shell context menu");
+        }
+    }
+
+    /// <summary>
+    /// Registers Excel A4 Smart Printer context menu for spreadsheet files (.xlsx, .xlsm, .csv, .tsv, .xls)
+    /// </summary>
+    public static void RegisterExcelPrintContextMenu()
+    {
+        try
+        {
+            string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
+                ?? Path.Combine(AppContext.BaseDirectory, "DASMO CYBER CAFE TOOLS.exe");
+
+            foreach (string ext in ExcelExtensions)
+            {
+                string keyPath = $@"Software\Classes\SystemFileAssociations\{ext}\shell\DasmoExcelPrint";
+                using var shellKey = Registry.CurrentUser.CreateSubKey(keyPath);
+                if (shellKey != null)
+                {
+                    shellKey.SetValue("", "DASMO CYBER CAFE TOOLS - Print on A4 Sheet (Edge-to-Edge)...");
+                    shellKey.SetValue("Icon", $"\"{exePath}\",0");
+                    shellKey.SetValue("Position", "Top");
+
+                    using var commandKey = Registry.CurrentUser.CreateSubKey($@"{keyPath}\command");
+                    commandKey?.SetValue("", $"\"{exePath}\" --excel \"%1\"");
+                }
+            }
+
+            Log.Information("Shell context menu registered for Excel Print Studio");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to register Excel Print context menu");
         }
     }
 

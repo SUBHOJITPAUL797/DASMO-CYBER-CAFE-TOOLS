@@ -17,6 +17,17 @@ namespace SmartSaver.ViewModels;
 public class DocumentStackerViewModel : ViewModelBase
 {
     private readonly DocumentStackerService _stackerService;
+    private readonly IDocumentEnhancerService _enhancerService;
+
+    private BitmapSource? _frontRawBitmap;
+    private string _frontRawPath = string.Empty;
+    private int _frontRawPageIndex = -1;
+    private int _frontPreviewVersion;
+
+    private BitmapSource? _backRawBitmap;
+    private string _backRawPath = string.Empty;
+    private int _backRawPageIndex = -1;
+    private int _backPreviewVersion;
 
     private string _frontPath = string.Empty;
     public string FrontPath
@@ -283,10 +294,18 @@ public class DocumentStackerViewModel : ViewModelBase
         {
             if (SetProperty(ref _autoWhiten, value))
             {
+                OnPropertyChanged(nameof(EnableEnhancement));
+                OnPropertyChanged(nameof(IsEnhancementActive));
                 LoadFrontPreview();
                 LoadBackPreview();
             }
         }
+    }
+
+    public bool EnableEnhancement
+    {
+        get => AutoWhiten;
+        set => AutoWhiten = value;
     }
 
     private bool _pitchBlackText = false;
@@ -297,11 +316,89 @@ public class DocumentStackerViewModel : ViewModelBase
         {
             if (SetProperty(ref _pitchBlackText, value))
             {
+                OnPropertyChanged(nameof(IsEnhancementActive));
                 LoadFrontPreview();
                 LoadBackPreview();
             }
         }
     }
+
+    public bool IsEnhancementActive => AutoWhiten || PitchBlackText;
+
+    private EnhancementPreset _selectedPreset = EnhancementPreset.Balanced;
+    public EnhancementPreset SelectedPreset
+    {
+        get => _selectedPreset;
+        set
+        {
+            if (SetProperty(ref _selectedPreset, value))
+            {
+                OnPropertyChanged(nameof(IsPresetLight));
+                OnPropertyChanged(nameof(IsPresetBalanced));
+                OnPropertyChanged(nameof(IsPresetStrong));
+                LoadFrontPreview();
+                LoadBackPreview();
+            }
+        }
+    }
+
+    public bool IsPresetLight
+    {
+        get => SelectedPreset == EnhancementPreset.Light;
+        set
+        {
+            if (value)
+            {
+                if (!AutoWhiten && !PitchBlackText) AutoWhiten = true;
+                SelectedPreset = EnhancementPreset.Light;
+            }
+        }
+    }
+
+    public bool IsPresetBalanced
+    {
+        get => SelectedPreset == EnhancementPreset.Balanced;
+        set
+        {
+            if (value)
+            {
+                if (!AutoWhiten && !PitchBlackText) AutoWhiten = true;
+                SelectedPreset = EnhancementPreset.Balanced;
+            }
+        }
+    }
+
+    public bool IsPresetStrong
+    {
+        get => SelectedPreset == EnhancementPreset.Strong;
+        set
+        {
+            if (value)
+            {
+                if (!AutoWhiten && !PitchBlackText) AutoWhiten = true;
+                SelectedPreset = EnhancementPreset.Strong;
+            }
+        }
+    }
+
+    public ICommand SetPresetCommand => new RelayCommand(p =>
+    {
+        EnhancementPreset? newPreset = null;
+        if (p is EnhancementPreset ep)
+        {
+            newPreset = ep;
+        }
+        else if (p is string s && Enum.TryParse<EnhancementPreset>(s, true, out var parsed))
+        {
+            newPreset = parsed;
+        }
+
+        if (newPreset.HasValue)
+        {
+            if (!AutoWhiten && !PitchBlackText) AutoWhiten = true;
+            SelectedPreset = newPreset.Value;
+        }
+    });
 
     private string _selectedOutputFormat = "PDF";
     public string SelectedOutputFormat
@@ -428,15 +525,16 @@ public class DocumentStackerViewModel : ViewModelBase
     public Func<string, string, string?>? RequestSaveFile { get; set; }
     public Action? RequestClose { get; set; }
 
-    public DocumentStackerViewModel(DocumentStackerService? stackerService = null)
+    public DocumentStackerViewModel(DocumentStackerService? stackerService = null, IDocumentEnhancerService? enhancerService = null)
     {
+        _enhancerService = enhancerService ?? new DocumentEnhancerService();
         if (stackerService == null)
         {
             var imgComp = new ImageCompressor();
             var pdfComp = new PdfCompressor();
             var offComp = new OfficeCompressor(imgComp);
             var engine = new CompressionEngine(imgComp, pdfComp, offComp);
-            _stackerService = new DocumentStackerService(engine);
+            _stackerService = new DocumentStackerService(engine, _enhancerService);
         }
         else
         {
@@ -461,8 +559,8 @@ public class DocumentStackerViewModel : ViewModelBase
         SelectBothFilesCommand = new RelayCommand(_ => SelectBothFiles());
         SwapFilesCommand = new RelayCommand(_ => SwapFrontAndBack());
         ImportPdfCommand = new RelayCommand(_ => Import2PagePdf());
-        ClearFrontCommand = new RelayCommand(_ => { FrontPath = string.Empty; FrontOriginalPath = string.Empty; FrontImageSource = null; });
-        ClearBackCommand = new RelayCommand(_ => { BackPath = string.Empty; BackOriginalPath = string.Empty; BackImageSource = null; });
+        ClearFrontCommand = new RelayCommand(_ => { FrontPath = string.Empty; FrontOriginalPath = string.Empty; FrontImageSource = null; _frontRawBitmap = null; _frontRawPath = string.Empty; _frontRawPageIndex = -1; });
+        ClearBackCommand = new RelayCommand(_ => { BackPath = string.Empty; BackOriginalPath = string.Empty; BackImageSource = null; _backRawBitmap = null; _backRawPath = string.Empty; _backRawPageIndex = -1; });
         SetFrontScaleCommand = new RelayCommand(p => { if (double.TryParse(p?.ToString(), out double s)) FrontScale = s; });
         SetBackScaleCommand = new RelayCommand(p => { if (double.TryParse(p?.ToString(), out double s)) BackScale = s; });
 
@@ -543,37 +641,88 @@ public class DocumentStackerViewModel : ViewModelBase
 
     private async void LoadFrontPreview()
     {
+        int version = ++_frontPreviewVersion;
         try
         {
             if (string.IsNullOrEmpty(FrontPath) || !File.Exists(FrontPath))
             {
+                _frontRawBitmap = null;
+                _frontRawPath = string.Empty;
+                _frontRawPageIndex = -1;
                 FrontImageSource = null;
                 FrontPreviewVisibility = Visibility.Collapsed;
                 FrontPlaceholderVisibility = Visibility.Visible;
                 return;
             }
 
-            string ext = Path.GetExtension(FrontPath).ToLowerInvariant();
-            if (ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".webp")
+            string currentPath = FrontPath;
+            int currentPageIndex = FrontPageIndex;
+
+            BitmapSource? rawBmp = null;
+            if (_frontRawBitmap != null && _frontRawPath == currentPath && _frontRawPageIndex == currentPageIndex)
             {
-                byte[] bytes = File.ReadAllBytes(FrontPath);
-                using var ms = new MemoryStream(bytes);
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.StreamSource = ms;
-                bitmap.EndInit();
-                bitmap.Freeze();
-                FrontImageSource = PitchBlackText ? DocumentStackerService.ApplyPitchBlackToBitmapSource(bitmap) : bitmap;
-                FrontPreviewVisibility = Visibility.Visible;
-                FrontPlaceholderVisibility = Visibility.Collapsed;
+                rawBmp = _frontRawBitmap;
             }
-            else if (ext == ".pdf")
+            else
             {
-                var pdfBitmap = await PdfRendererService.RenderPdfPageAsync(FrontPath, FrontPageIndex);
-                if (pdfBitmap != null)
+                string ext = Path.GetExtension(currentPath).ToLowerInvariant();
+                if (ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".webp")
                 {
-                    FrontImageSource = PitchBlackText ? DocumentStackerService.ApplyPitchBlackToBitmapSource(pdfBitmap) : pdfBitmap;
+                    byte[] bytes = File.ReadAllBytes(currentPath);
+                    using var ms = new MemoryStream(bytes);
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = ms;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    rawBmp = bitmap;
+                }
+                else if (ext == ".pdf")
+                {
+                    var pdfBitmap = await PdfRendererService.RenderPdfPageAsync(currentPath, currentPageIndex);
+                    if (pdfBitmap != null)
+                    {
+                        if (pdfBitmap.CanFreeze && !pdfBitmap.IsFrozen) pdfBitmap.Freeze();
+                        rawBmp = pdfBitmap;
+                    }
+                }
+
+                if (rawBmp != null)
+                {
+                    _frontRawBitmap = rawBmp;
+                    _frontRawPath = currentPath;
+                    _frontRawPageIndex = currentPageIndex;
+                }
+            }
+
+            if (version != _frontPreviewVersion) return;
+
+            if (rawBmp != null)
+            {
+                if (FrontPath != currentPath || FrontPageIndex != currentPageIndex)
+                    return;
+
+                if (AutoWhiten || PitchBlackText)
+                {
+                    var options = new EnhancementOptions(SelectedPreset)
+                    {
+                        WhitenBackground = AutoWhiten || PitchBlackText,
+                        DarkenText = PitchBlackText,
+                        PreserveColor = true
+                    };
+                    var enhanced = await Task.Run(() => _enhancerService.EnhanceBitmapSource(rawBmp, options));
+                    if (version != _frontPreviewVersion) return;
+                    if (FrontPath == currentPath && FrontPageIndex == currentPageIndex)
+                    {
+                        FrontImageSource = enhanced;
+                        FrontPreviewVisibility = Visibility.Visible;
+                        FrontPlaceholderVisibility = Visibility.Collapsed;
+                    }
+                }
+                else
+                {
+                    FrontImageSource = rawBmp;
                     FrontPreviewVisibility = Visibility.Visible;
                     FrontPlaceholderVisibility = Visibility.Collapsed;
                 }
@@ -587,37 +736,88 @@ public class DocumentStackerViewModel : ViewModelBase
 
     private async void LoadBackPreview()
     {
+        int version = ++_backPreviewVersion;
         try
         {
             if (string.IsNullOrEmpty(BackPath) || !File.Exists(BackPath))
             {
+                _backRawBitmap = null;
+                _backRawPath = string.Empty;
+                _backRawPageIndex = -1;
                 BackImageSource = null;
                 BackPreviewVisibility = Visibility.Collapsed;
                 BackPlaceholderVisibility = Visibility.Visible;
                 return;
             }
 
-            string ext = Path.GetExtension(BackPath).ToLowerInvariant();
-            if (ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".webp")
+            string currentPath = BackPath;
+            int currentPageIndex = BackPageIndex;
+
+            BitmapSource? rawBmp = null;
+            if (_backRawBitmap != null && _backRawPath == currentPath && _backRawPageIndex == currentPageIndex)
             {
-                byte[] bytes = File.ReadAllBytes(BackPath);
-                using var ms = new MemoryStream(bytes);
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.StreamSource = ms;
-                bitmap.EndInit();
-                bitmap.Freeze();
-                BackImageSource = PitchBlackText ? DocumentStackerService.ApplyPitchBlackToBitmapSource(bitmap) : bitmap;
-                BackPreviewVisibility = Visibility.Visible;
-                BackPlaceholderVisibility = Visibility.Collapsed;
+                rawBmp = _backRawBitmap;
             }
-            else if (ext == ".pdf")
+            else
             {
-                var pdfBitmap = await PdfRendererService.RenderPdfPageAsync(BackPath, BackPageIndex);
-                if (pdfBitmap != null)
+                string ext = Path.GetExtension(currentPath).ToLowerInvariant();
+                if (ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".webp")
                 {
-                    BackImageSource = PitchBlackText ? DocumentStackerService.ApplyPitchBlackToBitmapSource(pdfBitmap) : pdfBitmap;
+                    byte[] bytes = File.ReadAllBytes(currentPath);
+                    using var ms = new MemoryStream(bytes);
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = ms;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    rawBmp = bitmap;
+                }
+                else if (ext == ".pdf")
+                {
+                    var pdfBitmap = await PdfRendererService.RenderPdfPageAsync(currentPath, currentPageIndex);
+                    if (pdfBitmap != null)
+                    {
+                        if (pdfBitmap.CanFreeze && !pdfBitmap.IsFrozen) pdfBitmap.Freeze();
+                        rawBmp = pdfBitmap;
+                    }
+                }
+
+                if (rawBmp != null)
+                {
+                    _backRawBitmap = rawBmp;
+                    _backRawPath = currentPath;
+                    _backRawPageIndex = currentPageIndex;
+                }
+            }
+
+            if (version != _backPreviewVersion) return;
+
+            if (rawBmp != null)
+            {
+                if (BackPath != currentPath || BackPageIndex != currentPageIndex)
+                    return;
+
+                if (AutoWhiten || PitchBlackText)
+                {
+                    var options = new EnhancementOptions(SelectedPreset)
+                    {
+                        WhitenBackground = AutoWhiten || PitchBlackText,
+                        DarkenText = PitchBlackText,
+                        PreserveColor = true
+                    };
+                    var enhanced = await Task.Run(() => _enhancerService.EnhanceBitmapSource(rawBmp, options));
+                    if (version != _backPreviewVersion) return;
+                    if (BackPath == currentPath && BackPageIndex == currentPageIndex)
+                    {
+                        BackImageSource = enhanced;
+                        BackPreviewVisibility = Visibility.Visible;
+                        BackPlaceholderVisibility = Visibility.Collapsed;
+                    }
+                }
+                else
+                {
+                    BackImageSource = rawBmp;
                     BackPreviewVisibility = Visibility.Visible;
                     BackPlaceholderVisibility = Visibility.Collapsed;
                 }
@@ -659,6 +859,18 @@ public class DocumentStackerViewModel : ViewModelBase
 
     private void SwapFrontAndBack()
     {
+        var tempRawBitmap = _frontRawBitmap;
+        var tempRawPath = _frontRawPath;
+        var tempRawIndex = _frontRawPageIndex;
+
+        _frontRawBitmap = _backRawBitmap;
+        _frontRawPath = _backRawPath;
+        _frontRawPageIndex = _backRawPageIndex;
+
+        _backRawBitmap = tempRawBitmap;
+        _backRawPath = tempRawPath;
+        _backRawPageIndex = tempRawIndex;
+
         var tempPath = FrontPath;
         var tempIndex = FrontPageIndex;
         var tempScale = FrontScale;
@@ -793,11 +1005,17 @@ public class DocumentStackerViewModel : ViewModelBase
     {
         if (isFront && !string.IsNullOrEmpty(FrontOriginalPath) && File.Exists(FrontOriginalPath))
         {
+            _frontRawBitmap = null;
+            _frontRawPath = string.Empty;
+            _frontRawPageIndex = -1;
             FrontPath = FrontOriginalPath;
             ProgressText = "Reverted front image to original.";
         }
         else if (!isFront && !string.IsNullOrEmpty(BackOriginalPath) && File.Exists(BackOriginalPath))
         {
+            _backRawBitmap = null;
+            _backRawPath = string.Empty;
+            _backRawPageIndex = -1;
             BackPath = BackOriginalPath;
             ProgressText = "Reverted back image to original.";
         }
@@ -875,7 +1093,7 @@ public class DocumentStackerViewModel : ViewModelBase
             var bmp = await _stackerService.RenderA4SheetBitmapAsync(
                 FrontPath, FrontPageIndex, FrontScale,
                 BackPath, BackPageIndex, BackScale,
-                LayoutMode, AutoWhiten, PitchBlackText);
+                LayoutMode, AutoWhiten, PitchBlackText, SelectedPreset);
 
             if (bmp != null)
             {
@@ -936,7 +1154,7 @@ public class DocumentStackerViewModel : ViewModelBase
                     FrontPath, FrontPageIndex, FrontScale,
                     BackPath, BackPageIndex, BackScale,
                     outputPath, targetBytes,
-                    LayoutMode, AutoWhiten, PitchBlackText);
+                    LayoutMode, AutoWhiten, PitchBlackText, SelectedPreset);
             }
             else
             {
@@ -944,7 +1162,7 @@ public class DocumentStackerViewModel : ViewModelBase
                     FrontPath, FrontPageIndex, FrontScale,
                     BackPath, BackPageIndex, BackScale,
                     outputPath, targetBytes, SelectedOutputFormat,
-                    LayoutMode, AutoWhiten, PitchBlackText);
+                    LayoutMode, AutoWhiten, PitchBlackText, SelectedPreset);
             }
 
             if (result.Success)

@@ -12,10 +12,10 @@ public partial class NativePrintDialog : Window
 {
     private readonly NativePrintViewModel _viewModel;
 
-    public NativePrintDialog(IReadOnlyList<string> imagePaths, string documentTitle = "DASMO Print Job")
+    public NativePrintDialog(IReadOnlyList<string> imagePaths, string documentTitle = "DASMO Print Job", string? preferredPaperSize = null, string? preferredOrientation = null)
     {
         InitializeComponent();
-        _viewModel = new NativePrintViewModel(imagePaths, documentTitle)
+        _viewModel = new NativePrintViewModel(imagePaths, documentTitle, preferredPaperSize, preferredOrientation)
         {
             GetWindowHandle = () => new WindowInteropHelper(this).Handle,
             RequestClose = success =>
@@ -42,9 +42,9 @@ public partial class NativePrintDialog : Window
         DataContext = _viewModel;
     }
 
-    public static bool ShowPrintDialog(IReadOnlyList<string> imagePaths, string documentTitle = "DASMO Print Job", Window? owner = null)
+    public static bool ShowPrintDialog(IReadOnlyList<string> imagePaths, string documentTitle = "DASMO Print Job", Window? owner = null, string? preferredPaperSize = null, string? preferredOrientation = null)
     {
-        var dlg = new NativePrintDialog(imagePaths, documentTitle);
+        var dlg = new NativePrintDialog(imagePaths, documentTitle, preferredPaperSize, preferredOrientation);
         if (owner != null)
         {
             dlg.Owner = owner;

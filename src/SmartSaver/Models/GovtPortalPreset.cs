@@ -22,6 +22,8 @@ public static class GovtPortalPresets
 
         // Photos & Signatures
         new("🌐 Portal / High-Res Doc (1500 × 1000 px — 200 KB)", "Portals", 200, 1500, 1000, ".jpg", "1500 x 1000 px Portal Upload limit"),
+        new("💳 PAN Card Photo (2.5 × 3.5 cm — 200 DPI — <50 KB)", "Photos", 30, 197, 276, ".jpg", "Official NSDL & UTIITSL 2.5 x 3.5 cm (200 DPI, <50 KB)"),
+        new("💳 PAN Card Signature (2 × 4.5 cm — 200 DPI — <50 KB)", "Signatures", 30, 354, 157, ".jpg", "Official NSDL & UTIITSL 2.0 x 4.5 cm (200 DPI, <50 KB)"),
         new("🇮🇳 Standard Passport Size (350 × 450 px — 50 KB)", "Photos", 50, 350, 450, ".jpg", "350 x 450 px | Standard Passport"),
         new("🇮🇳 Passport Photo (SSC / State Exams — 50 KB)", "Photos", 50, 413, 531, ".jpg", "3.5 x 4.5 cm | 20 KB - 50 KB JPG"),
         new("🇮🇳 Passport Photo (UPSC / IBPS / Bank — 50 KB)", "Photos", 50, 200, 230, ".jpg", "200 x 230 px | 20 KB - 50 KB JPG"),

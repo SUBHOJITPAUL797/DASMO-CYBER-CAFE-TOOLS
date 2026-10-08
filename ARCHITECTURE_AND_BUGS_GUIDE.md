@@ -17,6 +17,7 @@
 8. [Dual-State Undo/Redo Engine & Font Weight Retention (v1.4.8)](#8-dual-state-undoredo-engine--font-weight-retention-v148)
 10. [Orientation-Agnostic Background Replacement & Shirt Protection (v1.4.9)](#10-orientation-agnostic-background-replacement--shirt-protection-v149)
 11. [Enterprise Multi-App Cloud Licensing, Hardware Lock & Admin Control (v1.4.9)](#11-enterprise-multi-app-cloud-licensing-hardware-lock--admin-control-v149)
+12. [GDI+ DPI Mismatch Bug Post-Mortem & Invariant Pixel-Mapping Rules (v1.5.37)](#12-gdi-dpi-mismatch-bug-post-mortem--invariant-pixel-mapping-rules-v1537)
 
 ---
 
@@ -345,3 +346,61 @@ The DASMO ecosystem comprises multiple independent applications:
      - 💻 **Unbind PC / Device**: Clears `deviceId` to permit license transfer to a new device.
      - ♾️ **Lifetime License**: Sets `expiryTimestamp = 0`.
      - 🗑️ **Delete User**: Purges record from collection.
+
+
+---
+
+## 12. GDI+ DPI Mismatch Bug Post-Mortem & Invariant Pixel-Mapping Rules (v1.5.37)
+
+### The 24-Hour Incident Post-Mortem
+* **Symptom**: In Spacebar Quick Peek, Excel A4 Smart Printer, and PDF Editor, rendered PDF documents (such as government certificates like `WB305179117494.pdf`) appeared severely shrunken into the top-left corner (occupying only ~62.8% width and ~53.9% height), surrounded by a massive blank white void on the bottom and right. In Microsoft Edge, the identical document filled 95% of the page width edge-to-edge.
+* **Root Cause (The GDI+ DPI Mismatch Trap)**:
+  - In `PdfRendererService.cs` (`ToBitmapSource`) and `DocumentEnhancerService.cs`:
+    ```csharp
+    // FATAL FLAW:
+    using var flattened = new System.Drawing.Bitmap(width, height, PixelFormat.Format32bppRgb);
+    using (var g = System.Drawing.Graphics.FromImage(flattened))
+    {
+        g.Clear(System.Drawing.Color.White);
+        g.DrawImageUnscaled(bitmap, 0, 0); // <-- FATAL BUG
+    }
+    ```
+  - In Windows GDI+, `g.DrawImageUnscaled(bitmap, 0, 0)` **does NOT copy 1:1 raw pixels**!
+  - It scales by physical unit mismatch (`inches = pixels / DPI`).
+  - Source `bitmap` rendered from PDFium has `DPI = 145.14` (for 1200px width on A4) or `DPI = 300.0` (for high-res print).
+  - Target `flattened` bitmap defaulted to standard screen resolution (`DPI = 96.0`).
+  - GDI+ automatically applied scaling ratio:
+    `Scale Ratio = 96.0 / 145.14 ≈ 0.6616 (66.1%)`
+  - GDI+ shrank the entire rendered document into the top-left corner at 66% size, leaving the remaining 34% width and 46% height as blank white canvas.
+
+### Strict Architectural Invariants (Zero Exceptions)
+
+1. **`DrawImageUnscaled` is Strictly Prohibited**:
+   - `Graphics.DrawImageUnscaled` must **NEVER** be used anywhere in this repository.
+   - Any drawing between two bitmaps must explicitly match DPI and use explicit pixel rectangle bounds:
+     ```csharp
+     flattened.SetResolution(96f, 96f);
+     using (var g = System.Drawing.Graphics.FromImage(flattened))
+     {
+         g.Clear(System.Drawing.Color.White);
+         g.DrawImage(bitmap, 
+             new System.Drawing.Rectangle(0, 0, width, height), 
+             0, 0, width, height, 
+             System.Drawing.GraphicsUnit.Pixel);
+     }
+     ```
+
+2. **WPF Preview Viewport Geometry (`Uniform` Stretch Only)**:
+   - In `QuickPeekDialog.xaml`, `ExcelPrintStudioDialog.xaml`, and `PdfEditorWindow.xaml`:
+   - Never use `Stretch="Fill"` (which distorts aspect ratio).
+   - Use `Stretch="Uniform"` or calculate proportional width/height preserving exact 1:1.414 aspect ratio with 36px viewport margin deduction:
+     `fitScale = min((viewportWidth - 36) / docWidth, (viewportHeight - 36) / docHeight)`
+     `displayWidth = docWidth * fitScale`, `displayHeight = docHeight * fitScale`
+
+3. **Mandatory Automated Regression Guard (`[TEST 84]`)**:
+   - Automated regression test `[TEST 84] PDF Edge-to-Edge Preview Presentation & Aspect Ratio Math` in `SmartSaver.Tests` is a mandatory CI/build gate.
+   - It asserts:
+     - 100% pixel preservation across non-96 DPI bitmaps.
+     - True A4 aspect ratio (1.414 ± 0.005).
+     - >= 95% content width coverage for standard government certificates.
+     - Zero top-left corner shrinkage.

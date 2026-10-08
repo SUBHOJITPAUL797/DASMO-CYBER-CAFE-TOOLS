@@ -134,6 +134,27 @@ public partial class App : System.Windows.Application
         });
     }
 
+    public void ShowExcelPrintStudio(string? path = null)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            try
+            {
+                if (!EnsureCloudLicenseApproved())
+                {
+                    Log.Warning("Access blocked by Cloud License Gatekeeper");
+                    return;
+                }
+
+                ExcelPrintStudioDialog.ShowStudio(path ?? "");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to show ExcelPrintStudioDialog");
+            }
+        });
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         try
@@ -266,6 +287,11 @@ public partial class App : System.Windows.Application
                 {
                     var files = e.Args.Skip(1).Where(File.Exists).ToList();
                     SingleInstanceHelper.SignalExistingInstance($"CARDPRINT|{string.Join("|", files)}");
+                }
+                else if (e.Args.Length >= 1 && (e.Args[0] == "--excel" || e.Args[0] == "--excel-print" || e.Args[0] == "--excelprint"))
+                {
+                    string filePath = e.Args.Length >= 2 ? e.Args[1] : string.Empty;
+                    SingleInstanceHelper.SignalExistingInstance($"EXCEL_PRINT|{filePath}");
                 }
                 else if (e.Args.Contains("--history"))
                 {
@@ -504,6 +530,12 @@ public partial class App : System.Windows.Application
             Log.Information("Resize Signature requested for: {FilePath}", filePath);
             ShowSignatureResizeDialog(filePath);
         }
+        else if (e.Args.Length >= 1 && (e.Args[0] == "--excel" || e.Args[0] == "--excel-print" || e.Args[0] == "--excelprint"))
+        {
+            string filePath = e.Args.Length >= 2 ? e.Args[1] : string.Empty;
+            Log.Information("Excel Print requested for: {FilePath}", filePath);
+            ShowExcelPrintStudio(filePath);
+        }
         else if (e.Args.Contains("--history"))
         {
             Log.Information("Output History requested");
@@ -606,6 +638,12 @@ public partial class App : System.Windows.Application
                     string filePath = message.Substring("SIGNATURE|".Length);
                     Log.Information("IPC Request: Resize Signature {FilePath}", filePath);
                     ShowSignatureResizeDialog(filePath);
+                }
+                else if (message == "SHOW_EXCEL_PRINT" || message.StartsWith("EXCEL_PRINT|"))
+                {
+                    string filePath = message.StartsWith("EXCEL_PRINT|") ? message.Substring("EXCEL_PRINT|".Length) : string.Empty;
+                    Log.Information("IPC Request: Excel Print Studio {FilePath}", filePath);
+                    ShowExcelPrintStudio(filePath);
                 }
                 else if (message.StartsWith("CARDPRINT|"))
                 {
@@ -1110,10 +1148,18 @@ public partial class App : System.Windows.Application
             if (existingPeek != null)
             {
                 bool isSameFile = string.Equals(existingPeek.FilePath, filePath, StringComparison.OrdinalIgnoreCase);
-                existingPeek.Close();
                 if (isSameFile)
                 {
                     // Spacebar pressed on the currently previewed file toggles it off
+                    existingPeek.Close();
+                    return;
+                }
+                else
+                {
+                    // Seamlessly navigate to the newly selected file inside the open Quick Peek window!
+                    _ = existingPeek.NavigateToFile(filePath);
+                    existingPeek.Activate();
+                    existingPeek.Focus();
                     return;
                 }
             }

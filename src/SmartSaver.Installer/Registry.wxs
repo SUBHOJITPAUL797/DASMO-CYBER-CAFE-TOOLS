@@ -218,6 +218,54 @@
         </RegistryKey>
       </Component>
 
+      <!-- Shell Context Menu: .xlsx Print on A4 -->
+      <Component Id="ContextMenu_xlsx" Guid="A7E8D9C0-B1A2-4354-9586-0718293A4B5C">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.xlsx\shell\DasmoExcelPrint">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Print on A4 Sheet (Edge-to-Edge)..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.xlsx\shell\DasmoExcelPrint\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --excel &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .csv Print on A4 -->
+      <Component Id="ContextMenu_csv" Guid="B8F9E0D1-C2B3-5465-A697-18293A4B5C6D">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.csv\shell\DasmoExcelPrint">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Print on A4 Sheet (Edge-to-Edge)..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.csv\shell\DasmoExcelPrint\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --excel &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Shell Context Menu: .xls Print on A4 -->
+      <Component Id="ContextMenu_xls" Guid="C9A0F1E2-D3C4-6576-B7A8-293A4B5C6D7E">
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.xls\shell\DasmoExcelPrint">
+          <RegistryValue Type="string" Value="DASMO CYBER CAFE TOOLS - Print on A4 Sheet (Edge-to-Edge)..." />
+          <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot;,0" />
+          <RegistryValue Name="Position" Type="string" Value="Top" />
+        </RegistryKey>
+        <RegistryKey Root="HKCU"
+                     Key="Software\Classes\SystemFileAssociations\.xls\shell\DasmoExcelPrint\command">
+          <RegistryValue Type="string"
+                         Value="&quot;[INSTALLFOLDER]DASMO CYBER CAFE TOOLS.exe&quot; --excel &quot;%1&quot;"
+                         KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
       <!-- Disable Explorer Preview Handler Warning -->
       <Component Id="DisablePreviewHandlerWarnings" Guid="F0A1B2C3-D4E5-6789-0123-EF1234567890">
         <RegistryKey Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced">

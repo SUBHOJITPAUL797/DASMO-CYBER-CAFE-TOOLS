@@ -42,6 +42,8 @@ public class PdfPageThumbnailItem : ViewModelBase
 public class PdfEditorViewModel : ViewModelBase
 {
     private readonly PdfEditorService _service;
+    private readonly IDocumentEnhancerService _enhancerService;
+    public IDocumentEnhancerService EnhancerService => _enhancerService;
 
     #region Properties
 
@@ -181,6 +183,54 @@ public class PdfEditorViewModel : ViewModelBase
         get => _currentPagePreview;
         set => SetProperty(ref _currentPagePreview, value);
     }
+
+    private BitmapSource? _unenhancedPagePreview;
+
+    private bool _isPageEnhancementEnabled = false;
+    public bool IsPageEnhancementEnabled
+    {
+        get => _isPageEnhancementEnabled;
+        set
+        {
+            if (SetProperty(ref _isPageEnhancementEnabled, value))
+            {
+                OnPropertyChanged(nameof(AutoWhitenScannedPage));
+                _ = ApplyEnhancementToCurrentPagePreviewAsync();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 1-click scanned page background whitening and ink contrast toggle alias.
+    /// </summary>
+    public bool AutoWhitenScannedPage
+    {
+        get => IsPageEnhancementEnabled;
+        set => IsPageEnhancementEnabled = value;
+    }
+
+    private EnhancementPreset _selectedEnhancementPreset = EnhancementPreset.Balanced;
+    public EnhancementPreset SelectedEnhancementPreset
+    {
+        get => _selectedEnhancementPreset;
+        set
+        {
+            if (SetProperty(ref _selectedEnhancementPreset, value))
+            {
+                if (IsPageEnhancementEnabled)
+                {
+                    _ = ApplyEnhancementToCurrentPagePreviewAsync();
+                }
+            }
+        }
+    }
+
+    public ObservableCollection<EnhancementPreset> AvailableEnhancementPresets { get; } = new()
+    {
+        EnhancementPreset.Light,
+        EnhancementPreset.Balanced,
+        EnhancementPreset.Strong
+    };
 
     private double _pageNativeWidth = 595.0; // Standard A4 in points (72 DPI)
     public double PageNativeWidth
@@ -447,15 +497,31 @@ public class PdfEditorViewModel : ViewModelBase
     public ICommand DecreaseFontSizeCommand { get; }
     public ICommand UnlockPdfCommand { get; }
     public ICommand CancelUnlockCommand { get; }
+    public ICommand TogglePageEnhancementCommand { get; }
+    public ICommand SetEnhancementPresetCommand { get; }
 
     public Func<string, string, string?>? RequestSaveFile { get; set; }
     public Action? RequestClose { get; set; }
     public Action<string, string>? ShowMessage { get; set; }
     #endregion
 
-    public PdfEditorViewModel(string initialPath = "")
+    public PdfEditorViewModel(string initialPath = "", IDocumentEnhancerService? enhancerService = null)
     {
         _service = PdfEditorService.Instance;
+        _enhancerService = enhancerService ?? new DocumentEnhancerService();
+
+        TogglePageEnhancementCommand = new RelayCommand(_ => IsPageEnhancementEnabled = !IsPageEnhancementEnabled);
+        SetEnhancementPresetCommand = new RelayCommand(p =>
+        {
+            if (p is EnhancementPreset preset)
+            {
+                SelectedEnhancementPreset = preset;
+            }
+            else if (p is string s && Enum.TryParse<EnhancementPreset>(s, true, out var parsed))
+            {
+                SelectedEnhancementPreset = parsed;
+            }
+        });
 
         UnlockPdfCommand = new RelayCommand(async _ => await UnlockPdfWithPasswordAsync(), _ => !IsLoading);
         CancelUnlockCommand = new RelayCommand(_ => CancelUnlock());
@@ -730,6 +796,7 @@ public class PdfEditorViewModel : ViewModelBase
                 _filePath = string.Empty;
                 _fileName = Path.GetFileName(path);
                 CurrentPagePreview = null;
+                _unenhancedPagePreview = null;
                 PageThumbnails.Clear();
                 CurrentPageEdits.Clear();
                 ExtractedTextBlocks.Clear();
@@ -921,6 +988,7 @@ public class PdfEditorViewModel : ViewModelBase
         _filePath = string.Empty;
         _fileName = "No Document";
         CurrentPagePreview = null;
+        _unenhancedPagePreview = null;
         PageThumbnails.Clear();
         CurrentPageEdits.Clear();
         ExtractedTextBlocks.Clear();
@@ -934,6 +1002,42 @@ public class PdfEditorViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsNormalDocumentReady));
         OnPropertyChanged(nameof(ShowEmptyState));
         OnPropertyChanged(nameof(IsPasswordProtected));
+    }
+
+    /// <summary>
+    /// Dynamically applies or removes document background whitening and contrast sharpening
+    /// on the current page preview with zero disk re-render overhead.
+    /// </summary>
+    public async Task ApplyEnhancementToCurrentPagePreviewAsync()
+    {
+        if (!HasDocument) return;
+
+        if (_unenhancedPagePreview == null)
+        {
+            await LoadCurrentPageAsync();
+            return;
+        }
+
+        try
+        {
+            if (IsPageEnhancementEnabled)
+            {
+                var options = EnhancementOptions.FromPreset(SelectedEnhancementPreset);
+                var rawBmp = _unenhancedPagePreview;
+                var enhanced = await Task.Run(() => _enhancerService.EnhanceBitmapSource(rawBmp, options));
+                CurrentPagePreview = enhanced;
+                StatusMessage = $"Scanned page whitened ({SelectedEnhancementPreset} preset).";
+            }
+            else
+            {
+                CurrentPagePreview = _unenhancedPagePreview;
+                StatusMessage = "Page enhancement disabled (original scan).";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed applying document enhancement to page preview in PdfEditorViewModel");
+        }
     }
 
     private async Task LoadCurrentPageAsync()
@@ -952,7 +1056,17 @@ public class PdfEditorViewModel : ViewModelBase
             }
 
             var bmp = await _service.RenderPageAsync(FilePath, CurrentPageIndex, 150, CurrentPassword);
-            CurrentPagePreview = bmp;
+            _unenhancedPagePreview = bmp;
+
+            if (IsPageEnhancementEnabled && bmp != null)
+            {
+                var options = EnhancementOptions.FromPreset(SelectedEnhancementPreset);
+                CurrentPagePreview = await Task.Run(() => _enhancerService.EnhanceBitmapSource(bmp, options));
+            }
+            else
+            {
+                CurrentPagePreview = bmp;
+            }
 
             _isSuppressingItemPropertySync = true;
             CurrentPageEdits.Clear();
@@ -1425,7 +1539,14 @@ public class PdfEditorViewModel : ViewModelBase
         try
         {
             var dict = _allEdits.ToDictionary(k => k.Key, v => (IReadOnlyList<PdfEditItem>)v.Value);
-            bool success = await _service.SaveEditsToPdfAsync(FilePath, outPath, dict, CurrentPassword);
+            var enhanceOpts = IsPageEnhancementEnabled ? EnhancementOptions.FromPreset(SelectedEnhancementPreset) : null;
+            bool success = await _service.SaveEditsToPdfAsync(
+                FilePath, 
+                outPath, 
+                dict, 
+                CurrentPassword,
+                enhanceScannedPages: IsPageEnhancementEnabled,
+                enhancementOptions: enhanceOpts);
 
             if (success)
             {
@@ -1498,7 +1619,15 @@ public class PdfEditorViewModel : ViewModelBase
             SaveCurrentEditsToStore(immediateDiskSave: true);
             string tempPrintFile = Path.Combine(Path.GetTempPath(), $"print_{Guid.NewGuid():N}.pdf");
             var dict = _allEdits.ToDictionary(k => k.Key, v => (IReadOnlyList<PdfEditItem>)v.Value);
-            bool ok = _service.SaveEditsToPdfAsync(FilePath, tempPrintFile, dict, CurrentPassword).GetAwaiter().GetResult();
+            var enhanceOpts = IsPageEnhancementEnabled ? EnhancementOptions.FromPreset(SelectedEnhancementPreset) : null;
+            bool ok = _service.SaveEditsToPdfAsync(
+                FilePath, 
+                tempPrintFile, 
+                dict, 
+                CurrentPassword,
+                enhanceScannedPages: IsPageEnhancementEnabled,
+                enhancementOptions: enhanceOpts
+            ).GetAwaiter().GetResult();
 
             if (ok && File.Exists(tempPrintFile))
             {
@@ -1508,6 +1637,11 @@ public class PdfEditorViewModel : ViewModelBase
                 // Render the edited page at high print quality (300 DPI)
                 var printBmp = _service.RenderPageAsync(tempPrintFile, CurrentPageIndex, 300).GetAwaiter().GetResult();
                 var bmpToPrint = printBmp ?? CurrentPagePreview;
+
+                if (IsPageEnhancementEnabled && bmpToPrint != null && !ok)
+                {
+                    bmpToPrint = _enhancerService.EnhanceBitmapSource(bmpToPrint, enhanceOpts);
+                }
 
                 if (bmpToPrint != null)
                 {

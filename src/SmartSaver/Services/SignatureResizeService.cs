@@ -24,6 +24,9 @@ public class SignatureResizeResult
     public byte[]? OutputBytes { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
+    public int OutputWidth => Width;
+    public int OutputHeight => Height;
+    public string OutputFormat { get; set; } = ".jpg";
     public long OriginalSizeBytes { get; set; }
     public long OutputSizeBytes { get; set; }
     public string OriginalSizeFormatted => CompressionResult.FormatFileSize(OriginalSizeBytes);
@@ -35,12 +38,17 @@ public class SignatureResizeService
     private readonly ImageCompressor _imageCompressor;
     private readonly SignatureCleanerService _cleanerService;
 
+    public SignatureResizeService() : this(new ImageCompressor())
+    {
+    }
+
     public SignatureResizeService(ImageCompressor imageCompressor)
     {
         _imageCompressor = imageCompressor ?? throw new ArgumentNullException(nameof(imageCompressor));
         _cleanerService = new SignatureCleanerService(imageCompressor);
     }
 
+    /// <summary>
     /// <summary>
     /// Resizes a signature image from a file path to exact pixel or centimeter dimensions,
     /// cleans paper background, and compresses to strict target KB.
@@ -54,10 +62,11 @@ public class SignatureResizeService
         long minBytes = 0,
         bool cleanBackground = true,
         bool autoCrop = true,
-        bool maintainAspectRatio = false,
+        bool maintainAspectRatio = true,
         string outputExtension = ".jpg",
         int dpi = 300,
-        bool convertBlueToBlack = true)
+        bool convertBlueToBlack = true,
+        bool transparentBackground = false)
     {
         if (!File.Exists(inputPath))
         {
@@ -65,7 +74,7 @@ public class SignatureResizeService
         }
 
         byte[] inputBytes = await File.ReadAllBytesAsync(inputPath);
-        var result = await ResizeSignatureFromBytesAsync(inputBytes, targetWidthPx, targetHeightPx, targetBytes, minBytes, cleanBackground, autoCrop, maintainAspectRatio, outputExtension, dpi, convertBlueToBlack);
+        var result = await ResizeSignatureFromBytesAsync(inputBytes, targetWidthPx, targetHeightPx, targetBytes, minBytes, cleanBackground, autoCrop, maintainAspectRatio, outputExtension, dpi, convertBlueToBlack, transparentBackground);
 
         if (result.Success && result.OutputBytes != null && !string.IsNullOrWhiteSpace(outputPath))
         {
@@ -97,10 +106,11 @@ public class SignatureResizeService
         long minBytes = 0,
         bool cleanBackground = true,
         bool autoCrop = true,
-        bool maintainAspectRatio = false,
+        bool maintainAspectRatio = true,
         string outputExtension = ".jpg",
         int dpi = 300,
-        bool convertBlueToBlack = true)
+        bool convertBlueToBlack = true,
+        bool transparentBackground = false)
     {
         return await Task.Run(() =>
         {
@@ -120,18 +130,21 @@ public class SignatureResizeService
                 // 2. Optional: Clean paper shadows, enhance dark ink, and auto-crop to ink
                 if (cleanBackground)
                 {
-                    CleanPaperAndBoostInk(image, autoCrop: autoCrop, convertBlueToBlack: convertBlueToBlack);
+                    CleanPaperAndBoostInk(image, autoCrop: autoCrop, convertBlueToBlack: convertBlueToBlack, transparentBackground: transparentBackground);
                 }
 
-                // 3. Resize to exact dimensions
+                // 3. Resize to exact dimensions without squeezing
                 SixLabors.ImageSharp.Image canvas;
 
                 if (maintainAspectRatio)
                 {
-                    // Fit inside target dimensions and center on pure white canvas
+                    // Fit inside target dimensions proportionally and center neatly on canvas
                     double scaleX = (double)targetWidthPx / image.Width;
                     double scaleY = (double)targetHeightPx / image.Height;
-                    double scale = Math.Min(scaleX, scaleY);
+                    // For signatures (cleanBackground = true), apply a 92% neat inner margin so handwriting never clips.
+                    // For photos / documents (cleanBackground = false), fill proportionally with 1.0 (100%) scale.
+                    double marginRatio = cleanBackground ? 0.92 : 1.0;
+                    double scale = Math.Min(scaleX, scaleY) * marginRatio;
 
                     int scaledW = Math.Max(1, (int)Math.Round(image.Width * scale));
                     int scaledH = Math.Max(1, (int)Math.Round(image.Height * scale));
@@ -146,7 +159,7 @@ public class SignatureResizeService
                     canvas = new SixLabors.ImageSharp.Image<Rgba32>(targetWidthPx, targetHeightPx);
                     canvas.Mutate(ctx =>
                     {
-                        ctx.BackgroundColor(SixLabors.ImageSharp.Color.White);
+                        ctx.BackgroundColor(transparentBackground ? SixLabors.ImageSharp.Color.Transparent : SixLabors.ImageSharp.Color.White);
                         int posX = (targetWidthPx - scaledW) / 2;
                         int posY = (targetHeightPx - scaledH) / 2;
                         ctx.DrawImage(image, new SixLabors.ImageSharp.Point(posX, posY), 1.0f);
@@ -154,7 +167,7 @@ public class SignatureResizeService
                 }
                 else
                 {
-                    // Exact stretch to form dimensions (standard online portal requirement)
+                    // Stretch to fill dimensions
                     image.Mutate(ctx => ctx.Resize(new ResizeOptions
                     {
                         Size = new ImageSharpSize(targetWidthPx, targetHeightPx),
@@ -172,7 +185,8 @@ public class SignatureResizeService
                     canvas.Metadata.ResolutionUnits = PixelResolutionUnit.PixelsPerInch;
 
                     // 4. Compress to target bytes using binary search quality passes
-                    byte[] finalBytes = CompressCanvasToBytes(canvas, targetBytes, outputExtension, minBytes);
+                    string effectiveExt = transparentBackground ? ".png" : outputExtension;
+                    byte[] finalBytes = CompressCanvasToBytes(canvas, targetBytes, effectiveExt, minBytes, transparentBackground);
 
                     return new SignatureResizeResult
                     {
@@ -180,6 +194,7 @@ public class SignatureResizeService
                         OutputBytes = finalBytes,
                         Width = targetWidthPx,
                         Height = targetHeightPx,
+                        OutputFormat = effectiveExt,
                         OriginalSizeBytes = originalSize,
                         OutputSizeBytes = finalBytes.Length
                     };
@@ -194,11 +209,88 @@ public class SignatureResizeService
     }
 
     /// <summary>
+    /// Processes a candidate signature specifically for official NSDL &amp; UTIITSL PAN card upload
+    /// or for transparent overlay directly onto card templates without an ugly white box.
+    /// Specifications: 2 × 4.5 cm (200 DPI: 354 × 157 px), &lt; 50 KB (10–30 KB), clean white or transparent PNG.
+    /// </summary>
+    public async Task<SignatureResizeResult> ResizePanCardSignatureAsync(
+        byte[] inputBytes,
+        bool transparentBackground = false,
+        long targetBytes = 30 * 1024,
+        long minBytes = 10 * 1024)
+    {
+        // 4.5 cm wide by 2.0 cm high at 200 DPI
+        // 4.5 * 200 / 2.54 = ~354 px width
+        // 2.0 * 200 / 2.54 = ~157 px height
+        int widthPx = 354;
+        int heightPx = 157;
+        string ext = transparentBackground ? ".png" : ".jpg";
+
+        return await ResizeSignatureFromBytesAsync(
+            inputBytes: inputBytes,
+            targetWidthPx: widthPx,
+            targetHeightPx: heightPx,
+            targetBytes: targetBytes,
+            minBytes: minBytes,
+            cleanBackground: true,
+            autoCrop: true,
+            maintainAspectRatio: true,
+            outputExtension: ext,
+            dpi: 200,
+            convertBlueToBlack: true,
+            transparentBackground: transparentBackground);
+    }
+
+    /// <summary>
     /// Removes scanner/camera shadows and paper grayness, boosting dark ink to sharp black,
     /// and optionally crops tightly around the signature ink to eliminate useless blank margins.
     /// </summary>
-    private static void CleanPaperAndBoostInk(SixLabors.ImageSharp.Image<Rgba32> image, int threshold = 185, bool autoCrop = true, bool convertBlueToBlack = true)
+    private static void CleanPaperAndBoostInk(
+        SixLabors.ImageSharp.Image<Rgba32> image, 
+        int threshold = 185, 
+        bool autoCrop = true, 
+        bool convertBlueToBlack = true,
+        bool transparentBackground = false)
     {
+        // 1. Adaptive paper background luminance estimation
+        // Sample pixels on a regular grid across the image to find the true paper brightness peak,
+        // ensuring mobile camera photos taken under dim, warm, or shadow-cast desk lighting clean flawlessly.
+        int sampleStep = Math.Max(1, Math.Min(image.Width, image.Height) / 50);
+        int[] hist = new int[256];
+        int sampleCount = 0;
+
+        for (int sy = 0; sy < image.Height; sy += sampleStep)
+        {
+            for (int sx = 0; sx < image.Width; sx += sampleStep)
+            {
+                var sample = image[sx, sy];
+                int l = (int)(0.299f * sample.R + 0.587f * sample.G + 0.114f * sample.B);
+                hist[l]++;
+                sampleCount++;
+            }
+        }
+
+        // Find paper background luminance (85th percentile of brightness)
+        int accum = 0;
+        int paperLum = 220; // fallback default
+        for (int i = 0; i < 256; i++)
+        {
+            accum += hist[i];
+            if (accum >= sampleCount * 0.85)
+            {
+                paperLum = i;
+                break;
+            }
+        }
+
+        // Adaptive threshold: ink is typically 18-25% darker than the surrounding paper in the same photo
+        int effectiveThreshold = Math.Clamp((int)(paperLum * 0.82f), 115, 225);
+        if (threshold > 0 && threshold != 185)
+        {
+            // If caller explicitly configured a non-default custom threshold, respect it
+            effectiveThreshold = threshold;
+        }
+
         int minX = image.Width, minY = image.Height, maxX = 0, maxY = 0;
         bool foundInk = false;
 
@@ -212,28 +304,36 @@ public class SignatureResizeService
                     ref Rgba32 p = ref row[x];
                     int lum = (int)(0.299f * p.R + 0.587f * p.G + 0.114f * p.B);
 
-                    // Check for blue ink detection (ballpoint or gel pen)
-                    bool isBlueInk = (p.B > p.R + 15 && p.B > p.G + 10) || (lum < 220 && (p.B - Math.Min(p.R, p.G) > 20));
+                    // Robust blue ink detection (ballpoint or gel pen, even in warm camera lighting)
+                    bool isBlueInk = (p.B > p.R + 12 && p.B > p.G + 8) || 
+                                     (lum < (paperLum - 15) && (p.B - Math.Min(p.R, p.G) > 18));
 
-                    if (lum > threshold && !isBlueInk)
+                    if (lum > effectiveThreshold && !isBlueInk)
                     {
-                        // Background paper shadow -> make pure crisp white
-                        p = new Rgba32(255, 255, 255, 255);
+                        // Background paper shadow -> transparent or pure white
+                        if (transparentBackground)
+                        {
+                            p = new Rgba32(0, 0, 0, 0); // 100% transparent (no white block!)
+                        }
+                        else
+                        {
+                            p = new Rgba32(255, 255, 255, 255); // Pure white
+                        }
                     }
                     else
                     {
                         if (convertBlueToBlack || isBlueInk)
                         {
                             // Convert ink (including pale/royal blue ink) to pitch black
-                            float factor = Math.Min(1.0f, (float)lum / threshold);
-                            byte darkVal = (byte)Math.Clamp(factor * 25, 0, 255);
+                            float factor = Math.Min(1.0f, (float)lum / effectiveThreshold);
+                            byte darkVal = (byte)Math.Clamp(factor * 20, 0, 255);
                             p = new Rgba32(darkVal, darkVal, darkVal, 255);
                         }
                         else
                         {
                             // Ink pixel -> enhance contrast (darken to rich dark tone)
-                            float factor = (float)lum / threshold;
-                            byte darkVal = (byte)Math.Clamp(factor * 35, 0, 255);
+                            float factor = (float)lum / effectiveThreshold;
+                            byte darkVal = (byte)Math.Clamp(factor * 30, 0, 255);
                             p = new Rgba32(darkVal, darkVal, darkVal, 255);
                         }
 
@@ -267,9 +367,9 @@ public class SignatureResizeService
     /// Compresses canvas in memory using binary-search JPEG/PNG quality reduction to clamp under targetBytes,
     /// and optionally pads JPEG to satisfy minimum portal requirements (e.g. 10-20 KB).
     /// </summary>
-    private static byte[] CompressCanvasToBytes(ImageSharpImage canvas, long targetBytes, string outputExtension, long minBytes = 0)
+    private static byte[] CompressCanvasToBytes(ImageSharpImage canvas, long targetBytes, string outputExtension, long minBytes = 0, bool transparentBackground = false)
     {
-        bool isPng = outputExtension.Equals(".png", StringComparison.OrdinalIgnoreCase);
+        bool isPng = transparentBackground || outputExtension.Equals(".png", StringComparison.OrdinalIgnoreCase);
 
         if (isPng)
         {

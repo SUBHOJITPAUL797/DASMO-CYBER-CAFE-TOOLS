@@ -126,6 +126,17 @@
                                 <Slider Grid.Column="1" Minimum="15" Maximum="120" Value="{Binding BackgroundTolerance}" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="2" Text="{Binding BackgroundTolerance, StringFormat='{}{0:F0}'}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
                             </Grid>
+
+                            <!-- AI Smart Background Status Badge -->
+                            <Border CornerRadius="4" Padding="6,4" Margin="0,4,0,2" Background="#162338" BorderBrush="#2C4A6F" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding AiStatusIcon}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding AiStatusText}" FontSize="11" FontWeight="SemiBold" Foreground="#64B5F6" VerticalAlignment="Center"/>
+                                    <ProgressBar IsIndeterminate="True" Height="3" Width="45" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                 Foreground="#64B5F6" Background="#223344" BorderThickness="0"
+                                                 Visibility="{Binding IsAiSegmenting, Converter={StaticResource BoolToVis}}"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </GroupBox>
 
@@ -413,7 +424,8 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="🌐 Export Single Photo (Govt Upload)" Command="{Binding OpenSingleExportCommand}" Style="{StaticResource AccentButton}" Height="34" Padding="14,0" Margin="0,0,8,0" FontWeight="Bold" IsEnabled="{Binding HasPhoto}" ToolTip="Export 1 single photo (20–50 KB) for SSC, UPSC, PAN &amp; Govt exam portals"/>
+                    <Button Content="💳 Export PAN Card Photo" Command="{Binding OpenPanPhotoExportCommand}" Style="{StaticResource AccentButton}" Height="34" Padding="14,0" Margin="0,0,8,0" FontWeight="Bold" IsEnabled="{Binding HasPhoto}" ToolTip="1-Click official 2.5×3.5 cm (200 DPI, &lt;50 KB) photo for NSDL / UTI PAN portal upload"/>
+                    <Button Content="🌐 Export Single Photo (Govt Upload)" Command="{Binding OpenSingleExportCommand}" Style="{StaticResource OutlineButton}" Height="34" Padding="14,0" Margin="0,0,8,0" FontWeight="Bold" IsEnabled="{Binding HasPhoto}" ToolTip="Export 1 single photo (20–50 KB) for SSC, UPSC, PAN &amp; Govt exam portals"/>
                     <Button Content="💾 Save as PDF" Command="{Binding SaveSheetPdfCommand}" Style="{StaticResource OutlineButton}" Height="34" Padding="12,0" Margin="0,0,8,0" ToolTip="Export print-ready PDF document"/>
                     <Button Content="🖼️ Save High-Res JPG" Command="{Binding SaveSheetJpgCommand}" Style="{StaticResource OutlineButton}" Height="34" Padding="12,0" Margin="0,0,8,0" ToolTip="Export 300 DPI high-resolution JPEG"/>
                     <Button Content="🖨️ Direct Print Sheet" Command="{Binding PrintSheetCommand}" Style="{StaticResource PrimaryButton}" Height="34" Padding="16,0" FontWeight="Bold" ToolTip="Send directly to native printer dialog at 300 DPI"/>
@@ -479,12 +491,22 @@
                             <StackPanel>
                                 <!-- Presets Selector -->
                                 <TextBlock Text="Select Government / Portal Preset:" FontWeight="Bold" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6"/>
+                                
+                                <!-- Quick Preset Shortcut Buttons -->
+                                <WrapPanel Margin="0,0,0,6">
+                                    <Button Content="💳 PAN Card (2.5×3.5 cm)" Command="{Binding SelectSinglePresetCommand}" CommandParameter="1" Style="{StaticResource OutlineButton}" Padding="8,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="Official NSDL / UTI PAN Photo (2.5×3.5 cm, 200 DPI, &lt;50 KB)"/>
+                                    <Button Content="🏛️ SSC / UPSC (3.5×4.5 cm)" Command="{Binding SelectSinglePresetCommand}" CommandParameter="0" Style="{StaticResource OutlineButton}" Padding="8,3" Margin="0,0,4,4" FontSize="11" ToolTip="Standard Indian Exam (3.5×4.5 cm, 20–50 KB)"/>
+                                    <Button Content="🌍 Passport Seva" Command="{Binding SelectSinglePresetCommand}" CommandParameter="2" Style="{StaticResource OutlineButton}" Padding="8,3" Margin="0,0,4,4" FontSize="11" ToolTip="Passport Seva (50–100 KB)"/>
+                                    <Button Content="🛂 Visa (5×5 cm)" Command="{Binding SelectSinglePresetCommand}" CommandParameter="3" Style="{StaticResource OutlineButton}" Padding="8,3" Margin="0,0,0,4" FontSize="11" ToolTip="US / Schengen Visa"/>
+                                </WrapPanel>
+
                                 <ComboBox ItemsSource="{Binding SinglePresets}" SelectedIndex="{Binding SingleExportPresetIndex}" Height="32" Margin="0,0,0,12" FontSize="11.5"/>
 
                                 <!-- Dimensions & KB Limits -->
                                 <GroupBox Header="Dimensions &amp; File Size (KB) Limits" Margin="0,0,0,10">
                                     <Grid Margin="4,6">
                                         <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
@@ -504,13 +526,19 @@
                                         </StackPanel>
 
                                         <!-- Min KB & Max KB -->
-                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,8">
                                             <TextBlock Text="Min File Size (KB):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
                                             <TextBox Text="{Binding SingleMinKb, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Row="1" Grid.Column="1">
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,8">
                                             <TextBlock Text="Max File Size (KB):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
                                             <TextBox Text="{Binding SingleMaxKb, UpdateSourceTrigger=PropertyChanged}" Height="28" VerticalContentAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- Resolution (DPI) -->
+                                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
+                                            <TextBlock Text="Resolution / Print Quality (DPI):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <ComboBox ItemsSource="{Binding SingleDpiOptions}" SelectedItem="{Binding SingleDpi}" Height="28" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </Grid>
                                 </GroupBox>

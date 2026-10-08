@@ -137,6 +137,7 @@ public class MainViewModel : ViewModelBase
     public ICommand NavigateCommand { get; }
     public ICommand OpenStackerCommand { get; }
     public ICommand OpenPassportStudioCommand { get; }
+    public ICommand OpenExcelPrintStudioCommand { get; }
     public ICommand OpenPdfEditorCommand { get; }
     public ICommand OpenPrintTrackerStudioCommand { get; }
     public ICommand OpenCashDrawerCommand { get; }
@@ -537,6 +538,7 @@ public class MainViewModel : ViewModelBase
 
         OpenStackerCommand = new RelayCommand(_ => RequestOpenStacker?.Invoke());
         OpenPassportStudioCommand = new RelayCommand(_ => PassportStudioDialog.ShowStudio());
+        OpenExcelPrintStudioCommand = new RelayCommand(p => ExcelPrintStudioDialog.ShowStudio(p?.ToString() ?? ""));
         OpenPdfEditorCommand = new RelayCommand(p => ShowPdfEditor(p?.ToString()));
         OpenPrintTrackerStudioCommand = new RelayCommand(_ => PrintTrackerStudioWindow.ShowStudio());
         OpenCashDrawerCommand = new RelayCommand(_ => CashDrawerWindow.ShowCashDrawer());

@@ -275,6 +275,56 @@ public static class ExplorerSelectionHelper
         return paths;
     }
 
+    /// <summary>
+    /// Attempts to silently select and scroll to a file in an open Windows Explorer window matching its folder.
+    /// Does not steal focus.
+    /// </summary>
+    public static void SelectFileInExplorer(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return;
+            string targetDir = Path.GetDirectoryName(filePath)!;
+            string targetName = Path.GetFileName(filePath);
+
+            Type? shellType = Type.GetTypeFromProgID("Shell.Application");
+            if (shellType == null) return;
+            dynamic? shell = Activator.CreateInstance(shellType);
+            if (shell == null) return;
+
+            dynamic windows = shell.Windows();
+            int count = windows.Count;
+            for (int i = 0; i < count; i++)
+            {
+                dynamic? window = windows.Item(i);
+                if (window == null) continue;
+                try
+                {
+                    dynamic? doc = window.Document;
+                    if (doc == null) continue;
+                    dynamic? folder = doc.Folder;
+                    if (folder == null) continue;
+                    string winPath = folder.Self?.Path ?? string.Empty;
+                    if (string.Equals(winPath, targetDir, StringComparison.OrdinalIgnoreCase))
+                    {
+                        dynamic? item = folder.ParseName(targetName);
+                        if (item != null)
+                        {
+                            // 1 = SVSI_DESELECTOTHERS, 4 = SVSI_ENSUREVISIBLE, 8 = SVSI_FOCUSED, 16 = SVSI_SELECT
+                            doc.SelectItem(item, 1 | 4 | 8 | 16);
+                            break;
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Could not select file in Explorer: {Path}", filePath);
+        }
+    }
+
     private static string GetWindowClassName(IntPtr hWnd)
     {
         if (hWnd == IntPtr.Zero) return string.Empty;
@@ -291,3 +341,4 @@ public static class ExplorerSelectionHelper
         return builder.ToString();
     }
 }
+

@@ -238,13 +238,19 @@ public class TodayHistoryViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(rec.FilePath) || !File.Exists(rec.FilePath))
         {
-            System.Windows.MessageBox.Show($"The PDF file could not be found at:\n{rec.FilePath}", "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show($"The file could not be found at:\n{rec.FilePath}", "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         try
         {
             RequestClose?.Invoke();
+
+            if (rec.IsExcel)
+            {
+                Views.ExcelPrintStudioDialog.ShowStudio(rec.FilePath);
+                return;
+            }
 
             var existingEditor = System.Windows.Application.Current?.Windows.OfType<Views.PdfEditorWindow>().FirstOrDefault();
             if (existingEditor != null)
@@ -264,8 +270,8 @@ public class TodayHistoryViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to resume PDF Editor for {Path}", rec.FilePath);
-            System.Windows.MessageBox.Show($"Could not open PDF Editor Studio:\n{ex.Message}", "Resume Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            Log.Error(ex, "Failed to resume session for {Path}", rec.FilePath);
+            System.Windows.MessageBox.Show($"Could not resume session:\n{ex.Message}", "Resume Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

@@ -854,7 +854,7 @@ public class GovtCardExtractorService
         return null;
     }
 
-    private static string FindPythonExecutable()
+    public static string FindPythonExecutable()
     {
         string[] candidates =
         {

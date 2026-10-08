@@ -1,0 +1,617 @@
+<Window x:Class="SmartSaver.Views.ExcelPrintStudioDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:SmartSaver.Converters"
+        Title="📊 Excel A4 Smart Printer &amp; Table Organizer — DASMO CYBER CAFE TOOLS"
+        Height="720" Width="1180" MinHeight="480" MinWidth="820"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="False"
+        ResizeMode="CanResize"
+        ShowInTaskbar="True"
+        Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource TextBrush}"
+        AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis"/>
+        <converters:InverseBooleanConverter x:Key="InverseBool"/>
+        <converters:StringEqualsConverter x:Key="StringEquals"/>
+
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="OptionCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="PresetChipStyle" TargetType="Button" BasedOn="{StaticResource OutlineButton}">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Margin" Value="0,0,6,6"/>
+        </Style>
+
+        <Style x:Key="WindowControlButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SurfaceHoverBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="WindowCloseButton" TargetType="Button" BasedOn="{StaticResource WindowControlButton}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E53935"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" x:FieldModifier="public" Background="{StaticResource BackgroundBrush}" 
+            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" SnapsToDevicePixels="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <!-- Row 0: Custom Draggable Title Bar (Minimize, Maximize, Close) -->
+                <RowDefinition Height="40"/>
+                <!-- Row 1: Studio Action Bar -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 2: Main visual studio -->
+                <RowDefinition Height="*"/>
+                <!-- Row 3: Bottom status bar -->
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ── 1. CUSTOM DRAGGABLE TITLE BAR ── -->
+            <Grid Grid.Row="0" Background="{StaticResource SurfaceBrush}" SnapsToDevicePixels="True"
+                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <TextBlock Text="📊" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="DASMO CYBER CAFE" FontWeight="Bold" FontSize="13" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text=" — Excel A4 Smart Printer &amp; Table Organizer" FontWeight="SemiBold" FontSize="12.5" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                    <Border Background="#10B981" CornerRadius="4" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="FROZEN HEADERS" FontSize="9.5" FontWeight="Bold" Foreground="White"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Center Draggable Area -->
+                <Border Grid.Column="1" Background="Transparent"/>
+
+                <!-- Window Control Buttons (🗕 Minimize, 🗖/🗗 Maximize, ✕ Close) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Content="🗕" Style="{StaticResource WindowControlButton}" Click="Minimize_Click" ToolTip="Minimize"/>
+                    <Button x:Name="BtnMaximize" Content="🗖" Style="{StaticResource WindowControlButton}" Click="Maximize_Click" ToolTip="Maximize / Restore"/>
+                    <Button Content="✕" Style="{StaticResource WindowCloseButton}" Click="Close_Click" ToolTip="Close"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- ── 2. STUDIO ACTION BAR ── -->
+            <Border Grid.Row="1" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Print massive spreadsheets edge-to-edge on A4 with zero cutoffs and repeated frozen headers on every page" 
+                               FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="📂 Open Spreadsheet" Command="{Binding BrowseFileCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="12,0" Margin="0,0,6,0"/>
+                        <Button Content="💾 Save as PDF" Command="{Binding ExportPdfCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="12,0" Margin="0,0,6,0" IsEnabled="{Binding HasDocument}" ToolTip="Save search-enabled vector PDF"/>
+                        <Button Content="🔍 Open in Viewer" Command="{Binding OpenPdfCommand}" Style="{StaticResource OutlineButton}" Height="32" Padding="12,0" Margin="0,0,6,0" IsEnabled="{Binding HasDocument}" ToolTip="Open in Adobe Acrobat or Default PDF Viewer"/>
+                        <Button Content="🖨️ Print on A4 (Instant)" Command="{Binding PrintCommand}" Style="{StaticResource PrimaryButton}" Height="32" Padding="16,0" FontWeight="Bold" IsEnabled="{Binding HasDocument}" ToolTip="Print directly to Brother / Epson / Canon printer"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- MAIN 2-COLUMN STUDIO AREA -->
+            <Grid Grid.Row="2" Margin="10,8,10,6">
+            <Grid.ColumnDefinitions>
+                <!-- Left: Studio Controls Panel -->
+                <ColumnDefinition Width="430"/>
+                <!-- Right: Live A4 Preview Canvas -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT CONTROL PANEL (SCROLLABLE) -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,10,0">
+                <StackPanel>
+
+                    <!-- 1. FILE & SHEET INFO CARD -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="📁 SPREADSHEET SOURCE" Style="{StaticResource SectionHeaderStyle}"/>
+
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="File:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Grid.Column="1" Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding FileSizeFormatted}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            </Grid>
+
+                            <!-- Sheet selector (if multiple sheets) -->
+                            <Grid Margin="0,4,0,6" Visibility="{Binding SheetNames.Count, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="65"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Sheet:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding SheetNames}" SelectedItem="{Binding SelectedSheetName}" Height="28"/>
+                            </Grid>
+
+                            <!-- Stats badges -->
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <Border Background="#1E293B" CornerRadius="4" Padding="8,3" Margin="0,0,6,0">
+                                    <TextBlock Text="{Binding TotalRowsText}" FontSize="11" FontWeight="SemiBold" Foreground="#38BDF8"/>
+                                </Border>
+                                <Border Background="#1E293B" CornerRadius="4" Padding="8,3" Margin="0,0,6,0">
+                                    <TextBlock Text="{Binding TotalColumnsText}" FontSize="11" FontWeight="SemiBold" Foreground="#34D399"/>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Document Title Banner Input -->
+                            <TextBlock Text="Document Title Banner (Top of Page):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,3"/>
+                            <TextBox Text="{Binding DocumentTitle, UpdateSourceTrigger=PropertyChanged}" Height="28" Padding="6,2"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 2. MARGINS & 4-SIDE GAP -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,6">
+                                <TextBlock Text="📐 4-SIDE PAGE MARGINS (MM)" Style="{StaticResource SectionHeaderStyle}" Margin="0"/>
+                                <TextBlock Text="Edge-to-Edge" HorizontalAlignment="Right" FontSize="11" Foreground="#10B981" FontWeight="SemiBold"/>
+                            </Grid>
+
+                            <!-- Quick Preset Buttons -->
+                            <WrapPanel Margin="0,0,0,8">
+                                <Button Content="⚡ Edge (2mm)" Command="{Binding SetMarginPresetCommand}" CommandParameter="2" Style="{StaticResource PresetChipStyle}"/>
+                                <Button Content="⭐ Narrow (5mm)" Command="{Binding SetMarginPresetCommand}" CommandParameter="5" Style="{StaticResource PresetChipStyle}"/>
+                                <Button Content="📄 Normal (10mm)" Command="{Binding SetMarginPresetCommand}" CommandParameter="10" Style="{StaticResource PresetChipStyle}"/>
+                                <Button Content="📦 Spacious (15mm)" Command="{Binding SetMarginPresetCommand}" CommandParameter="15" Style="{StaticResource PresetChipStyle}"/>
+                            </WrapPanel>
+
+                            <!-- 4 Side Inputs Grid -->
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left -->
+                                <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                    <TextBlock Text="Left" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBox Text="{Binding MarginLeftMm, UpdateSourceTrigger=PropertyChanged}" Height="28" TextAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <!-- Right -->
+                                <StackPanel Grid.Column="1" Margin="2,0,2,0">
+                                    <TextBlock Text="Right" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBox Text="{Binding MarginRightMm, UpdateSourceTrigger=PropertyChanged}" Height="28" TextAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <!-- Top -->
+                                <StackPanel Grid.Column="2" Margin="2,0,2,0">
+                                    <TextBlock Text="Top" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBox Text="{Binding MarginTopMm, UpdateSourceTrigger=PropertyChanged}" Height="28" TextAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <!-- Bottom -->
+                                <StackPanel Grid.Column="3" Margin="4,0,0,0">
+                                    <TextBlock Text="Bottom" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBox Text="{Binding MarginBottomMm, UpdateSourceTrigger=PropertyChanged}" Height="28" TextAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 3. PAGE ORIENTATION -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="🔄 PAGE ORIENTATION" Style="{StaticResource SectionHeaderStyle}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <RadioButton Grid.Column="0" Content="🤖 Auto" 
+                                             GroupName="OrientationGroup"
+                                             IsChecked="{Binding IsOrientationAuto, Mode=TwoWay}" 
+                                             Command="{Binding SetOrientationCommand}" CommandParameter="Auto"
+                                             ToolTip="Auto-detects based on column count and width"/>
+
+                                <RadioButton Grid.Column="1" Content="↔ Landscape" 
+                                             GroupName="OrientationGroup"
+                                             IsChecked="{Binding IsOrientationLandscape, Mode=TwoWay}" 
+                                             Command="{Binding SetOrientationCommand}" CommandParameter="Landscape"
+                                             FontWeight="SemiBold" ToolTip="Best for wide tables (6+ columns)"/>
+
+                                <RadioButton Grid.Column="2" Content="↕ Portrait" 
+                                             GroupName="OrientationGroup"
+                                             IsChecked="{Binding IsOrientationPortrait, Mode=TwoWay}" 
+                                             Command="{Binding SetOrientationCommand}" CommandParameter="Portrait"
+                                             ToolTip="Best for 1-5 columns or maximum vertical rows"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 4. PRINT RANGE -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="🔢 ROW PRINT RANGE" Style="{StaticResource SectionHeaderStyle}"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <RadioButton Content="Entire Sheet" GroupName="RangeGroup" IsChecked="{Binding IsEntireRange, Mode=TwoWay}" Margin="0,0,16,0"
+                                             Checked="RangeRadio_Checked" Tag="Entire"/>
+                                <RadioButton Content="Custom Range" GroupName="RangeGroup" IsChecked="{Binding IsCustomRange, Mode=TwoWay}"
+                                             Checked="RangeRadio_Checked" Tag="Custom"/>
+                            </StackPanel>
+
+                            <!-- Range inputs (visible when Custom is selected) -->
+                            <Grid Visibility="{Binding IsCustomRange, Converter={StaticResource BoolToVis}}" Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="From Row:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox Grid.Column="1" Text="{Binding StartRow, UpdateSourceTrigger=PropertyChanged}" Height="28" TextAlignment="Center"/>
+
+                                <TextBlock Grid.Column="2" Text="To Row:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,6,0"/>
+                                <TextBox Grid.Column="3" Text="{Binding EndRow, UpdateSourceTrigger=PropertyChanged}" Height="28" TextAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 5. COLUMN SELECTION (AUTO-FIT TO PAGE) -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,6">
+                                <TextBlock Text="📋 COLUMNS TO PRINT" Style="{StaticResource SectionHeaderStyle}" Margin="0"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="Select All" Command="{Binding SelectAllColumnsCommand}" Style="{StaticResource PresetChipStyle}" Margin="0,0,4,0"/>
+                                    <Button Content="Deselect All" Command="{Binding DeselectAllColumnsCommand}" Style="{StaticResource PresetChipStyle}" Margin="0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Uncheck redundant columns to give remaining columns more width:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+
+                            <!-- Columns Checklist -->
+                            <Border Background="#171822" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" MaxHeight="180">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding ColumnsList}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding HeaderName}" 
+                                                          IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
+                                                          Checked="ColumnCheck_Changed"
+                                                          Unchecked="ColumnCheck_Changed"
+                                                          Margin="10,4" FontSize="12"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 6. TABLE STYLING & FROZEN HEADERS -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="⚙️ TABLE STYLING &amp; FREEZE" Style="{StaticResource SectionHeaderStyle}"/>
+
+                            <!-- Freeze Header Option (Emphasized) -->
+                            <Border Background="#1C2333" BorderBrush="#0284C7" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
+                                <CheckBox IsChecked="{Binding RepeatHeaderOnEveryPage, UpdateSourceTrigger=PropertyChanged}">
+                                    <StackPanel>
+                                        <TextBlock Text="❄️ Freeze / Repeat Header on Every Page Top" FontWeight="Bold" Foreground="#38BDF8"/>
+                                        <TextBlock Text="Repeats column names at the top of every printed page" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </Border>
+
+                            <CheckBox Content="Add Auto 'Sl No.' Counter Column (1, 2, 3...)" 
+                                      IsChecked="{Binding AddSerialNo, UpdateSourceTrigger=PropertyChanged}" 
+                                      Margin="0,0,0,6"/>
+
+                            <CheckBox Content="Alternating Zebra Striping (Clean Reading)" 
+                                      IsChecked="{Binding ZebraStriping, UpdateSourceTrigger=PropertyChanged}" 
+                                      Margin="0,0,0,6"/>
+
+                            <CheckBox Content="Draw Crisp Hairline Cell Borders" 
+                                      IsChecked="{Binding DrawGridlines, UpdateSourceTrigger=PropertyChanged}" 
+                                      Margin="0,0,0,10"/>
+
+                            <!-- Font Size Presets -->
+                            <TextBlock Text="Text Density / Font Size:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <WrapPanel Margin="0,0,0,8">
+                                <RadioButton Content="Compact (7.2pt)" GroupName="FontPresetGroup" IsChecked="{Binding IsFontCompact, Mode=TwoWay}" 
+                                             Command="{Binding SetFontSizeCommand}" CommandParameter="Compact" Margin="0,0,10,0"/>
+                                <RadioButton Content="Standard (8.2pt)" GroupName="FontPresetGroup" IsChecked="{Binding IsFontStandard, Mode=TwoWay}" 
+                                             Command="{Binding SetFontSizeCommand}" CommandParameter="Standard" Margin="0,0,10,0"/>
+                                <RadioButton Content="Large (10pt)" GroupName="FontPresetGroup" IsChecked="{Binding IsFontComfortable, Mode=TwoWay}" 
+                                             Command="{Binding SetFontSizeCommand}" CommandParameter="Comfortable"/>
+                            </WrapPanel>
+
+                            <!-- Shop Footer Stamp -->
+                            <TextBlock Text="Footer Stamp:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2"/>
+                            <TextBox Text="{Binding ShopFooter, UpdateSourceTrigger=PropertyChanged}" Height="28" Padding="6,2"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 7. CELL ALIGNMENT (LEFT VS CENTER IN BOX) -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="🎯 CELL DATA ALIGNMENT" Style="{StaticResource SectionHeaderStyle}"/>
+                            <TextBlock Text="Text alignment inside cell boxes (numbers, names, IDs):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <RadioButton Grid.Column="0" Content="⬅ Left Align" 
+                                             GroupName="AlignmentGroup"
+                                             IsChecked="{Binding IsAlignmentLeft, Mode=TwoWay}" 
+                                             Command="{Binding SetAlignmentCommand}" CommandParameter="Left"
+                                             ToolTip="Standard left-aligned data with padding"/>
+
+                                <RadioButton Grid.Column="1" Content="🎯 Center in Box" 
+                                             GroupName="AlignmentGroup"
+                                             IsChecked="{Binding IsAlignmentCenter, Mode=TwoWay}" 
+                                             Command="{Binding SetAlignmentCommand}" CommandParameter="Center"
+                                             FontWeight="SemiBold" ToolTip="Center text and numbers horizontally and vertically inside every cell box"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 8. ROW & COLUMN GROUPING / PAGE BREAKS -->
+                    <Border Style="{StaticResource OptionCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="🏷️ ROW &amp; COLUMN GROUPING / PAGE BREAKS" Style="{StaticResource SectionHeaderStyle}"/>
+                            <TextBlock Text="Organize rows by any column/category or split by fixed row count:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+
+                            <!-- Group / Sort by Column or Field -->
+                            <TextBlock Text="Group / Sort by Column / Field:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <ComboBox ItemsSource="{Binding GroupByColumns}" 
+                                      SelectedItem="{Binding SelectedGroupByColumn, Mode=TwoWay}" 
+                                      DisplayMemberPath="DisplayName"
+                                      Height="30" Margin="0,0,0,8"/>
+
+                            <!-- Group Options (Visible when a column is selected) -->
+                            <StackPanel Visibility="{Binding HasSelectedGroupColumn, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Filter by Specific Value:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                <ComboBox ItemsSource="{Binding GroupValues}" 
+                                          SelectedItem="{Binding SelectedGroupValue, Mode=TwoWay}" 
+                                          Height="30" Margin="0,0,0,8"/>
+
+                                <!-- Organize rows together -->
+                                <CheckBox Content="Organize rows together (Sort by this field)" 
+                                          IsChecked="{Binding SortByGroupColumn, UpdateSourceTrigger=PropertyChanged}" 
+                                          Margin="0,0,0,8"
+                                          ToolTip="Groups all rows with identical values one after another in clean order"/>
+
+                                <!-- Start Each Group On A New Page -->
+                                <Border Background="#1C2333" BorderBrush="#0284C7" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
+                                    <CheckBox IsChecked="{Binding PageBreakOnGroupChange, UpdateSourceTrigger=PropertyChanged}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding StartNewPageCheckboxText}" FontWeight="Bold" Foreground="#38BDF8"/>
+                                            <TextBlock Text="{Binding StartNewPageDescriptionText}" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </CheckBox>
+                                </Border>
+
+                                <!-- Restart Sl No Per Group -->
+                                <CheckBox Content="{Binding RestartSlNoCheckboxText}" 
+                                          IsChecked="{Binding RestartSerialNoPerGroup, UpdateSourceTrigger=PropertyChanged}" 
+                                          Margin="0,0,0,10"
+                                          ToolTip="When enabled, each group starts with Sl No. 1. When disabled, numbering continues sequentially."/>
+                            </StackPanel>
+
+                            <!-- Row-Based Page Split (Fixed Rows Per Page) -->
+                            <Border BorderBrush="#334155" BorderThickness="0,1,0,0" Margin="0,4,0,4" Padding="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="📄 Split Page by Row Count:" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Fixed number of rows per printed page (or auto-fit to A4):" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                    <WrapPanel Margin="0,0,0,4">
+                                        <RadioButton Content="Auto Fit A4" GroupName="RowsPerPageGroup" 
+                                                     IsChecked="{Binding IsRowsPerPageAuto, Mode=TwoWay}" Margin="0,0,10,4"
+                                                     ToolTip="Fit as many rows as possible on each A4 page based on cell content"/>
+                                        <RadioButton Content="20 Rows" GroupName="RowsPerPageGroup" 
+                                                     IsChecked="{Binding IsRowsPerPage20, Mode=TwoWay}" Margin="0,0,10,4"
+                                                     ToolTip="Break page after every 20 rows"/>
+                                        <RadioButton Content="25 Rows" GroupName="RowsPerPageGroup" 
+                                                     IsChecked="{Binding IsRowsPerPage25, Mode=TwoWay}" Margin="0,0,10,4"
+                                                     ToolTip="Break page after every 25 rows"/>
+                                        <RadioButton Content="30 Rows" GroupName="RowsPerPageGroup" 
+                                                     IsChecked="{Binding IsRowsPerPage30, Mode=TwoWay}" Margin="0,0,10,4"
+                                                     ToolTip="Break page after every 30 rows"/>
+                                        <RadioButton Content="Custom" GroupName="RowsPerPageGroup" 
+                                                     IsChecked="{Binding IsRowsPerPageCustom, Mode=TwoWay}" Margin="0,0,6,4"
+                                                     ToolTip="Specify custom row limit per page"/>
+                                    </WrapPanel>
+                                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsRowsPerPageCustom, Converter={StaticResource BoolToVis}}" Margin="0,2,0,0">
+                                        <TextBlock Text="Max rows per page:" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                                        <TextBox Text="{Binding CustomRowsPerPage, UpdateSourceTrigger=PropertyChanged}" Width="60" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                        <TextBlock Text="rows" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- RIGHT MAIN PREVIEW CANVAS -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <!-- Preview Toolbar -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Preview Canvas -->
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- PREVIEW TOOLBAR -->
+                <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,0,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Page Navigation Buttons -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="⏮ First" Command="{Binding FirstPageCommand}" Style="{StaticResource OutlineButton}" Height="30" Padding="8,0" Margin="0,0,4,0"/>
+                            <Button Content="◀ Prev" Command="{Binding PreviousPageCommand}" Style="{StaticResource OutlineButton}" Height="30" Padding="8,0" Margin="0,0,6,0"/>
+
+                            <Border Background="#10111A" CornerRadius="4" Padding="10,4" Margin="0,0,6,0">
+                                <TextBlock Text="{Binding PageNavigationText}" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource TextBrush}"/>
+                            </Border>
+
+                            <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource OutlineButton}" Height="30" Padding="8,0" Margin="0,0,4,0"/>
+                            <Button Content="Last ⏭" Command="{Binding LastPageCommand}" Style="{StaticResource OutlineButton}" Height="30" Padding="8,0"/>
+                        </StackPanel>
+
+                        <!-- Center Status Badge -->
+                        <Border Grid.Column="1" HorizontalAlignment="Center" Background="#1E293B" CornerRadius="6" Padding="12,4" Margin="10,0">
+                            <TextBlock Text="{Binding StatusText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#38BDF8"/>
+                        </Border>
+
+                        <!-- Right: Zoom & Fit Controls -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="↔ Fit Width" Click="FitWidth_Click" Style="{StaticResource OutlineButton}" Height="30" Padding="8,0" Margin="0,0,4,0" ToolTip="Fit sheet width to window (shows all columns edge-to-edge)"/>
+                            <Button Content="📄 Fit Page" Click="FitPage_Click" Style="{StaticResource OutlineButton}" Height="30" Padding="8,0" Margin="0,0,8,0" ToolTip="Fit entire A4 page to screen"/>
+
+                            <Button Content="−" Command="{Binding ZoomOutCommand}" Style="{StaticResource OutlineButton}" Height="30" Width="30" Margin="0,0,2,0" FontWeight="Bold" ToolTip="Zoom Out (Ctrl + Scroll Down)"/>
+                            <Button Content="{Binding ZoomPercentageText}" Command="{Binding ZoomResetCommand}" Style="{StaticResource OutlineButton}" Height="30" Padding="8,0" Margin="0,0,2,0" FontSize="11" ToolTip="Click to reset zoom to 100%"/>
+                            <Button Content="+" Command="{Binding ZoomInCommand}" Style="{StaticResource OutlineButton}" Height="30" Width="30" FontWeight="Bold" ToolTip="Zoom In (Ctrl + Scroll Up)"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- PREVIEW CANVAS VIEWPORT (Authentic Edge / Acrobat Slate Document Canvas) -->
+                <Border Grid.Row="1" Background="#2B2D31" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                    <Grid>
+                        <!-- Scrollable Paper Page View with Freeform Mouse Drag Panning -->
+                        <ScrollViewer x:Name="PreviewScrollViewer"
+                                      HorizontalScrollBarVisibility="Auto" 
+                                      VerticalScrollBarVisibility="Auto" 
+                                      Padding="0"
+                                      Focusable="True"
+                                      PreviewMouseLeftButtonDown="PreviewScrollViewer_PreviewMouseLeftButtonDown"
+                                      PreviewMouseMove="PreviewScrollViewer_PreviewMouseMove"
+                                      PreviewMouseLeftButtonUp="PreviewScrollViewer_PreviewMouseLeftButtonUp"
+                                      PreviewMouseWheel="PreviewScrollViewer_PreviewMouseWheel"
+                                      ScrollChanged="PreviewScrollViewer_ScrollChanged">
+                            <Grid HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,16,16,24">
+                                <!-- Paper Shadow Border (1px crisp document outline + drop shadow like Edge/Acrobat) -->
+                                <Border Background="White" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="0" Effect="{StaticResource PageDropShadow}"
+                                        Visibility="{Binding HasDocument, Converter={StaticResource BoolToVis}}">
+                                    <Image Source="{Binding CurrentPreviewImage}" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality">
+                                        <Image.LayoutTransform>
+                                            <ScaleTransform ScaleX="{Binding ZoomFactor}" ScaleY="{Binding ZoomFactor}"/>
+                                        </Image.LayoutTransform>
+                                    </Image>
+                                </Border>
+                            </Grid>
+                        </ScrollViewer>
+
+                        <!-- Empty State (When no file loaded) -->
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" 
+                              Visibility="{Binding HasDocument, Converter={StaticResource InverseBoolToVis}}">
+                            <StackPanel HorizontalAlignment="Center" MaxWidth="480">
+                                <TextBlock Text="📊" FontSize="56" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                <TextBlock Text="No Spreadsheet Open" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                <TextBlock Text="Drag and drop any Excel (.xlsx, .xls) or CSV file here, or click Open to format edge-to-edge for A4 printing." 
+                                           TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,16"/>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <Button Content="📂 Open Spreadsheet File" Command="{Binding BrowseFileCommand}" Style="{StaticResource PrimaryButton}" Height="38" Padding="20,0" Margin="0,0,8,0"/>
+                                    <Button Content="⚡ Resume Recent Work" Command="{Binding ResumeRecentDraftCommand}" 
+                                            Visibility="{Binding HasRecentDraft, Converter={StaticResource BoolToVis}}"
+                                            Style="{StaticResource PrimaryButton}" Background="#2E7D32" BorderBrush="#388E3C"
+                                            Height="38" Padding="16,0" ToolTip="{Binding RecentDraftText}"/>
+                                </StackPanel>
+
+                                <Border Background="#1E293B" CornerRadius="6" Padding="12,8" Margin="0,4,0,0"
+                                        Visibility="{Binding HasRecentDraft, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="{Binding RecentDraftText}" FontSize="11.5" Foreground="#38BDF8" TextWrapping="Wrap" TextAlignment="Center"/>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Loading Indicator Overlay -->
+                        <Border Background="#A0000000" CornerRadius="8" Visibility="{Binding IsGenerating, Converter={StaticResource BoolToVis}}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <ProgressBar IsIndeterminate="True" Width="180" Height="4" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}"/>
+                                <TextBlock Text="{Binding StatusText}" Foreground="White" FontSize="12" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </Grid>
+
+        <!-- BOTTOM STATUS BAR -->
+        <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,6">
+            <Grid>
+                <TextBlock Text="⚡ DASMO Smart Fit Engine: 100% Proportional Width Allocation • Zero Horizontal Splitting • Repeated Frozen Headers" 
+                           FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="DASMO CYBER CAFE TOOLS" HorizontalAlignment="Right" FontSize="11" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+    </Border>
+</Window>

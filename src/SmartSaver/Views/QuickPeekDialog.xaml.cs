@@ -50,7 +50,35 @@ public partial class QuickPeekDialog : Window
             {
                 UpdatePanCursor();
             }
+            else if (args.PropertyName == nameof(QuickPeekViewModel.SelectedPdfPage) ||
+                     args.PropertyName == nameof(QuickPeekViewModel.PageRotation))
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    UpdatePdfLayout();
+                    PdfScrollViewer.ScrollToVerticalOffset(0);
+                    PdfScrollViewer.ScrollToHorizontalOffset(0);
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            else if (args.PropertyName == nameof(QuickPeekViewModel.ImageSource))
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    UpdateImageLayout();
+                    ImageScrollViewer.ScrollToVerticalOffset(0);
+                    ImageScrollViewer.ScrollToHorizontalOffset(0);
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
         };
+
+        SizeChanged += (_, _) =>
+        {
+            UpdatePdfLayout();
+            UpdateImageLayout();
+        };
+
+        PdfScrollViewer.SizeChanged += (_, _) => UpdatePdfLayout();
+        ImageScrollViewer.SizeChanged += (_, _) => UpdateImageLayout();
 
         Loaded += (_, _) =>
         {
@@ -62,7 +90,74 @@ public partial class QuickPeekDialog : Window
             catch { }
             Activate();
             Focus();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                UpdatePdfLayout();
+                UpdateImageLayout();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         };
+    }
+
+    private void UpdatePdfLayout()
+    {
+        if (PdfScrollViewer == null || PdfPageImage == null || _vm.SelectedPdfPage == null) return;
+
+        double vWidth = PdfScrollViewer.ViewportWidth > 50 ? PdfScrollViewer.ViewportWidth : PdfScrollViewer.ActualWidth;
+        double vHeight = PdfScrollViewer.ViewportHeight > 50 ? PdfScrollViewer.ViewportHeight : PdfScrollViewer.ActualHeight;
+
+        if (vWidth > 50 && vHeight > 50)
+        {
+            // Deduct 36px for clean 16px margins on all sides
+            double availableWidth = Math.Max(200, vWidth - 36);
+            double availableHeight = Math.Max(200, vHeight - 36);
+            double bmpWidth = _vm.SelectedPdfPage.Width;
+            double bmpHeight = _vm.SelectedPdfPage.Height;
+            bool isRotated90 = (_vm.PageRotation % 180 != 0);
+
+            // Calculate effective dimensions after rotation
+            double effectiveWidth = isRotated90 ? bmpHeight : bmpWidth;
+            double effectiveHeight = isRotated90 ? bmpWidth : bmpHeight;
+
+            if (effectiveWidth <= 0 || effectiveHeight <= 0)
+            {
+                PdfPageImage.Width = availableWidth;
+                PdfPageImage.Height = double.NaN;
+                return;
+            }
+
+            // Fit both width and height cleanly without distortion or stretch
+            double scaleW = availableWidth / effectiveWidth;
+            double scaleH = availableHeight / effectiveHeight;
+            double fitScale = Math.Min(scaleW, scaleH);
+
+            // Assign both width and height proportionally to guarantee 100% aspect ratio preservation
+            PdfPageImage.Width = bmpWidth * fitScale;
+            PdfPageImage.Height = bmpHeight * fitScale;
+        }
+    }
+
+    private void UpdateImageLayout()
+    {
+        if (ImageScrollViewer == null || ImageViewerImage == null || _vm.ImageSource == null) return;
+        if (ImageScrollViewer.ViewportWidth > 50)
+        {
+            double availableWidth = Math.Max(200, ImageScrollViewer.ViewportWidth - 32);
+            double naturalWidth = _vm.ImageSource.Width;
+            if (naturalWidth > availableWidth || naturalWidth <= 0)
+            {
+                ImageViewerImage.Width = availableWidth;
+            }
+            else
+            {
+                ImageViewerImage.Width = naturalWidth;
+            }
+            ImageViewerImage.Height = double.NaN;
+        }
+    }
+
+    public async Task NavigateToFile(string filePath)
+    {
+        await _vm.NavigateToFileAsync(filePath);
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -150,8 +245,20 @@ public partial class QuickPeekDialog : Window
 
     // --- Keyboard Shortcuts ---
 
-    private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        // If the user is typing in a TextBox (e.g. entering PDF password), do not intercept text navigation keys
+        if (e.OriginalSource is System.Windows.Controls.TextBox)
+        {
+            if (e.Key == Key.Escape)
+            {
+                Close();
+                e.Handled = true;
+            }
+            return;
+        }
+
+        // --- Zoom Shortcuts: Ctrl + Plus, Ctrl + Minus, Ctrl + 0 ---
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             if (e.Key == Key.OemPlus || e.Key == Key.Add)
@@ -172,14 +279,97 @@ public partial class QuickPeekDialog : Window
                 e.Handled = true;
                 return;
             }
+
+            // Ctrl + Right / Ctrl + Down: Advance page in multi-page PDF
+            if (e.Key == Key.Right || e.Key == Key.Down)
+            {
+                if (_vm.IsPdf && _vm.CanGoNextPage)
+                {
+                    _vm.CurrentPageIndex++;
+                    e.Handled = true;
+                    return;
+                }
+            }
+            // Ctrl + Left / Ctrl + Up: Previous page in multi-page PDF
+            if (e.Key == Key.Left || e.Key == Key.Up)
+            {
+                if (_vm.IsPdf && _vm.CanGoPrevPage)
+                {
+                    _vm.CurrentPageIndex--;
+                    e.Handled = true;
+                    return;
+                }
+            }
         }
 
-        if (e.Key == System.Windows.Input.Key.Escape)
+        // --- File Navigation: Next File (Right Arrow, Down Arrow, N, Alt+Right) ---
+        if (e.Key == Key.Right || e.Key == Key.Down || e.Key == Key.N ||
+            (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && e.Key == Key.Right))
+        {
+            if (_vm.CanGoNextFile)
+            {
+                _vm.NavigateToNextFile();
+            }
+            e.Handled = true;
+            return;
+        }
+
+        // --- File Navigation: Previous File (Left Arrow, Up Arrow, P, Alt+Left) ---
+        if (e.Key == Key.Left || e.Key == Key.Up || e.Key == Key.P ||
+            (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && e.Key == Key.Left))
+        {
+            if (_vm.CanGoPrevFile)
+            {
+                _vm.NavigateToPrevFile();
+            }
+            e.Handled = true;
+            return;
+        }
+
+        // --- Page Navigation: PageDown / PageUp ---
+        if (e.Key == Key.PageDown)
+        {
+            // If in a multi-page PDF and not on the last page, advance page
+            if (_vm.IsPdf && _vm.CanGoNextPage)
+            {
+                _vm.CurrentPageIndex++;
+                e.Handled = true;
+                return;
+            }
+            // Otherwise advance to next file
+            if (_vm.CanGoNextFile)
+            {
+                _vm.NavigateToNextFile();
+            }
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.PageUp)
+        {
+            // If in a multi-page PDF and not on the first page, go to previous page
+            if (_vm.IsPdf && _vm.CanGoPrevPage)
+            {
+                _vm.CurrentPageIndex--;
+                e.Handled = true;
+                return;
+            }
+            // Otherwise go to previous file
+            if (_vm.CanGoPrevFile)
+            {
+                _vm.NavigateToPrevFile();
+            }
+            e.Handled = true;
+            return;
+        }
+
+        // --- Dialog Dismissal: Escape or Spacebar ---
+        if (e.Key == Key.Escape)
         {
             Close();
             e.Handled = true;
+            return;
         }
-        else if (e.Key == System.Windows.Input.Key.Space)
+        if (e.Key == Key.Space)
         {
             // Debounce Spacebar closing: ignore Spacebar if pressed within 350ms of dialog creation
             if ((DateTime.UtcNow - _openedTimestamp).TotalMilliseconds > 350)
@@ -187,16 +377,7 @@ public partial class QuickPeekDialog : Window
                 Close();
             }
             e.Handled = true;
-        }
-        else if (e.Key == System.Windows.Input.Key.Left && _vm.CanGoPrevPage)
-        {
-            _vm.CurrentPageIndex--;
-            e.Handled = true;
-        }
-        else if (e.Key == System.Windows.Input.Key.Right && _vm.CanGoNextPage)
-        {
-            _vm.CurrentPageIndex++;
-            e.Handled = true;
+            return;
         }
     }
 }

@@ -5,9 +5,48 @@
         Title="DASMO CYBER COMPRESSOR — Quick Peek Preview" Height="680" Width="920"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        Topmost="True" KeyDown="Window_KeyDown">
+        Topmost="True" PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
         <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Sleek Floating Side Navigation Chevron Button -->
+        <Style x:Key="FloatingNavButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#B0141420"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Opacity" Value="0.75"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="21">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F000BCD4"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#00BCD4"/>
+                                <Setter Property="Foreground" Value="#0F172A"/>
+                                <Setter Property="Opacity" Value="1.0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#D000ACC1"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#00ACC1"/>
+                                <Setter Property="Foreground" Value="#0F172A"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.12"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border Background="{StaticResource BackgroundBrush}" CornerRadius="12" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5" ClipToBounds="True">
@@ -18,37 +57,79 @@
                 <RowDefinition Height="60"/>
             </Grid.RowDefinitions>
 
-            <!-- Photo Background Layer -->
-            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.35" IsHitTestVisible="False" Grid.RowSpan="3"/>
-
             <!-- Custom Header -->
             <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: File Badge, Name and Size -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
                     <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,10,0">
                         <TextBlock Text="{Binding ExtensionUpper}" FontWeight="Bold" Foreground="#101018" FontSize="11"/>
                     </Border>
-                    <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="14" Foreground="#FFFFFF"/>
+                    <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="14" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" MaxWidth="380" ToolTip="{Binding FilePath}"/>
                     <TextBlock Text=" (" Foreground="{StaticResource TextSecondaryBrush}"/>
                     <TextBlock Text="{Binding FileSizeFormatted}" Foreground="{StaticResource TextSecondaryBrush}"/>
                     <TextBlock Text=")" Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <!-- Center: File Navigation Buttons & Counter -->
+                <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Background="#171822" CornerRadius="16" Padding="4,2" Margin="10,0"
+                        BorderBrush="#38384E" BorderThickness="1"
+                        Visibility="{Binding HasMultipleFiles, Converter={StaticResource BoolToVis}}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Prev File -->
+                        <Button Command="{Binding PrevFileCommand}" 
+                                IsEnabled="{Binding CanGoPrevFile}"
+                                ToolTip="{Binding PrevFileToolTip}"
+                                Style="{StaticResource ChipButton}" 
+                                Padding="8,3" Margin="0,0,3,0" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="⏮" FontSize="10" Margin="0,0,4,0"/>
+                                <TextBlock Text="Prev File" FontSize="11" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Counter Pill -->
+                        <Border Background="#252538" CornerRadius="10" Padding="8,2" Margin="2,0">
+                            <TextBlock Text="{Binding FileNavigationDisplay}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Next File -->
+                        <Button Command="{Binding NextFileCommand}" 
+                                IsEnabled="{Binding CanGoNextFile}"
+                                ToolTip="{Binding NextFileToolTip}"
+                                Style="{StaticResource ChipButton}" 
+                                Padding="8,3" Margin="3,0,0,0" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Next File" FontSize="11" FontWeight="SemiBold" Margin="0,0,4,0"/>
+                                <TextBlock Text="⏭" FontSize="10"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Right: Window buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="🗕" Width="40" Height="45" Background="Transparent" BorderThickness="0" Click="MinimizeButton_Click" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
                     <Button Content="✕" Width="45" Height="45" Background="Transparent" BorderThickness="0" Click="CloseButton_Click" FontSize="14" Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
             </Grid>
 
             <!-- Main Preview Area -->
-            <Grid Grid.Row="1" Margin="15">
+            <Grid Grid.Row="1" Margin="15" Background="#2B2D31">
                 <!-- Loading Indicator -->
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
                     <ProgressBar IsIndeterminate="True" Width="200" Height="4" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}"/>
                     <TextBlock Text="Rendering High-Def Preview..." Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
 
-                <!-- PDF Previewer -->
-                <Grid Visibility="{Binding IsPdf, Converter={StaticResource BoolToVis}}">
+                <!-- PDF Previewer (Authentic Edge / Acrobat Slate Document Canvas) -->
+                <Grid Visibility="{Binding IsPdf, Converter={StaticResource BoolToVis}}" Background="#2B2D31">
                     <!-- Normal Page View -->
                     <Grid Visibility="{Binding IsPasswordProtected, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
                         <ScrollViewer x:Name="PdfScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
@@ -56,24 +137,26 @@
                                       PreviewMouseLeftButtonDown="PanScrollViewer_MouseLeftButtonDown"
                                       PreviewMouseMove="PanScrollViewer_MouseMove"
                                       PreviewMouseLeftButtonUp="PanScrollViewer_MouseLeftButtonUp">
-                            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Image Source="{Binding SelectedPdfPage}" Stretch="Uniform" MaxHeight="540" Margin="10">
-                                    <Image.LayoutTransform>
-                                        <TransformGroup>
-                                            <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
-                                            <RotateTransform Angle="{Binding PageRotation}"/>
-                                        </TransformGroup>
-                                    </Image.LayoutTransform>
-                                </Image>
+                            <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16">
+                                <Border Background="White" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="0" Effect="{StaticResource PageDropShadow}">
+                                    <Image x:Name="PdfPageImage" Source="{Binding SelectedPdfPage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality">
+                                        <Image.LayoutTransform>
+                                            <TransformGroup>
+                                                <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                                <RotateTransform Angle="{Binding PageRotation}"/>
+                                            </TransformGroup>
+                                        </Image.LayoutTransform>
+                                    </Image>
+                                </Border>
                             </Grid>
                         </ScrollViewer>
 
                         <!-- PDF Page, Rotation & Zoom Controls Overlay -->
                         <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,15" Background="#EE1E1E2E" CornerRadius="20" Padding="14,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,10,0"/>
+                                <Button Content="◀ Prev" Command="{Binding PrevPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,10,0" ToolTip="Previous Page (Ctrl+← or PageUp)"/>
                                 <TextBlock Text="{Binding CurrentPageDisplay}" VerticalAlignment="Center" FontWeight="SemiBold" Margin="5,0,15,0"/>
-                                <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,15,0"/>
+                                <Button Content="Next ▶" Command="{Binding NextPageCommand}" Style="{StaticResource ChipButton}" Margin="0,0,15,0" ToolTip="Next Page (Ctrl+→ or PageDown)"/>
 
                                 <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,15,2"/>
 
@@ -121,18 +204,20 @@
                 </Grid>
 
                 <!-- Image Previewer -->
-                <Grid Visibility="{Binding IsImage, Converter={StaticResource BoolToVis}}">
+                <Grid Visibility="{Binding IsImage, Converter={StaticResource BoolToVis}}" Background="#2B2D31">
                     <ScrollViewer x:Name="ImageScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                   PreviewMouseWheel="ScrollViewer_PreviewMouseWheel"
                                   PreviewMouseLeftButtonDown="PanScrollViewer_MouseLeftButtonDown"
                                   PreviewMouseMove="PanScrollViewer_MouseMove"
                                   PreviewMouseLeftButtonUp="PanScrollViewer_MouseLeftButtonUp">
-                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Image Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="540" Margin="10">
-                                <Image.LayoutTransform>
-                                    <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
-                                </Image.LayoutTransform>
-                            </Image>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+                            <Border Background="#14141E" CornerRadius="2" Effect="{StaticResource SoftDropShadow}">
+                                <Image x:Name="ImageViewerImage" Source="{Binding ImageSource}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.LayoutTransform>
+                                        <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                    </Image.LayoutTransform>
+                                </Image>
+                            </Border>
                         </Grid>
                     </ScrollViewer>
 
@@ -152,29 +237,54 @@
                     <TextBox Text="{Binding TextContent}" IsReadOnly="True" Background="#14141E" Foreground="#E0E0F0" FontFamily="Consolas" FontSize="12" Padding="15" BorderThickness="0"/>
                 </ScrollViewer>
 
-                <!-- Soft Background Owner Portrait Watermark -->
-                <Grid HorizontalAlignment="Right" VerticalAlignment="Bottom" Opacity="0.05" IsHitTestVisible="False" Margin="0,0,10,10">
-                    <Image Source="pack://application:,,,/Resources/owner_portrait.png" Width="220" Height="220" Stretch="UniformToFill">
-                        <Image.Clip>
-                            <EllipseGeometry Center="110,110" RadiusX="105" RadiusY="105"/>
-                        </Image.Clip>
-                    </Image>
-                </Grid>
+                <!-- Floating Left Chevron (Previous File) -->
+                <Button Command="{Binding PrevFileCommand}"
+                        IsEnabled="{Binding CanGoPrevFile}"
+                        ToolTip="{Binding PrevFileToolTip}"
+                        HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Margin="8,0,0,0" Width="42" Height="42"
+                        Visibility="{Binding HasMultipleFiles, Converter={StaticResource BoolToVis}}"
+                        Cursor="Hand"
+                        Style="{StaticResource FloatingNavButtonStyle}">
+                    <TextBlock Text="❮" FontSize="18" FontWeight="Bold" Margin="-2,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Button>
+
+                <!-- Floating Right Chevron (Next File) -->
+                <Button Command="{Binding NextFileCommand}"
+                        IsEnabled="{Binding CanGoNextFile}"
+                        ToolTip="{Binding NextFileToolTip}"
+                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Margin="0,0,8,0" Width="42" Height="42"
+                        Visibility="{Binding HasMultipleFiles, Converter={StaticResource BoolToVis}}"
+                        Cursor="Hand"
+                        Style="{StaticResource FloatingNavButtonStyle}">
+                    <TextBlock Text="❯" FontSize="18" FontWeight="Bold" Margin="2,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Button>
+
             </Grid>
 
-            <!-- Bottom Action Toolbar -->
+            <!-- Bottom Action Toolbar (Clean, Spacious, Zero Clutter) -->
             <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,12,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-                <Grid Margin="20,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                        <Button Content="⚡ Compress File..." Command="{Binding CompressCommand}" Style="{StaticResource PrimaryButton}" Width="140" Margin="0,0,8,0"/>
-                        <Button Content="💳 Ration/Aadhaar Print" Command="{Binding GovtCardPrintCommand}" Style="{StaticResource AccentButton}" Width="170" Margin="0,0,8,0" ToolTip="Batch crop and print 5 cards per A4 sheet"/>
-                        <Button Content="🖨️ A4 Stacker" Command="{Binding StackCommand}" Width="120" Margin="0,0,8,0" ToolTip="2-in-1 front/back ID stacker"/>
-                        <Button Content="📁 Folder" Command="{Binding OpenFolderCommand}" Width="85"/>
+                <Grid Margin="18,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Cyber Cafe Productivity Actions -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="⚡ Compress File..." Command="{Binding CompressCommand}" Style="{StaticResource PrimaryButton}" Padding="14,6" Margin="0,0,10,0"/>
+                        <Button Content="💳 Ration/Aadhaar Print" Command="{Binding GovtCardPrintCommand}" Style="{StaticResource AccentButton}" Padding="14,6" Margin="0,0,10,0" ToolTip="Batch crop and print 5 cards per A4 sheet"/>
+                        <Button Content="🖨️ A4 Stacker" Command="{Binding StackCommand}" Padding="12,6" Margin="0,0,10,0" ToolTip="2-in-1 front/back ID stacker"/>
+                        <Button Content="📁 Open Folder" Command="{Binding OpenFolderCommand}" Padding="12,6" ToolTip="Open file location in Windows Explorer"/>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <TextBlock Text="Press Space or Esc to Close" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,15,0" FontSize="11"/>
-                        <Button Content="Close (Esc)" Command="{Binding CloseCommand}" Width="100"/>
+                    <!-- Right: Clear Shortcut Hint & Close Button (No Overlap) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Navigate Files: ← / → or ↓ / ↑ • Space / Esc to Close" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   VerticalAlignment="Center" Margin="0,0,16,0" FontSize="11.5"/>
+                        <Button Content="Close (Esc)" Command="{Binding CloseCommand}" Width="100" Height="32"/>
                     </StackPanel>
                 </Grid>
             </Border>

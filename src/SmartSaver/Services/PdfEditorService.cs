@@ -30,8 +30,12 @@ public class PdfEditorService
     private static readonly Lazy<PdfEditorService> _instance = new(() => new PdfEditorService());
     public static PdfEditorService Instance => _instance.Value;
 
-    public PdfEditorService()
+    private readonly IDocumentEnhancerService _enhancerService;
+    public IDocumentEnhancerService EnhancerService => _enhancerService;
+
+    public PdfEditorService(IDocumentEnhancerService? enhancerService = null)
     {
+        _enhancerService = enhancerService ?? new DocumentEnhancerService();
         PdfRendererService.EnsureDllResolver();
     }
 
@@ -161,8 +165,15 @@ public class PdfEditorService
 
     /// <summary>
     /// Renders a single page of the PDF at high resolution (e.g. 150-300 DPI) for live studio editing.
+    /// Supports optional document enhancement (background whitening &amp; text sharpening).
     /// </summary>
-    public async Task<BitmapSource?> RenderPageAsync(string pdfPath, int pageIndex, int dpi = 150, string? password = null)
+    public async Task<BitmapSource?> RenderPageAsync(
+        string pdfPath,
+        int pageIndex,
+        int dpi = 150,
+        string? password = null,
+        bool enhance = false,
+        EnhancementOptions? enhancementOptions = null)
     {
         if (!File.Exists(pdfPath)) return null;
 
@@ -185,7 +196,12 @@ public class PdfEditorService
                 if (targetH <= 0) targetH = (int)(targetW * 1.414);
 
                 using var rendered = (Bitmap)document.Render(pageIndex, targetW, targetH, dpi, dpi, PdfiumViewer.PdfRenderFlags.Annotations);
-                return PdfRendererService.ToBitmapSource(rendered);
+                var bmpSource = PdfRendererService.ToBitmapSource(rendered);
+                if (enhance && bmpSource != null)
+                {
+                    bmpSource = _enhancerService.EnhanceBitmapSource(bmpSource, enhancementOptions);
+                }
+                return bmpSource;
             }
             catch (Exception ex)
             {
@@ -199,12 +215,16 @@ public class PdfEditorService
     /// Commits all in-place edits (whiteouts, text replacements, photos, ink) into the actual PDF.
     /// Preserves 100% of the underlying vector PDF content, fonts, and page structure!
     /// Supports unlocked/password-protected PDFs.
+    /// When enhanceScannedPages is true, renders scanned pages at 300 DPI, whitens background,
+    /// sharpens ink contrast, and applies vector edits on top for clean archival quality.
     /// </summary>
     public async Task<bool> SaveEditsToPdfAsync(
         string sourcePdfPath,
         string outputPdfPath,
         IReadOnlyDictionary<int, IReadOnlyList<PdfEditItem>> pageEdits,
-        string? password = null)
+        string? password = null,
+        bool enhanceScannedPages = false,
+        EnhancementOptions? enhancementOptions = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePdfPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPdfPath);
@@ -215,36 +235,109 @@ public class PdfEditorService
             {
                 string tempOut = Path.Combine(Path.GetDirectoryName(outputPdfPath)!, $".tmp_edit_{Guid.NewGuid():N}.pdf");
 
-                // Check if we can open in Modify mode
                 bool modifiedDirectly = false;
-                try
+
+                // 1. Scanned Page Enhancement Export Pipeline (300 DPI high resolution)
+                if (enhanceScannedPages)
                 {
-                    using (var doc = string.IsNullOrEmpty(password)
-                        ? PdfReader.Open(sourcePdfPath, PdfDocumentOpenMode.Modify)
-                        : PdfReader.Open(sourcePdfPath, password, PdfDocumentOpenMode.Modify))
+                    try
                     {
-                        if (!string.IsNullOrEmpty(password))
+                        byte[] pdfBytes = File.ReadAllBytes(sourcePdfPath);
+                        using var stream = new MemoryStream(pdfBytes);
+                        using var pdfiumDoc = string.IsNullOrEmpty(password)
+                            ? PdfiumViewer.PdfDocument.Load(stream)
+                            : PdfiumViewer.PdfDocument.Load(stream, password);
+
+                        using var outDoc = new PdfDocument();
+                        outDoc.Info.Creator = "DASMO CYBER CAFE TOOLS — PDF Editor Studio";
+
+                        var options = enhancementOptions ?? new EnhancementOptions();
+                        var jpegEncoder = ImageCodecInfo.GetImageEncoders().FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
+
+                        for (int i = 0; i < pdfiumDoc.PageCount; i++)
                         {
-                            try
+                            var sz = pdfiumDoc.PageSizes[i];
+                            double widthPt = sz.Width;
+                            double heightPt = sz.Height;
+                            int targetW = (int)Math.Round(widthPt / 72.0 * 300.0);
+                            int targetH = (int)Math.Round(heightPt / 72.0 * 300.0);
+                            if (targetW <= 0) targetW = 2480;
+                            if (targetH <= 0) targetH = (int)(targetW * 1.414);
+
+                            using var rendered = (Bitmap)pdfiumDoc.Render(i, targetW, targetH, 300, 300, PdfiumViewer.PdfRenderFlags.Annotations);
+                            using var enhanced = _enhancerService.EnhanceBitmap(rendered, options);
+
+                            var page = outDoc.AddPage();
+                            page.Width = XUnit.FromPoint(widthPt);
+                            page.Height = XUnit.FromPoint(heightPt);
+
+                            using (var gfx = XGraphics.FromPdfPage(page))
                             {
-                                doc.SecuritySettings.OwnerPassword = string.Empty;
-                                doc.SecuritySettings.UserPassword = string.Empty;
+                                using var ms = new MemoryStream();
+                                if (jpegEncoder != null)
+                                {
+                                    using var encParams = new EncoderParameters(1);
+                                    encParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 92L);
+                                    enhanced.Save(ms, jpegEncoder, encParams);
+                                }
+                                else
+                                {
+                                    enhanced.Save(ms, ImageFormat.Jpeg);
+                                }
+
+                                byte[] jpgBytes = ms.ToArray();
+                                using var xImg = XImage.FromStream(() => new MemoryStream(jpgBytes));
+                                gfx.DrawImage(xImg, 0, 0, widthPt, heightPt);
                             }
-                            catch { }
+
+                            if (pageEdits.TryGetValue(i, out var edits) && edits.Count > 0)
+                            {
+                                ApplyEditsToPage(page, edits);
+                            }
                         }
-                        ApplyEditsToDocument(doc, pageEdits);
-                        doc.Save(tempOut);
+
+                        outDoc.Save(tempOut);
                         modifiedDirectly = true;
                     }
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Could not open in Modify mode, importing pages instead for {Path}", sourcePdfPath);
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "300 DPI raster page enhancement export failed for {Path}, falling back to vector stream mode", sourcePdfPath);
+                        modifiedDirectly = false;
+                    }
                 }
 
+                // 2. Vector Stream Modification Pipeline (Standard Mode)
                 if (!modifiedDirectly)
                 {
-                    // Fallback to Import mode
+                    try
+                    {
+                        using (var doc = string.IsNullOrEmpty(password)
+                            ? PdfReader.Open(sourcePdfPath, PdfDocumentOpenMode.Modify)
+                            : PdfReader.Open(sourcePdfPath, password, PdfDocumentOpenMode.Modify))
+                        {
+                            if (!string.IsNullOrEmpty(password))
+                            {
+                                try
+                                {
+                                    doc.SecuritySettings.OwnerPassword = string.Empty;
+                                    doc.SecuritySettings.UserPassword = string.Empty;
+                                }
+                                catch { }
+                            }
+                            ApplyEditsToDocument(doc, pageEdits);
+                            doc.Save(tempOut);
+                            modifiedDirectly = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Could not open in Modify mode, importing pages instead for {Path}", sourcePdfPath);
+                    }
+                }
+
+                // 3. Import Mode Fallback (if Modify mode failed)
+                if (!modifiedDirectly)
+                {
                     using var srcDoc = string.IsNullOrEmpty(password)
                         ? PdfReader.Open(sourcePdfPath, PdfDocumentOpenMode.Import)
                         : PdfReader.Open(sourcePdfPath, password, PdfDocumentOpenMode.Import);

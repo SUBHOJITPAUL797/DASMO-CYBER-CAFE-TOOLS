@@ -61,6 +61,56 @@ public class PassportStudioViewModel : ViewModelBase
         get => _photoPreviewImage;
         set => SetProperty(ref _photoPreviewImage, value);
     }
+
+    private Bitmap? _cachedAiCutoutBmp;
+    private CancellationTokenSource? _aiSegCts;
+
+    private bool _isAiSegmenting;
+    public bool IsAiSegmenting
+    {
+        get => _isAiSegmenting;
+        set
+        {
+            if (SetProperty(ref _isAiSegmenting, value))
+            {
+                OnPropertyChanged(nameof(AiStatusIcon));
+                OnPropertyChanged(nameof(AiStatusText));
+            }
+        }
+    }
+
+    private bool _isAiCutoutActive;
+    public bool IsAiCutoutActive
+    {
+        get => _isAiCutoutActive;
+        set
+        {
+            if (SetProperty(ref _isAiCutoutActive, value))
+            {
+                OnPropertyChanged(nameof(AiStatusIcon));
+                OnPropertyChanged(nameof(AiStatusText));
+            }
+        }
+    }
+
+    private string _aiStatusMessage = string.Empty;
+    public string AiStatusMessage
+    {
+        get => _aiStatusMessage;
+        set
+        {
+            if (SetProperty(ref _aiStatusMessage, value))
+            {
+                OnPropertyChanged(nameof(AiStatusIcon));
+                OnPropertyChanged(nameof(AiStatusText));
+            }
+        }
+    }
+
+    public string AiStatusIcon => IsAiSegmenting ? "🧠" : (IsAiCutoutActive ? "✨" : "⚡");
+    public string AiStatusText => IsAiSegmenting
+        ? "AI analyzing portrait & hair edges..."
+        : (IsAiCutoutActive ? "AI Smart Background Active (Hair & Edge Perfect)" : "Adaptive Edge Detection Active");
     #endregion
 
     #region Studio Lighting & Background
@@ -447,11 +497,24 @@ public class PassportStudioViewModel : ViewModelBase
     public ObservableCollection<string> SinglePresets { get; } = new()
     {
         "🏛️ SSC / UPSC / Railways / IBPS (20–50 KB, 3.5×4.5 cm)",
-        "🆔 PAN Card Portal (10–20 KB, 2.5×3.5 cm)",
+        "💳 PAN Card (NSDL / UTI) (2.5 × 3.5 cm | 200 DPI | <50 KB)",
         "🌍 Passport Seva / Standard (50–100 KB, 3.5×4.5 cm)",
         "🛂 US / Schengen Visa (50–100 KB, 5.0×5.0 cm)",
         "⚙️ Custom Dimensions & Target KB"
     };
+
+    private int _singleDpi = 300;
+    public int SingleDpi
+    {
+        get => _singleDpi;
+        set
+        {
+            if (SetProperty(ref _singleDpi, value))
+                TriggerSingleExportPreviewUpdate();
+        }
+    }
+
+    public ObservableCollection<int> SingleDpiOptions { get; } = new() { 200, 300 };
 
     private double _singleWidthCm = 3.5;
     public double SingleWidthCm
@@ -574,6 +637,7 @@ public class PassportStudioViewModel : ViewModelBase
     public ICommand SetTopMarginCommand { get; }
     public ICommand NudgeTopMarginCommand { get; }
     public ICommand OpenSingleExportCommand { get; }
+    public ICommand OpenPanPhotoExportCommand { get; }
     public ICommand CloseSingleExportCommand { get; }
     public ICommand SaveSinglePhotoCommand { get; }
     public ICommand CopySinglePhotoCommand { get; }
@@ -584,6 +648,45 @@ public class PassportStudioViewModel : ViewModelBase
 
     private CancellationTokenSource? _renderCts;
     private readonly SemaphoreSlim _renderLock = new(1, 1);
+
+    public static bool SuppressDialogsForTests { get; set; } = false;
+
+    private static void SafeUiInvoke(Action action)
+    {
+        var app = System.Windows.Application.Current;
+        if (app == null || app.Dispatcher == null || app.Dispatcher.HasShutdownStarted || app.Dispatcher.HasShutdownFinished)
+        {
+            action();
+            return;
+        }
+
+        if (app.Dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        try
+        {
+            if (!app.Dispatcher.Thread.IsAlive)
+            {
+                action();
+                return;
+            }
+            app.Dispatcher.BeginInvoke(action);
+        }
+        catch
+        {
+            action();
+        }
+    }
+
+    private static void ShowAlert(string message, string caption, MessageBoxButton button, MessageBoxImage image)
+    {
+        if (SuppressDialogsForTests) return;
+        if (System.Windows.Application.Current?.MainWindow == null && System.Windows.Application.Current?.Windows.Count == 0) return;
+        WpfMessageBox.Show(message, caption, button, image);
+    }
 
     public PassportStudioViewModel(string initialPath = "")
     {
@@ -624,6 +727,13 @@ public class PassportStudioViewModel : ViewModelBase
         SaveSheetPdfCommand = new RelayCommand(async _ => await SaveSheetPdfAsync(), _ => HasPhoto && !IsProcessing);
         SaveSheetJpgCommand = new RelayCommand(async _ => await SaveSheetJpgAsync(), _ => HasPhoto && !IsProcessing);
         OpenSingleExportCommand = new RelayCommand(_ => OpenSingleExport(), _ => HasPhoto && !IsProcessing);
+        OpenPanPhotoExportCommand = new RelayCommand(_ =>
+        {
+            OpenSingleExport();
+            SingleExportPresetIndex = 1;
+            ApplySinglePreset(1);
+            TriggerSingleExportPreviewUpdate();
+        }, _ => HasPhoto && !IsProcessing);
         CloseSingleExportCommand = new RelayCommand(_ => CloseSingleExport());
         SaveSinglePhotoCommand = new RelayCommand(async _ => await SaveSinglePhotoAsync(), _ => HasPhoto && !IsProcessing);
         CopySinglePhotoCommand = new RelayCommand(_ => CopySinglePhoto(), _ => HasPhoto && !IsProcessing);
@@ -661,13 +771,100 @@ public class PassportStudioViewModel : ViewModelBase
             OnPropertyChanged(nameof(HasUnsavedWork));
 
             PhotoPreviewImage = BitmapToBitmapSource(_loadedOriginalBmp);
+
+            lock (_renderLock)
+            {
+                _cachedAiCutoutBmp?.Dispose();
+                _cachedAiCutoutBmp = null;
+            }
+            IsAiCutoutActive = false;
+
             TriggerSheetUpdate();
+            TriggerAiSegmentationAsync(path);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to load photo in PassportStudio");
-            WpfMessageBox.Show($"Could not open photo:\n{ex.Message}", "Open Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowAlert($"Could not open photo:\n{ex.Message}", "Open Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void TriggerAiSegmentationAsync(string path)
+    {
+        _aiSegCts?.Cancel();
+        _aiSegCts?.Dispose();
+        _aiSegCts = new CancellationTokenSource();
+        var token = _aiSegCts.Token;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                if (_loadedOriginalBmp == null) return;
+                Bitmap bmpClone;
+                lock (_loadedOriginalBmp)
+                {
+                    bmpClone = (Bitmap)_loadedOriginalBmp.Clone();
+                }
+
+                SafeUiInvoke(() =>
+                {
+                    IsAiSegmenting = true;
+                });
+
+                Bitmap? cutout = await _studioService.SegmentPortraitAiAsync(bmpClone, path);
+                bmpClone.Dispose();
+
+                if (token.IsCancellationRequested)
+                {
+                    cutout?.Dispose();
+                    return;
+                }
+
+                if (cutout != null)
+                {
+                    lock (_renderLock)
+                    {
+                        _cachedAiCutoutBmp?.Dispose();
+                        _cachedAiCutoutBmp = cutout;
+                    }
+
+                    SafeUiInvoke(() =>
+                    {
+                        IsAiCutoutActive = true;
+                    });
+
+                    TriggerSheetUpdate();
+
+                    if (IsSingleExportDialogOpen)
+                    {
+                        TriggerSingleExportPreviewUpdate();
+                    }
+                }
+                else
+                {
+                    SafeUiInvoke(() =>
+                    {
+                        IsAiCutoutActive = false;
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Background AI segmentation completed with fallback");
+                SafeUiInvoke(() =>
+                {
+                    IsAiCutoutActive = false;
+                });
+            }
+            finally
+            {
+                SafeUiInvoke(() =>
+                {
+                    IsAiSegmenting = false;
+                });
+            }
+        });
     }
 
     private void BrowsePhoto()
@@ -694,7 +891,7 @@ public class PassportStudioViewModel : ViewModelBase
                 FileName = "Clipboard_Photo.png";
                 return;
             }
-            WpfMessageBox.Show("No photo found in clipboard.", "Clipboard Empty", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowAlert("No photo found in clipboard.", "Clipboard Empty", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -712,6 +909,10 @@ public class PassportStudioViewModel : ViewModelBase
             {
                 _loadedOriginalBmp.RotateFlip(clockwise ? RotateFlipType.Rotate90FlipNone : RotateFlipType.Rotate270FlipNone);
             }
+            lock (_renderLock)
+            {
+                _cachedAiCutoutBmp?.RotateFlip(clockwise ? RotateFlipType.Rotate90FlipNone : RotateFlipType.Rotate270FlipNone);
+            }
 
             // Intelligently swap custom slot dimensions to match rotated orientation
             double temp = PhotoWidthCm;
@@ -722,11 +923,16 @@ public class PassportStudioViewModel : ViewModelBase
 
             PhotoPreviewImage = BitmapToBitmapSource(_loadedOriginalBmp);
             TriggerSheetUpdate();
+
+            if (IsAiSegmenting)
+            {
+                TriggerAiSegmentationAsync(FilePath);
+            }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to rotate photo");
-            WpfMessageBox.Show($"Rotate failed: {ex.Message}", "Rotate Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowAlert($"Rotate failed: {ex.Message}", "Rotate Error", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -763,7 +969,7 @@ public class PassportStudioViewModel : ViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to launch crop dialog in PassportStudio");
-            WpfMessageBox.Show($"Crop tool error:\n{ex.Message}", "Crop Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowAlert($"Crop tool error:\n{ex.Message}", "Crop Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -903,7 +1109,13 @@ public class PassportStudioViewModel : ViewModelBase
                     if (token.IsCancellationRequested || _loadedOriginalBmp == null) return;
 
                     var config = BuildCurrentConfig();
-                    using var processedPortrait = _studioService.ProcessPortrait(_loadedOriginalBmp, config);
+                    Bitmap? aiCutout = null;
+                    if (_cachedAiCutoutBmp != null)
+                    {
+                        try { aiCutout = (Bitmap)_cachedAiCutoutBmp.Clone(); } catch { }
+                    }
+                    using var processedPortrait = _studioService.ProcessPortrait(_loadedOriginalBmp, config, aiCutout);
+                    aiCutout?.Dispose();
 
                     if (token.IsCancellationRequested) return;
 
@@ -916,7 +1128,7 @@ public class PassportStudioViewModel : ViewModelBase
                         return;
                     }
 
-                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    SafeUiInvoke(() =>
                     {
                         if (token.IsCancellationRequested)
                         {
@@ -946,7 +1158,7 @@ public class PassportStudioViewModel : ViewModelBase
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed in debounced TriggerSheetUpdate");
-                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                SafeUiInvoke(() =>
                 {
                     SheetSummary = $"Render Notice: {ex.Message}";
                     IsProcessing = false;
@@ -1005,7 +1217,16 @@ public class PassportStudioViewModel : ViewModelBase
     {
         if (_loadedOriginalBmp == null) return null;
         var config = BuildCurrentConfig();
-        using var processedPortrait = _studioService.ProcessPortrait(_loadedOriginalBmp, config);
+        Bitmap? aiCutout = null;
+        lock (_renderLock)
+        {
+            if (_cachedAiCutoutBmp != null)
+            {
+                try { aiCutout = (Bitmap)_cachedAiCutoutBmp.Clone(); } catch { }
+            }
+        }
+        using var processedPortrait = _studioService.ProcessPortrait(_loadedOriginalBmp, config, aiCutout);
+        aiCutout?.Dispose();
         return await _studioService.GenerateSheetAsync(processedPortrait, config, dpi: 300);
     }
 
@@ -1034,7 +1255,7 @@ public class PassportStudioViewModel : ViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to print passport studio sheet");
-            WpfMessageBox.Show($"Printing failed:\n{ex.Message}", "Print Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowAlert($"Printing failed:\n{ex.Message}", "Print Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -1067,12 +1288,12 @@ public class PassportStudioViewModel : ViewModelBase
                     });
                     _isSavedOrPrinted = true;
                     OnPropertyChanged(nameof(HasUnsavedWork));
-                    WpfMessageBox.Show($"✅ High-Resolution 300 DPI sheet saved successfully:\n{dlg.FileName}", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowAlert($"✅ High-Resolution 300 DPI sheet saved successfully:\n{dlg.FileName}", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                WpfMessageBox.Show($"Save failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowAlert($"Save failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -1140,12 +1361,12 @@ public class PassportStudioViewModel : ViewModelBase
                     });
                     _isSavedOrPrinted = true;
                     OnPropertyChanged(nameof(HasUnsavedWork));
-                    WpfMessageBox.Show($"✅ High-Resolution 300 DPI PDF saved successfully:\n{dlg.FileName}", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowAlert($"✅ High-Resolution 300 DPI PDF saved successfully:\n{dlg.FileName}", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                WpfMessageBox.Show($"PDF save failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowAlert($"PDF save failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -1156,17 +1377,20 @@ public class PassportStudioViewModel : ViewModelBase
 
     private static BitmapSource BitmapToBitmapSource(Bitmap bmp)
     {
-        using var ms = new MemoryStream();
-        bmp.Save(ms, ImageFormat.Png);
-        ms.Seek(0, SeekOrigin.Begin);
+        lock (bmp)
+        {
+            using var ms = new MemoryStream();
+            bmp.Save(ms, ImageFormat.Png);
+            ms.Seek(0, SeekOrigin.Begin);
 
-        var bi = new BitmapImage();
-        bi.BeginInit();
-        bi.CacheOption = BitmapCacheOption.OnLoad;
-        bi.StreamSource = ms;
-        bi.EndInit();
-        bi.Freeze();
-        return bi;
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.StreamSource = ms;
+            bi.EndInit();
+            bi.Freeze();
+            return bi;
+        }
     }
 
     #region Single Photo Export Methods
@@ -1174,27 +1398,31 @@ public class PassportStudioViewModel : ViewModelBase
     {
         switch (index)
         {
-            case 0: // SSC / UPSC / IBPS / Railways (20–50 KB, 3.5×4.5 cm)
+            case 0: // SSC / UPSC / IBPS / Railways (20–50 KB, 3.5×4.5 cm, 300 DPI)
                 SingleWidthCm = 3.5;
                 SingleHeightCm = 4.5;
+                SingleDpi = 300;
                 SingleMinKb = 20;
                 SingleMaxKb = 50;
                 break;
-            case 1: // PAN Card Portal (10–20 KB, 2.5×3.5 cm)
+            case 1: // PAN Card Portal (10–45 KB, 2.5×3.5 cm, 200 DPI)
                 SingleWidthCm = 2.5;
                 SingleHeightCm = 3.5;
+                SingleDpi = 200;
                 SingleMinKb = 10;
-                SingleMaxKb = 20;
+                SingleMaxKb = 45;
                 break;
-            case 2: // Passport Seva / Standard (50–100 KB, 3.5×4.5 cm)
+            case 2: // Passport Seva / Standard (50–100 KB, 3.5×4.5 cm, 300 DPI)
                 SingleWidthCm = 3.5;
                 SingleHeightCm = 4.5;
+                SingleDpi = 300;
                 SingleMinKb = 50;
                 SingleMaxKb = 100;
                 break;
-            case 3: // US / Schengen Visa (50–100 KB, 5.0×5.0 cm)
+            case 3: // US / Schengen Visa (50–100 KB, 5.0×5.0 cm, 300 DPI)
                 SingleWidthCm = 5.0;
                 SingleHeightCm = 5.0;
+                SingleDpi = 300;
                 SingleMinKb = 50;
                 SingleMaxKb = 100;
                 break;
@@ -1224,11 +1452,19 @@ public class PassportStudioViewModel : ViewModelBase
             try
             {
                 var sheetConfig = BuildCurrentConfig();
+                Bitmap? aiCutout = null;
+                lock (_renderLock)
+                {
+                    if (_cachedAiCutoutBmp != null)
+                    {
+                        try { aiCutout = (Bitmap)_cachedAiCutoutBmp.Clone(); } catch { }
+                    }
+                }
                 var exportConfig = new SinglePhotoExportConfig
                 {
                     WidthCm = SingleWidthCm,
                     HeightCm = SingleHeightCm,
-                    Dpi = 300,
+                    Dpi = SingleDpi,
                     MinKb = SingleMinKb,
                     MaxKb = SingleMaxKb,
                     AddCandidateStamp = SingleAddStamp,
@@ -1236,7 +1472,8 @@ public class PassportStudioViewModel : ViewModelBase
                     DateOfPhoto = SingleDateOfPhoto
                 };
 
-                var result = _studioService.ExportSinglePassportPhoto(_loadedOriginalBmp, sheetConfig, exportConfig);
+                var result = _studioService.ExportSinglePassportPhoto(_loadedOriginalBmp, sheetConfig, exportConfig, aiCutout);
+                aiCutout?.Dispose();
                 if (result.Success && result.ImageBytes != null)
                 {
                     _cachedSingleBytes = result.ImageBytes;
@@ -1247,18 +1484,18 @@ public class PassportStudioViewModel : ViewModelBase
                     double kb = result.FileSizeBytes / 1024.0;
                     bool inRange = kb >= SingleMinKb - 0.5 && kb <= SingleMaxKb + 0.5;
 
-                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    SafeUiInvoke(() =>
                     {
                         SingleExportPreviewImage = bs;
                         IsSingleExportValid = inRange;
                         SingleExportStatusText = inRange
-                            ? $"🟢 Perfect Size: {kb:F1} KB (Allowed: {SingleMinKb} KB – {SingleMaxKb} KB) • {result.WidthPx}×{result.HeightPx} px @ 300 DPI"
-                            : $"⚠️ Output Size: {kb:F1} KB (Target: {SingleMinKb} KB – {SingleMaxKb} KB) • {result.WidthPx}×{result.HeightPx} px";
+                            ? $"🟢 Perfect Size: {kb:F1} KB (Allowed: {SingleMinKb} KB – {SingleMaxKb} KB) • {result.WidthPx}×{result.HeightPx} px @ {SingleDpi} DPI"
+                            : $"⚠️ Output Size: {kb:F1} KB (Target: {SingleMinKb} KB – {SingleMaxKb} KB) • {result.WidthPx}×{result.HeightPx} px @ {SingleDpi} DPI";
                     });
                 }
                 else
                 {
-                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    SafeUiInvoke(() =>
                     {
                         SingleExportStatusText = $"❌ Error: {result.ErrorMessage}";
                         IsSingleExportValid = false;
@@ -1284,7 +1521,7 @@ public class PassportStudioViewModel : ViewModelBase
 
         if (_cachedSingleBytes == null || _cachedSingleBytes.Length == 0)
         {
-            WpfMessageBox.Show("Please wait for the photo preview to render.", "Export", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowAlert("Please wait for the photo preview to render.", "Export", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -1321,7 +1558,7 @@ public class PassportStudioViewModel : ViewModelBase
                 OnPropertyChanged(nameof(HasUnsavedWork));
 
                 double kb = _cachedSingleBytes.Length / 1024.0;
-                WpfMessageBox.Show(
+                ShowAlert(
                     $"✅ Single Passport Photo saved successfully:\n{targetPath}\n\n" +
                     $"• File Size: {kb:F1} KB (Ready for online portal upload)\n" +
                     $"• Dimensions: {SingleWidthCm:F1} × {SingleHeightCm:F1} cm @ 300 DPI",
@@ -1332,7 +1569,7 @@ public class PassportStudioViewModel : ViewModelBase
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to save single passport photo");
-                WpfMessageBox.Show($"Failed to save: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowAlert($"Failed to save: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -1348,7 +1585,7 @@ public class PassportStudioViewModel : ViewModelBase
             try
             {
                 System.Windows.Clipboard.SetImage(SingleExportPreviewImage);
-                WpfMessageBox.Show("📋 Single photo copied to clipboard!\nYou can paste it directly into applications or browsers.", "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowAlert("📋 Single photo copied to clipboard!\nYou can paste it directly into applications or browsers.", "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

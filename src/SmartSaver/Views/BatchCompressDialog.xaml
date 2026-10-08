@@ -19,9 +19,6 @@
                 <RowDefinition Height="65"/>
             </Grid.RowDefinitions>
 
-            <!-- Photo Background Layer -->
-            <Image Source="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill" Opacity="0.35" IsHitTestVisible="False" Grid.RowSpan="3"/>
-
             <!-- Custom Title Bar -->
             <Grid Background="{StaticResource SurfaceBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
@@ -217,15 +214,6 @@
                                    Visibility="{Binding HasResultSummary, Converter={StaticResource BoolToVis}}"/>
                     </StackPanel>
                 </ScrollViewer>
-            </Grid>
-
-            <!-- Soft Background Owner Portrait Watermark -->
-            <Grid Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Opacity="0.06" IsHitTestVisible="False" Margin="0,0,15,15">
-                <Image Source="pack://application:,,,/Resources/owner_portrait.png" Width="200" Height="200" Stretch="UniformToFill">
-                    <Image.Clip>
-                        <EllipseGeometry Center="100,100" RadiusX="95" RadiusY="95"/>
-                    </Image.Clip>
-                </Image>
             </Grid>
 
             <!-- Bottom Action Toolbar -->

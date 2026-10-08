@@ -28,10 +28,17 @@ public enum StackerLayoutMode
 public sealed class DocumentStackerService
 {
     private readonly CompressionEngine _compressionEngine;
+    private readonly IDocumentEnhancerService _documentEnhancer;
 
     public DocumentStackerService(CompressionEngine compressionEngine)
+        : this(compressionEngine, new DocumentEnhancerService())
+    {
+    }
+
+    public DocumentStackerService(CompressionEngine compressionEngine, IDocumentEnhancerService? documentEnhancer = null)
     {
         _compressionEngine = compressionEngine ?? throw new ArgumentNullException(nameof(compressionEngine));
+        _documentEnhancer = documentEnhancer ?? new DocumentEnhancerService();
         PdfRendererService.EnsureDllResolver();
     }
 
@@ -44,7 +51,8 @@ public sealed class DocumentStackerService
         string outputPath, long targetBytes,
         StackerLayoutMode layoutMode = StackerLayoutMode.StandardIdCard,
         bool autoWhiten = false,
-        bool pitchBlackText = false)
+        bool pitchBlackText = false,
+        EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         return await Task.Run(async () =>
         {
@@ -73,8 +81,8 @@ public sealed class DocumentStackerService
                             double topY = (a4H * 0.5 - cardH) / 2.0;
                             double bottomY = a4H * 0.5 + (a4H * 0.5 - cardH) / 2.0;
 
-                            DrawSourceItemExact(gfx, frontPath, frontPageIndex, centerX, topY, cardW, cardH, autoWhiten, pitchBlackText);
-                            DrawSourceItemExact(gfx, backPath, backPageIndex, centerX, bottomY, cardW, cardH, autoWhiten, pitchBlackText);
+                            DrawSourceItemExact(gfx, frontPath, frontPageIndex, centerX, topY, cardW, cardH, autoWhiten, pitchBlackText, preset);
+                            DrawSourceItemExact(gfx, backPath, backPageIndex, centerX, bottomY, cardW, cardH, autoWhiten, pitchBlackText, preset);
 
                             // Middle fold / cut guide line
                             var pen = new XPen(XColor.FromArgb(210, 210, 210), 0.5) { DashStyle = XDashStyle.Dash };
@@ -89,12 +97,12 @@ public sealed class DocumentStackerService
                             double maxHeight = (a4H * 0.5) - (marginY * 1.5);
 
                             // Draw Top Half (Front)
-                            DrawSourceItemFit(gfx, frontPath, frontPageIndex, frontScale, marginX, marginY, maxWidth, maxHeight, autoWhiten, pitchBlackText);
+                            DrawSourceItemFit(gfx, frontPath, frontPageIndex, frontScale, marginX, marginY, maxWidth, maxHeight, autoWhiten, pitchBlackText, preset);
 
                             // Draw Bottom Half (Back, if provided)
                             if (!string.IsNullOrWhiteSpace(backPath) && File.Exists(backPath))
                             {
-                                DrawSourceItemFit(gfx, backPath, backPageIndex, backScale, marginX, a4H * 0.5 + marginY * 0.5, maxWidth, maxHeight, autoWhiten, pitchBlackText);
+                                DrawSourceItemFit(gfx, backPath, backPageIndex, backScale, marginX, a4H * 0.5 + marginY * 0.5, maxWidth, maxHeight, autoWhiten, pitchBlackText, preset);
                             }
 
                             // Middle fold / cut guide line
@@ -113,7 +121,7 @@ public sealed class DocumentStackerService
                             double maxWidth = a4W - (marginX * 2);
                             double maxHeight = a4H - (marginY * 2);
 
-                            DrawSourceItemFit(gfx, docPath, docPage, docScale, marginX, marginY, maxWidth, maxHeight, autoWhiten, pitchBlackText);
+                            DrawSourceItemFit(gfx, docPath, docPage, docScale, marginX, marginY, maxWidth, maxHeight, autoWhiten, pitchBlackText, preset);
                         }
                     }
 
@@ -152,7 +160,8 @@ public sealed class DocumentStackerService
         string outputPath, long targetBytes, string outputExtension,
         StackerLayoutMode layoutMode = StackerLayoutMode.StandardIdCard,
         bool autoWhiten = false,
-        bool pitchBlackText = false)
+        bool pitchBlackText = false,
+        EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         return await Task.Run(async () =>
         {
@@ -184,8 +193,8 @@ public sealed class DocumentStackerService
                         int topY = (int)((canvasH * 0.5 - cardH) / 2);
                         int bottomY = (int)(canvasH * 0.5 + (canvasH * 0.5 - cardH) / 2);
 
-                        DrawImageOnCanvasExact(canvas, frontPath, frontPageIndex, posX, topY, cardW, cardH, autoWhiten, pitchBlackText);
-                        DrawImageOnCanvasExact(canvas, backPath, backPageIndex, posX, bottomY, cardW, cardH, autoWhiten, pitchBlackText);
+                        DrawImageOnCanvasExact(canvas, frontPath, frontPageIndex, posX, topY, cardW, cardH, autoWhiten, pitchBlackText, preset);
+                        DrawImageOnCanvasExact(canvas, backPath, backPageIndex, posX, bottomY, cardW, cardH, autoWhiten, pitchBlackText, preset);
 
                         // Middle dashed line
                         DrawDashedLine(canvas, canvasH / 2);
@@ -198,11 +207,11 @@ public sealed class DocumentStackerService
                         int maxW = canvasW - (marginX * 2);
                         int maxH = (canvasH / 2) - (marginY * 2);
 
-                        DrawImageOnCanvasFit(canvas, frontPath, frontPageIndex, frontScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText);
+                        DrawImageOnCanvasFit(canvas, frontPath, frontPageIndex, frontScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText, preset);
 
                         if (!string.IsNullOrWhiteSpace(backPath) && File.Exists(backPath))
                         {
-                            DrawImageOnCanvasFit(canvas, backPath, backPageIndex, backScale, marginX, (canvasH / 2) + marginY, maxW, maxH, autoWhiten, pitchBlackText);
+                            DrawImageOnCanvasFit(canvas, backPath, backPageIndex, backScale, marginX, (canvasH / 2) + marginY, maxW, maxH, autoWhiten, pitchBlackText, preset);
                         }
 
                         // Middle dashed line
@@ -220,7 +229,7 @@ public sealed class DocumentStackerService
                         int maxW = canvasW - (marginX * 2);
                         int maxH = canvasH - (marginY * 2);
 
-                        DrawImageOnCanvasFit(canvas, docPath, docPage, docScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText);
+                        DrawImageOnCanvasFit(canvas, docPath, docPage, docScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText, preset);
                     }
 
                     canvas.Save(tempPath);
@@ -255,9 +264,10 @@ public sealed class DocumentStackerService
         string outputPath, long targetBytes, string outputExtension,
         StackerLayoutMode layoutMode = StackerLayoutMode.StandardIdCard,
         bool autoWhiten = false,
-        bool pitchBlackText = false)
+        bool pitchBlackText = false,
+        EnhancementPreset preset = EnhancementPreset.Balanced)
     {
-        return StackToImageAsync(frontPath, 0, frontScale, backPath, 0, backScale, outputPath, targetBytes, outputExtension, layoutMode, autoWhiten, pitchBlackText);
+        return StackToImageAsync(frontPath, 0, frontScale, backPath, 0, backScale, outputPath, targetBytes, outputExtension, layoutMode, autoWhiten, pitchBlackText, preset);
     }
 
     /// <summary>
@@ -269,7 +279,8 @@ public sealed class DocumentStackerService
         string backPath, int backPageIndex, double backScale,
         StackerLayoutMode layoutMode = StackerLayoutMode.StandardIdCard,
         bool autoWhiten = false,
-        bool pitchBlackText = false)
+        bool pitchBlackText = false,
+        EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         return await Task.Run(() =>
         {
@@ -295,8 +306,8 @@ public sealed class DocumentStackerService
                     int topY = (int)((canvasH * 0.5 - cardH) / 2);
                     int bottomY = (int)(canvasH * 0.5 + (canvasH * 0.5 - cardH) / 2);
 
-                    DrawImageOnCanvasExact(canvas, frontPath, frontPageIndex, posX, topY, cardW, cardH, autoWhiten, pitchBlackText);
-                    DrawImageOnCanvasExact(canvas, backPath, backPageIndex, posX, bottomY, cardW, cardH, autoWhiten, pitchBlackText);
+                    DrawImageOnCanvasExact(canvas, frontPath, frontPageIndex, posX, topY, cardW, cardH, autoWhiten, pitchBlackText, preset);
+                    DrawImageOnCanvasExact(canvas, backPath, backPageIndex, posX, bottomY, cardW, cardH, autoWhiten, pitchBlackText, preset);
 
                     // Middle dashed fold/cut guide line
                     DrawDashedLine(canvas, canvasH / 2);
@@ -309,11 +320,11 @@ public sealed class DocumentStackerService
                     int maxW = canvasW - (marginX * 2);
                     int maxH = (canvasH / 2) - (marginY * 2);
 
-                    DrawImageOnCanvasFit(canvas, frontPath, frontPageIndex, frontScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText);
+                    DrawImageOnCanvasFit(canvas, frontPath, frontPageIndex, frontScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText, preset);
 
                     if (!string.IsNullOrWhiteSpace(backPath) && File.Exists(backPath))
                     {
-                        DrawImageOnCanvasFit(canvas, backPath, backPageIndex, backScale, marginX, (canvasH / 2) + marginY, maxW, maxH, autoWhiten, pitchBlackText);
+                        DrawImageOnCanvasFit(canvas, backPath, backPageIndex, backScale, marginX, (canvasH / 2) + marginY, maxW, maxH, autoWhiten, pitchBlackText, preset);
                     }
 
                     DrawDashedLine(canvas, canvasH / 2);
@@ -329,7 +340,7 @@ public sealed class DocumentStackerService
                     int maxW = canvasW - (marginX * 2);
                     int maxH = canvasH - (marginY * 2);
 
-                    DrawImageOnCanvasFit(canvas, docPath, docPage, docScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText);
+                    DrawImageOnCanvasFit(canvas, docPath, docPage, docScale, marginX, marginY, maxW, maxH, autoWhiten, pitchBlackText, preset);
                 }
 
                 // Fast in-memory single-pass encoding (no disk I/O, no multi-pass compression)
@@ -348,6 +359,16 @@ public sealed class DocumentStackerService
                 bi.EndInit();
                 bi.Freeze();
 
+                if (Math.Abs(bi.DpiX - 300.0) > 2.0 || Math.Abs(bi.DpiY - 300.0) > 2.0)
+                {
+                    int stride = canvasW * 4;
+                    byte[] pixelBytes = new byte[canvasH * stride];
+                    bi.CopyPixels(pixelBytes, stride, 0);
+                    var explicitDpiBmp = BitmapSource.Create(canvasW, canvasH, 300, 300, System.Windows.Media.PixelFormats.Pbgra32, null, pixelBytes, stride);
+                    explicitDpiBmp.Freeze();
+                    return explicitDpiBmp;
+                }
+
                 return (BitmapSource)bi;
             }
             catch (Exception ex)
@@ -358,10 +379,10 @@ public sealed class DocumentStackerService
         });
     }
 
-    private void DrawSourceItemExact(XGraphics gfx, string path, int pageIndex, double x, double y, double targetW, double targetH, bool autoWhiten, bool pitchBlackText)
+    private void DrawSourceItemExact(XGraphics gfx, string path, int pageIndex, double x, double y, double targetW, double targetH, bool autoWhiten, bool pitchBlackText, EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
-        byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText);
+        byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText, preset);
         if (imgBytes == null) return;
 
         using var image = XImage.FromStream(() => new MemoryStream(imgBytes));
@@ -372,10 +393,10 @@ public sealed class DocumentStackerService
         gfx.DrawRectangle(borderPen, x, y, targetW, targetH);
     }
 
-    private void DrawSourceItemFit(XGraphics gfx, string path, int pageIndex, double scaleFactor, double x, double y, double maxWidth, double maxHeight, bool autoWhiten, bool pitchBlackText)
+    private void DrawSourceItemFit(XGraphics gfx, string path, int pageIndex, double scaleFactor, double x, double y, double maxWidth, double maxHeight, bool autoWhiten, bool pitchBlackText, EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
-        byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText);
+        byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText, preset);
         if (imgBytes == null) return;
 
         using var image = XImage.FromStream(() => new MemoryStream(imgBytes));
@@ -402,13 +423,13 @@ public sealed class DocumentStackerService
         gfx.DrawImage(image, posX, posY, w, h);
     }
 
-    private void DrawImageOnCanvasExact(Image<Rgba32> canvas, string path, int pageIndex, int x, int y, int targetW, int targetH, bool autoWhiten, bool pitchBlackText)
+    private void DrawImageOnCanvasExact(Image<Rgba32> canvas, string path, int pageIndex, int x, int y, int targetW, int targetH, bool autoWhiten, bool pitchBlackText, EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
         try
         {
-            byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText);
+            byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText, preset);
             if (imgBytes == null) return;
 
             using var itemImg = SixLabors.ImageSharp.Image.Load<Rgba32>(imgBytes);
@@ -429,13 +450,13 @@ public sealed class DocumentStackerService
         }
     }
 
-    private void DrawImageOnCanvasFit(Image<Rgba32> canvas, string path, int pageIndex, double scaleFactor, int x, int y, int maxW, int maxH, bool autoWhiten, bool pitchBlackText)
+    private void DrawImageOnCanvasFit(Image<Rgba32> canvas, string path, int pageIndex, double scaleFactor, int x, int y, int maxW, int maxH, bool autoWhiten, bool pitchBlackText, EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
         try
         {
-            byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText);
+            byte[]? imgBytes = GetImageBytes(path, pageIndex, autoWhiten, pitchBlackText, preset);
             if (imgBytes == null) return;
 
             using var itemImg = SixLabors.ImageSharp.Image.Load<Rgba32>(imgBytes);
@@ -497,100 +518,86 @@ public sealed class DocumentStackerService
         });
     }
 
-    private static void ApplyPitchBlackText(Image<Rgba32> image)
+    public static void ApplyPitchBlackText(Image<Rgba32> image, EnhancementPreset preset = EnhancementPreset.Balanced)
     {
-        image.ProcessPixelRows(accessor =>
+        var options = new EnhancementOptions(preset)
         {
-            for (int y = 0; y < accessor.Height; y++)
-            {
-                var pixelRow = accessor.GetRowSpan(y);
-                for (int x = 0; x < pixelRow.Length; x++)
-                {
-                    ref Rgba32 p = ref pixelRow[x];
-                    float lum = 0.299f * p.R + 0.587f * p.G + 0.114f * p.B;
-                    int maxDiff = Math.Max(Math.Abs(p.R - p.G), Math.Max(Math.Abs(p.R - p.B), Math.Abs(p.G - p.B)));
-                    if (maxDiff <= 35) // Neutral text or grayscale document background
-                    {
-                        if (lum >= 228)
-                        {
-                            p.R = 255;
-                            p.G = 255;
-                            p.B = 255;
-                        }
-                        else if (lum < 155)
-                        {
-                            p.R = 0;
-                            p.G = 0;
-                            p.B = 0;
-                        }
-                        else
-                        {
-                            float factor = (lum - 155.0f) / 73.0f;
-                            byte val = (byte)Math.Clamp(factor * 255.0f, 0, 255);
-                            p.R = val;
-                            p.G = val;
-                            p.B = val;
-                        }
-                    }
-                }
-            }
-        });
+            WhitenBackground = true,
+            DarkenText = true,
+            PreserveColor = true
+        };
+        new DocumentEnhancerService().EnhanceImage(image, options);
     }
 
-    private static void WhitenImage(Image<Rgba32> image)
+    public static void ApplyPitchBlackText(Image<Rgba32> image, EnhancementOptions? options)
     {
-        image.ProcessPixelRows(accessor =>
+        options ??= new EnhancementOptions(EnhancementPreset.Balanced)
         {
-            for (int y = 0; y < accessor.Height; y++)
-            {
-                var pixelRow = accessor.GetRowSpan(y);
-                for (int x = 0; x < pixelRow.Length; x++)
-                {
-                    ref Rgba32 p = ref pixelRow[x];
-                    float lum = 0.299f * p.R + 0.587f * p.G + 0.114f * p.B;
-                    int maxDiff = Math.Max(Math.Abs(p.R - p.G), Math.Max(Math.Abs(p.R - p.B), Math.Abs(p.G - p.B)));
-                    if (maxDiff <= 32)
-                    {
-                        if (lum >= 228)
-                        {
-                            // Clean white paper background
-                            p.R = 255;
-                            p.G = 255;
-                            p.B = 255;
-                        }
-                        else if (lum < 135)
-                        {
-                            // High-contrast text: boost to solid dark
-                            float factor = Math.Clamp((lum / 135.0f) * 0.65f, 0f, 1f);
-                            p.R = (byte)Math.Clamp(p.R * factor, 0, 255);
-                            p.G = (byte)Math.Clamp(p.G * factor, 0, 255);
-                            p.B = (byte)Math.Clamp(p.B * factor, 0, 255);
-                        }
-                        else if (lum >= 135 && lum < 200)
-                        {
-                            // Medium/faint text, phone flash glare text, address text:
-                            // Darken toward text rather than bleaching toward white!
-                            float textWeight = (200.0f - lum) / 65.0f;
-                            float factor = 1.0f - (textWeight * 0.35f);
-                            p.R = (byte)Math.Clamp(p.R * factor, 0, 255);
-                            p.G = (byte)Math.Clamp(p.G * factor, 0, 255);
-                            p.B = (byte)Math.Clamp(p.B * factor, 0, 255);
-                        }
-                        else
-                        {
-                            // 200 <= lum < 228: Soft paper background transition without harsh cutoffs
-                            float factor = 1.0f + ((lum - 200.0f) / 28.0f) * 0.12f;
-                            p.R = (byte)Math.Clamp(p.R * factor, 0, 255);
-                            p.G = (byte)Math.Clamp(p.G * factor, 0, 255);
-                            p.B = (byte)Math.Clamp(p.B * factor, 0, 255);
-                        }
-                    }
-                }
-            }
-        });
+            WhitenBackground = true,
+            DarkenText = true,
+            PreserveColor = true
+        };
+        new DocumentEnhancerService().EnhanceImage(image, options);
     }
 
-    private byte[]? GetImageBytes(string path, int pageIndex, bool autoWhiten, bool pitchBlackText)
+    public static void WhitenImage(Image<Rgba32> image, EnhancementPreset preset = EnhancementPreset.Balanced)
+    {
+        var options = new EnhancementOptions(preset)
+        {
+            WhitenBackground = true,
+            DarkenText = false,
+            PreserveColor = true
+        };
+        new DocumentEnhancerService().EnhanceImage(image, options);
+    }
+
+    public static void WhitenImage(Image<Rgba32> image, EnhancementOptions? options)
+    {
+        options ??= new EnhancementOptions(EnhancementPreset.Balanced)
+        {
+            WhitenBackground = true,
+            DarkenText = false,
+            PreserveColor = true
+        };
+        new DocumentEnhancerService().EnhanceImage(image, options);
+    }
+
+    public void WhitenImageInstance(Image<Rgba32> image, EnhancementPreset preset = EnhancementPreset.Balanced)
+    {
+        var options = new EnhancementOptions(preset)
+        {
+            WhitenBackground = true,
+            DarkenText = false,
+            PreserveColor = true
+        };
+        _documentEnhancer.EnhanceImage(image, options);
+    }
+
+    public void ApplyPitchBlackTextInstance(Image<Rgba32> image, EnhancementPreset preset = EnhancementPreset.Balanced)
+    {
+        var options = new EnhancementOptions(preset)
+        {
+            WhitenBackground = true,
+            DarkenText = true,
+            PreserveColor = true
+        };
+        _documentEnhancer.EnhanceImage(image, options);
+    }
+
+    private void EnhanceImageCore(Image<Rgba32> image, bool autoWhiten, bool pitchBlackText, EnhancementPreset preset)
+    {
+        if (!autoWhiten && !pitchBlackText) return;
+
+        var options = new EnhancementOptions(preset)
+        {
+            WhitenBackground = autoWhiten || pitchBlackText,
+            DarkenText = pitchBlackText,
+            PreserveColor = true
+        };
+        _documentEnhancer.EnhanceImage(image, options);
+    }
+
+    private byte[]? GetImageBytes(string path, int pageIndex, bool autoWhiten, bool pitchBlackText, EnhancementPreset preset = EnhancementPreset.Balanced)
     {
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
 
@@ -612,10 +619,7 @@ public sealed class DocumentStackerService
                 if (autoWhiten || pitchBlackText)
                 {
                     using var sharpImg = SixLabors.ImageSharp.Image.Load<Rgba32>(rawPng);
-                    if (pitchBlackText)
-                        ApplyPitchBlackText(sharpImg);
-                    else if (autoWhiten)
-                        WhitenImage(sharpImg);
+                    EnhanceImageCore(sharpImg, autoWhiten, pitchBlackText, preset);
 
                     using var outMs = new MemoryStream();
                     sharpImg.Save(outMs, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
@@ -638,10 +642,7 @@ public sealed class DocumentStackerService
                     if (autoWhiten || pitchBlackText)
                     {
                         using var sharpImg = SixLabors.ImageSharp.Image.Load<Rgba32>(rawPng);
-                        if (pitchBlackText)
-                            ApplyPitchBlackText(sharpImg);
-                        else if (autoWhiten)
-                            WhitenImage(sharpImg);
+                        EnhanceImageCore(sharpImg, autoWhiten, pitchBlackText, preset);
 
                         using var outMs = new MemoryStream();
                         sharpImg.Save(outMs, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
@@ -659,10 +660,10 @@ public sealed class DocumentStackerService
             {
                 using var img = SixLabors.ImageSharp.Image.Load<Rgba32>(path);
                 img.Mutate(ctx => ctx.AutoOrient());
-                if (pitchBlackText)
-                    ApplyPitchBlackText(img);
-                else if (autoWhiten)
-                    WhitenImage(img);
+                if (autoWhiten || pitchBlackText)
+                {
+                    EnhanceImageCore(img, autoWhiten, pitchBlackText, preset);
+                }
 
                 using var ms = new MemoryStream();
                 img.Save(ms, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
@@ -675,51 +676,66 @@ public sealed class DocumentStackerService
         }
     }
 
-    public static BitmapSource ApplyPitchBlackToBitmapSource(BitmapSource source)
+    public static BitmapSource ApplyPitchBlackToBitmapSource(BitmapSource source, EnhancementPreset preset = EnhancementPreset.Balanced)
     {
-        var formatted = new FormatConvertedBitmap(source, System.Windows.Media.PixelFormats.Bgra32, null, 0);
-        int width = formatted.PixelWidth;
-        int height = formatted.PixelHeight;
-        int stride = width * 4;
-        byte[] pixels = new byte[height * stride];
-        formatted.CopyPixels(pixels, stride, 0);
-
-        for (int i = 0; i < pixels.Length; i += 4)
+        var options = new EnhancementOptions(preset)
         {
-            byte b = pixels[i];
-            byte g = pixels[i + 1];
-            byte r = pixels[i + 2];
+            WhitenBackground = true,
+            DarkenText = true,
+            PreserveColor = true
+        };
+        return new DocumentEnhancerService().EnhanceBitmapSource(source, options);
+    }
 
-            float lum = 0.299f * r + 0.587f * g + 0.114f * b;
-            int maxDiff = Math.Max(Math.Abs(r - g), Math.Max(Math.Abs(r - b), Math.Abs(g - b)));
+    public static BitmapSource ApplyPitchBlackToBitmapSource(BitmapSource source, EnhancementOptions? options)
+    {
+        options ??= new EnhancementOptions(EnhancementPreset.Balanced)
+        {
+            WhitenBackground = true,
+            DarkenText = true,
+            PreserveColor = true
+        };
+        return new DocumentEnhancerService().EnhanceBitmapSource(source, options);
+    }
 
-            if (maxDiff <= 35)
-            {
-                if (lum >= 228)
-                {
-                    pixels[i] = 255;
-                    pixels[i + 1] = 255;
-                    pixels[i + 2] = 255;
-                }
-                else if (lum < 155)
-                {
-                    pixels[i] = 0;
-                    pixels[i + 1] = 0;
-                    pixels[i + 2] = 0;
-                }
-                else
-                {
-                    float factor = (lum - 155.0f) / 73.0f;
-                    byte val = (byte)Math.Clamp(factor * 255.0f, 0, 255);
-                    pixels[i] = val;
-                    pixels[i + 1] = val;
-                    pixels[i + 2] = val;
-                }
-            }
-        }
+    public static BitmapSource WhitenBitmapSource(BitmapSource source, EnhancementPreset preset = EnhancementPreset.Balanced)
+    {
+        var options = new EnhancementOptions(preset)
+        {
+            WhitenBackground = true,
+            DarkenText = false,
+            PreserveColor = true
+        };
+        return new DocumentEnhancerService().EnhanceBitmapSource(source, options);
+    }
 
-        var result = BitmapSource.Create(width, height, formatted.DpiX, formatted.DpiY, System.Windows.Media.PixelFormats.Bgra32, null, pixels, stride);
-        result.Freeze();
-        return result;
+    public static BitmapSource WhitenBitmapSource(BitmapSource source, EnhancementOptions? options)
+    {
+        options ??= new EnhancementOptions(EnhancementPreset.Balanced)
+        {
+            WhitenBackground = true,
+            DarkenText = false,
+            PreserveColor = true
+        };
+        return new DocumentEnhancerService().EnhanceBitmapSource(source, options);
+    }
+
+    public static BitmapSource EnhanceBitmapSource(BitmapSource source, bool autoWhiten, bool pitchBlackText, EnhancementPreset preset = EnhancementPreset.Balanced)
+    {
+        if (!autoWhiten && !pitchBlackText) return source;
+
+        var options = new EnhancementOptions(preset)
+        {
+            WhitenBackground = autoWhiten || pitchBlackText,
+            DarkenText = pitchBlackText,
+            PreserveColor = true
+        };
+        return new DocumentEnhancerService().EnhanceBitmapSource(source, options);
+    }
+
+    public static BitmapSource EnhanceBitmapSource(BitmapSource source, EnhancementOptions? options)
+    {
+        if (options == null) return source;
+        return new DocumentEnhancerService().EnhanceBitmapSource(source, options);
     }
 }

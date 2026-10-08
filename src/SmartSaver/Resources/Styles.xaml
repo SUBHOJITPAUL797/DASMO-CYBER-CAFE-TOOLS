@@ -90,7 +90,9 @@
     </Style>
 
     <!-- Standard Drop Shadow Effect -->
-    <DropShadowEffect x:Key="SoftDropShadow" Color="Black" Direction="270" ShadowDepth="1.5" BlurRadius="6" Opacity="0.3" />
+    <DropShadowEffect x:Key="SoftDropShadow" Color="Black" Direction="270" ShadowDepth="2" BlurRadius="8" Opacity="0.25" />
+    <!-- Document Page Shadow — authentic floating paper effect like Microsoft Edge & Adobe Acrobat -->
+    <DropShadowEffect x:Key="PageDropShadow" Color="Black" Direction="270" ShadowDepth="3" BlurRadius="12" Opacity="0.30" />
 
     <!-- Button Style (Secondary / Outline) -->
     <Style TargetType="Button" BasedOn="{StaticResource BaseControlStyle}">
