@@ -128,6 +128,14 @@ public class GovtCardExtractorViewModel : ViewModelBase
             if (SetProperty(ref _selectedLayout, value))
             {
                 OnPropertyChanged(nameof(LayoutDescription));
+                OnPropertyChanged(nameof(MaxCardWidthCm));
+                if (_cardWidthCm > MaxCardWidthCm)
+                {
+                    _cardWidthCm = MaxCardWidthCm;
+                    OnPropertyChanged(nameof(CardWidthCm));
+                    OnPropertyChanged(nameof(CardDimensionsText));
+                    OnPropertyChanged(nameof(SheetSummaryText));
+                }
                 UpdatePagination();
                 SchedulePreviewUpdate(0);
             }
@@ -163,13 +171,34 @@ public class GovtCardExtractorViewModel : ViewModelBase
         _ => "↕️ Centered on Page"
     };
 
+    /// <summary>
+    /// Strict mathematical upper bound for card width so cards never exceed A4 sheet width (21.0 cm) edge-to-edge.
+    /// In 2-column layouts: (21.0 cm - scissor gap) / 2.
+    /// </summary>
+    public double MaxCardWidthCm
+    {
+        get
+        {
+            if (SelectedLayout == CardSheetLayout.SingleCardTopBottom)
+            {
+                return 20.00;
+            }
+            double gapCm = ScissorGapMm / 10.0;
+            double maxW = (21.0 - gapCm) / 2.0;
+            return Math.Max(6.0, Math.Floor(maxW * 100.0) / 100.0);
+        }
+    }
+
     private double _cardWidthCm = 8.00;
     public double CardWidthCm
     {
         get => _cardWidthCm;
         set
         {
-            if (SetProperty(ref _cardWidthCm, Math.Round(value, 2)))
+            double val = Math.Round(value, 2);
+            if (val > MaxCardWidthCm) val = MaxCardWidthCm;
+            if (val < 6.0) val = 6.0;
+            if (SetProperty(ref _cardWidthCm, val))
             {
                 OnPropertyChanged(nameof(CardDimensionsText));
                 OnPropertyChanged(nameof(SheetSummaryText));
@@ -257,10 +286,39 @@ public class GovtCardExtractorViewModel : ViewModelBase
         {
             if (SetProperty(ref _scissorGapMm, value))
             {
+                OnPropertyChanged(nameof(MaxCardWidthCm));
+                if (_cardWidthCm > MaxCardWidthCm)
+                {
+                    _cardWidthCm = MaxCardWidthCm;
+                    OnPropertyChanged(nameof(CardWidthCm));
+                    OnPropertyChanged(nameof(CardDimensionsText));
+                    OnPropertyChanged(nameof(SheetSummaryText));
+                }
                 SchedulePreviewUpdate(15);
             }
         }
     }
+
+    private double _topMarginMm = 0.0;
+    /// <summary>
+    /// Top header page margin / gap in millimeters.
+    /// When 0.0 mm, cards are positioned completely flush at the top edge (zero gap, tight-to-tight).
+    /// </summary>
+    public double TopMarginMm
+    {
+        get => _topMarginMm;
+        set
+        {
+            double clamped = Math.Clamp(Math.Round(value, 1), 0.0, 30.0);
+            if (SetProperty(ref _topMarginMm, clamped))
+            {
+                OnPropertyChanged(nameof(TopMarginText));
+                SchedulePreviewUpdate(15);
+            }
+        }
+    }
+
+    public string TopMarginText => (TopMarginMm <= 0.05) ? "0.0 mm (Tight to Top — No Gap)" : $"{TopMarginMm:F1} mm";
 
     private double _topTrimPercent = 0.0;
     public double TopTrimPercent
@@ -270,10 +328,13 @@ public class GovtCardExtractorViewModel : ViewModelBase
         {
             if (SetProperty(ref _topTrimPercent, value))
             {
+                OnPropertyChanged(nameof(TopTrimText));
                 _ = RefreshExtractionAsync();
             }
         }
     }
+
+    public string TopTrimText => (TopTrimPercent <= 0.05) ? "0.0% (Tight Crop)" : $"{TopTrimPercent:F1}%";
 
     private double _bottomTrimPercent = 0.0;
     public double BottomTrimPercent
@@ -426,6 +487,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
     public ICommand PrevPageCommand { get; }
     public ICommand NextPageCommand { get; }
     public ICommand SetPresetCommand { get; }
+    public ICommand SetTopMarginPresetCommand { get; }
 
     public GovtCardExtractorViewModel()
     {
@@ -437,6 +499,14 @@ public class GovtCardExtractorViewModel : ViewModelBase
             if (param != null && int.TryParse(param.ToString(), out int pIdx))
             {
                 CardSizePresetIndex = pIdx;
+            }
+        });
+
+        SetTopMarginPresetCommand = new RelayCommand(param =>
+        {
+            if (param != null && double.TryParse(param.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double margin))
+            {
+                TopMarginMm = margin;
             }
         });
 
@@ -701,6 +771,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 pageIdx,
                 CardWidthCm,
                 CardHeightCm,
+                TopMarginMm,
                 token);
 
             if (token.IsCancellationRequested) return;
@@ -739,7 +810,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
 
             try
             {
-                string outPath = await _sheetService.GeneratePdfAsync(selected, dlg.FileName, SelectedLayout, ScissorGapMm, SelectedAlignment, CardWidthCm, CardHeightCm);
+                string outPath = await _sheetService.GeneratePdfAsync(selected, dlg.FileName, SelectedLayout, ScissorGapMm, SelectedAlignment, CardWidthCm, CardHeightCm, TopMarginMm);
                 LastExportedFile = outPath;
                 OutputHistoryService.Instance.Record(outPath, "Govt Card A4 PDF");
                 StatusMessage = $"✅ {TotalPages}-Page A4 PDF Generated: {Path.GetFileName(outPath)} ({new FileInfo(outPath).Length / 1024.0:F1} KB)";
@@ -777,7 +848,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
 
             try
             {
-                string outPath = await _sheetService.GenerateDocxAsync(selected, dlg.FileName, SelectedLayout, ScissorGapMm, SelectedAlignment, CardWidthCm, CardHeightCm);
+                string outPath = await _sheetService.GenerateDocxAsync(selected, dlg.FileName, SelectedLayout, ScissorGapMm, SelectedAlignment, CardWidthCm, CardHeightCm, TopMarginMm);
                 LastExportedFile = outPath;
                 OutputHistoryService.Instance.Record(outPath, "Govt Card A4 Word DOCX");
                 StatusMessage = $"✅ {TotalPages}-Page Word Document Generated: {Path.GetFileName(outPath)} ({new FileInfo(outPath).Length / 1024.0:F1} KB)";
@@ -829,7 +900,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                         ? Path.Combine(baseDir, $"{baseNameWithoutExt}_Page_{p + 1}{ext}")
                         : dlg.FileName;
 
-                    await _sheetService.GenerateImageAsync(selected, pagePath, SelectedLayout, ScissorGapMm, SelectedAlignment, p, CardWidthCm, CardHeightCm);
+                    await _sheetService.GenerateImageAsync(selected, pagePath, SelectedLayout, ScissorGapMm, SelectedAlignment, p, CardWidthCm, CardHeightCm, TopMarginMm);
                     OutputHistoryService.Instance.Record(pagePath, "Govt Card A4 Image");
                     if (p == 0) outPath = pagePath;
                 }
@@ -866,7 +937,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
             for (int p = 0; p < TotalPages; p++)
             {
                 string tempPrintImg = Path.Combine(Path.GetTempPath(), $"dasmo_print_p{p}_{Guid.NewGuid():N}.jpg");
-                await _sheetService.GenerateImageAsync(selected, tempPrintImg, SelectedLayout, ScissorGapMm, SelectedAlignment, p, CardWidthCm, CardHeightCm);
+                await _sheetService.GenerateImageAsync(selected, tempPrintImg, SelectedLayout, ScissorGapMm, SelectedAlignment, p, CardWidthCm, CardHeightCm, TopMarginMm);
                 tempFiles.Add(tempPrintImg);
             }
 

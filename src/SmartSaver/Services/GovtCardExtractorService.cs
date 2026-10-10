@@ -670,8 +670,8 @@ public class GovtCardExtractorService
 
         if (docType == GovtDocumentType.AadhaarCard)
         {
-            int cardY0 = (int)(h * (0.680 + (topTrimPercent / 100.0 * 0.28)));
-            int cardY1 = (int)(h * (0.965 - (bottomTrimPercent / 100.0 * 0.28)));
+            int cardY0 = (int)(h * (0.695 + (topTrimPercent / 100.0 * 0.25)));
+            int cardY1 = (int)(h * (0.965 - (bottomTrimPercent / 100.0 * 0.25)));
             int minX = (int)(w * 0.04);
             int maxX = (int)(w * 0.96);
             return new SixLabors.ImageSharp.Rectangle(minX, cardY0, Math.Max(10, maxX - minX), Math.Max(10, cardY1 - cardY0));
@@ -769,10 +769,10 @@ public class GovtCardExtractorService
 
         if (minX < maxX && minY < maxY)
         {
-            minX = Math.Max(0, minX - 8);
-            minY = Math.Max(0, minY - 8);
-            maxX = Math.Min(w - 1, maxX + 8);
-            maxY = Math.Min(h - 1, maxY + 8);
+            minX = Math.Max(0, minX - 4);
+            minY = Math.Max(0, minY); // Tight to top header/border, no artificial top padding
+            maxX = Math.Min(w - 1, maxX + 4);
+            maxY = Math.Min(h - 1, maxY + 4);
 
             int cropW = maxX - minX + 1;
             int cropH = maxY - minY + 1;

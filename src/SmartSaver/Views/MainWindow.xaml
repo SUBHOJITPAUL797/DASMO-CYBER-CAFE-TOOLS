@@ -1937,8 +1937,8 @@
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Text="Top Header Trim:" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding TopTrimPercent, StringFormat='{}{0:F1}%'}" FontSize="10" Foreground="{StaticResource AccentBrush}"/>
+                                                        <TextBlock Text="Top Header Trim (from PDF):" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding TopTrimText}" FontSize="10" Foreground="{StaticResource AccentBrush}"/>
                                                     </Grid>
                                                     <Slider Minimum="0" Maximum="25" Value="{Binding TopTrimPercent}" SmallChange="1" LargeChange="5" Margin="0,0,0,4"/>
 
@@ -1982,7 +1982,7 @@
                                                             <TextBlock Text="Card Width (cm):" FontSize="10" Foreground="{StaticResource TextBrush}"/>
                                                             <TextBlock Grid.Column="1" Text="{Binding CardWidthCm, StringFormat='{}{0:F2} cm'}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" FontSize="11"/>
                                                         </Grid>
-                                                        <Slider Minimum="6.0" Maximum="10.5" Value="{Binding CardWidthCm}" IsMoveToPointEnabled="True" SmallChange="0.05" LargeChange="0.2" Margin="0,0,0,6"/>
+                                                        <Slider Minimum="6.0" Maximum="{Binding MaxCardWidthCm}" Value="{Binding CardWidthCm}" IsMoveToPointEnabled="True" SmallChange="0.05" LargeChange="0.2" Margin="0,0,0,6"/>
 
                                                         <Grid Margin="0,2">
                                                             <Grid.ColumnDefinitions>
@@ -2008,7 +2008,7 @@
                                             <!-- Layout Choice -->
                                             <TextBlock Text="Card Arrangement:" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2"/>
                                             <ComboBox SelectedValue="{Binding SelectedLayout}" SelectedValuePath="Tag" Height="30" Margin="0,0,0,6">
-                                                <ComboBoxItem Content="⚡ 5 Cards / 10 Sides per A4 (Max Paper Saver)" Tag="{x:Static services:CardSheetLayout.FiveCardsA4PaperSaver}"/>
+                                                 <ComboBoxItem Content="⚡ 5 Cards / 10 Sides per A4 (Max Paper Saver)" Tag="{x:Static services:CardSheetLayout.FiveCardsA4PaperSaver}"/>
                                                 <ComboBoxItem Content="📄 2 Cards / 4 Sides per A4 Sheet" Tag="{x:Static services:CardSheetLayout.TwoCardsA4}"/>
                                                 <ComboBoxItem Content="📑 1 Card Side-by-Side (Center Fold Laminate)" Tag="{x:Static services:CardSheetLayout.SingleCardSideBySide}"/>
                                                 <ComboBoxItem Content="⬇️ 1 Card Top / Bottom (Standard Stack)" Tag="{x:Static services:CardSheetLayout.SingleCardTopBottom}"/>
@@ -2021,6 +2021,29 @@
                                                 <ComboBoxItem Content="↕️ Centered on Page" Tag="{x:Static services:CardSheetAlignment.CenterOfPage}"/>
                                             </ComboBox>
                                             <TextBlock Text="{Binding AlignmentDescription}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="9" Margin="0,0,0,6" TextWrapping="Wrap"/>
+
+                                            <!-- Top Header Gap (Page Top Margin) Slider -->
+                                            <Grid Margin="0,4,0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="🔝 Top Header Margin / Gap (Tight to Edge):" FontSize="11" Foreground="{StaticResource TextBrush}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding TopMarginText}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" FontSize="11"/>
+                                            </Grid>
+                                            <Slider Minimum="0.0" Maximum="25.0" Value="{Binding TopMarginMm}" IsMoveToPointEnabled="True" SmallChange="0.5" LargeChange="2.0" Margin="0,0,0,4"/>
+
+                                            <!-- Quick Preset Chips for Top Margin -->
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,8">
+                                                <Button Content="0.0 mm (Tight - No Gap)" Style="{StaticResource ChipButton}" Height="20" Padding="5,1" FontSize="9" Margin="0,0,3,0"
+                                                        Command="{Binding SetTopMarginPresetCommand}" CommandParameter="0.0" ToolTip="Cards touch the very top edge of A4 sheet (Maximum paper saver, zero gap)"/>
+                                                <Button Content="2.0 mm" Style="{StaticResource ChipButton}" Height="20" Padding="5,1" FontSize="9" Margin="0,0,3,0"
+                                                        Command="{Binding SetTopMarginPresetCommand}" CommandParameter="2.0" ToolTip="2 mm safe margin"/>
+                                                <Button Content="5.0 mm" Style="{StaticResource ChipButton}" Height="20" Padding="5,1" FontSize="9" Margin="0,0,3,0"
+                                                        Command="{Binding SetTopMarginPresetCommand}" CommandParameter="5.0" ToolTip="5 mm standard margin"/>
+                                                <Button Content="10.0 mm" Style="{StaticResource ChipButton}" Height="20" Padding="5,1" FontSize="9"
+                                                        Command="{Binding SetTopMarginPresetCommand}" CommandParameter="10.0" ToolTip="10 mm wide margin"/>
+                                            </StackPanel>
 
                                             <!-- Scissor Gap Slider -->
                                             <Grid Margin="0,0,0,4">

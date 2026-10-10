@@ -141,7 +141,8 @@ public class CardSheetGeneratorService
         double scissorGapMm = 4.0,
         CardSheetAlignment alignment = CardSheetAlignment.TopToBottomPaperSaver,
         double cardWidthCm = CardWidthCm,
-        double cardHeightCm = CardHeightCm)
+        double cardHeightCm = CardHeightCm,
+        double topMarginMm = 0.0)
     {
         ArgumentNullException.ThrowIfNull(cards);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
@@ -159,6 +160,7 @@ public class CardSheetGeneratorService
             double cardW_pt = cardWidthCm * CmToPoints;
             double cardH_pt = cardHeightCm * CmToPoints;
             double gap_pt = (scissorGapMm / 10.0) * CmToPoints;
+            double topMargin_pt = Math.Max(0.0, (topMarginMm / 10.0) * CmToPoints);
 
             var guidePen = new XPen(XColor.FromArgb(200, 200, 200), 0.5) { DashStyle = XDashStyle.Dash };
             var foldPen = new XPen(XColor.FromArgb(210, 210, 210), 0.5) { DashStyle = XDashStyle.Dot };
@@ -177,14 +179,19 @@ public class CardSheetGeneratorService
 
                 if (layout == CardSheetLayout.FiveCardsA4PaperSaver || layout == CardSheetLayout.TwoCardsA4)
                 {
+                    // Strict edge-to-edge boundary protection: 2 cards side-by-side must never exceed A4 width
+                    double maxAllowedCardW_pt = Math.Max(10.0, (a4W - gap_pt) / 2.0);
+                    if (cardW_pt > maxAllowedCardW_pt) cardW_pt = maxAllowedCardW_pt;
+
                     double totalBlockH = (rowCount * cardH_pt) + ((rowCount - 1) * gap_pt);
                     double totalBlockW = (2 * cardW_pt) + gap_pt;
-                    double startX = Math.Max(10, (a4W - totalBlockW) / 2.0);
+                    double startX = Math.Max(0.0, (a4W - totalBlockW) / 2.0);
+                    if (startX + totalBlockW > a4W) startX = Math.Max(0.0, a4W - totalBlockW);
 
-                    // Top-to-Bottom Packing: start at minimal top margin (~3.5mm = 10pt) so remaining bottom page can be cut & reused!
+                    // Top-to-Bottom Packing: configurable top margin down to 0.0 mm (completely tight to edge, no gap!)
                     double startY = (alignment == CardSheetAlignment.TopToBottomPaperSaver)
-                        ? 10.0
-                        : Math.Max(15, (a4H - totalBlockH) / 2.0);
+                        ? topMargin_pt
+                        : Math.Max(0.0, (a4H - totalBlockH) / 2.0);
 
                     for (int r = 0; r < rowCount; r++)
                     {
@@ -229,10 +236,15 @@ public class CardSheetGeneratorService
                 }
                 else if (layout == CardSheetLayout.SingleCardSideBySide)
                 {
+                    double maxAllowedCardW_pt = Math.Max(10.0, (a4W - gap_pt) / 2.0);
+                    if (cardW_pt > maxAllowedCardW_pt) cardW_pt = maxAllowedCardW_pt;
+
                     var card = pageCards[0];
                     double totalBlockW = (2 * cardW_pt) + gap_pt;
-                    double startX = (a4W - totalBlockW) / 2.0;
-                    double startY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? 10.0 : (a4H - cardH_pt) / 2.0;
+                    double startX = Math.Max(0.0, (a4W - totalBlockW) / 2.0);
+                    if (startX + totalBlockW > a4W) startX = Math.Max(0.0, a4W - totalBlockW);
+
+                    double startY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? topMargin_pt : Math.Max(0.0, (a4H - cardH_pt) / 2.0);
 
                     DrawImageExact(gfx, card.FrontImagePath, startX, startY, cardW_pt, cardH_pt);
                     if (card.HasBack)
@@ -251,9 +263,11 @@ public class CardSheetGeneratorService
                 }
                 else // SingleCardTopBottom
                 {
+                    if (cardW_pt > a4W) cardW_pt = a4W;
+
                     var card = pageCards[0];
-                    double startX = (a4W - cardW_pt) / 2.0;
-                    double topY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? 10.0 : a4H * 0.16;
+                    double startX = Math.Max(0.0, (a4W - cardW_pt) / 2.0);
+                    double topY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? topMargin_pt : Math.Max(0.0, (a4H - (2 * cardH_pt + gap_pt + 6)) / 2.0);
                     double bottomY = topY + cardH_pt + gap_pt + 6;
 
                     DrawImageExact(gfx, card.FrontImagePath, startX, topY, cardW_pt, cardH_pt);
@@ -295,7 +309,8 @@ public class CardSheetGeneratorService
         double scissorGapMm = 4.0,
         CardSheetAlignment alignment = CardSheetAlignment.TopToBottomPaperSaver,
         double cardWidthCm = CardWidthCm,
-        double cardHeightCm = CardHeightCm)
+        double cardHeightCm = CardHeightCm,
+        double topMarginMm = 0.0)
     {
         ArgumentNullException.ThrowIfNull(cards);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
@@ -313,15 +328,30 @@ public class CardSheetGeneratorService
 
             UInt32Value a4WidthDxa = 11906;   // 210 mm standard A4
             UInt32Value a4HeightDxa = 16838;  // 297 mm standard A4
-            // Minimal top margin (144 twips = ~2.5mm) in TopToBottom Paper Saver mode
-            int topMarginVal = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? 144 : 576;
+            
+            // Configurable top margin: down to 0 for tight edge-to-edge placement
+            int topMargin_dxa = (int)Math.Max(0, Math.Round((topMarginMm / 10.0) * 566.929134));
+            int topMarginVal = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? topMargin_dxa : 576;
 
             // Exact unit math: 1 cm = 566.929134 dxa (twips), 1 cm = 360,000 EMUs
-            int cardW_dxa = (int)Math.Round(cardWidthCm * 566.929134);
-            int cardH_dxa = (int)Math.Round(cardHeightCm * 566.929134);
-            int gap_dxa = (int)Math.Round((scissorGapMm / 10.0) * 566.929134);
+            long a4W_emu = (long)Math.Round(21.0 * CmToEmus);
+            long a4H_emu = (long)Math.Round(29.7 * CmToEmus);
+            long emuGap = (long)Math.Round((scissorGapMm / 10.0) * CmToEmus);
+            long topMargin_emus = (long)Math.Max(0, Math.Round((topMarginMm / 10.0) * CmToEmus));
+
             long emuWidth = (long)Math.Round(cardWidthCm * CmToEmus);
             long emuHeight = (long)Math.Round(cardHeightCm * CmToEmus);
+
+            if (layout != CardSheetLayout.SingleCardTopBottom)
+            {
+                // Strict edge-to-edge clamping: 2 columns + gap must not exceed A4 width
+                long maxAllowedEmuWidth = Math.Max(100000L, (a4W_emu - emuGap) / 2);
+                if (emuWidth > maxAllowedEmuWidth) emuWidth = maxAllowedEmuWidth;
+            }
+            else
+            {
+                if (emuWidth > a4W_emu) emuWidth = a4W_emu;
+            }
 
             using (var wordDoc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document))
             {
@@ -331,13 +361,9 @@ public class CardSheetGeneratorService
 
                 var sectionProps = new SectionProperties();
                 var pageSize = new PageSize { Width = a4WidthDxa, Height = a4HeightDxa, Orient = PageOrientationValues.Portrait };
-                var pageMargin = new PageMargin { Top = topMarginVal, Bottom = 200, Left = 288, Right = 288 };
+                var pageMargin = new PageMargin { Top = topMarginVal, Bottom = 200, Left = 0, Right = 0 };
                 sectionProps.Append(pageSize);
                 sectionProps.Append(pageMargin);
-
-                long a4W_emu = (long)Math.Round(21.0 * CmToEmus);
-                long a4H_emu = (long)Math.Round(29.7 * CmToEmus);
-                long emuGap = (long)Math.Round((scissorGapMm / 10.0) * CmToEmus);
 
                 uint docPropId = 1;
 
@@ -352,10 +378,12 @@ public class CardSheetGeneratorService
 
                     if (layout == CardSheetLayout.SingleCardTopBottom)
                     {
-                        long startX = Math.Max(100000L, (a4W_emu - emuWidth) / 2);
+                        long startX = Math.Max(0L, (a4W_emu - emuWidth) / 2);
+                        if (startX + emuWidth > a4W_emu) startX = Math.Max(0L, a4W_emu - emuWidth);
+
                         long startY = (alignment == CardSheetAlignment.TopToBottomPaperSaver)
-                            ? 126000L // ~3.5mm
-                            : Math.Max(180000L, (a4H_emu - (2 * emuHeight + emuGap)) / 2);
+                            ? topMargin_emus
+                            : Math.Max(0L, (a4H_emu - (2 * emuHeight + emuGap)) / 2);
 
                         foreach (var card in pageCards)
                         {
@@ -379,10 +407,12 @@ public class CardSheetGeneratorService
                         // 5 Cards / 10 Sides per A4 (Side-by-side Top-to-Bottom Paper Saver)
                         long totalBlockW = (2 * emuWidth) + emuGap;
                         long totalBlockH = (rowCount * emuHeight) + ((rowCount - 1) * emuGap);
-                        long startX = Math.Max(100000L, (a4W_emu - totalBlockW) / 2);
+                        long startX = Math.Max(0L, (a4W_emu - totalBlockW) / 2);
+                        if (startX + totalBlockW > a4W_emu) startX = Math.Max(0L, a4W_emu - totalBlockW);
+
                         long startY = (alignment == CardSheetAlignment.TopToBottomPaperSaver)
-                            ? 126000L // ~3.5mm top margin
-                            : Math.Max(180000L, (a4H_emu - totalBlockH) / 2);
+                            ? topMargin_emus
+                            : Math.Max(0L, (a4H_emu - totalBlockH) / 2);
 
                         for (int r = 0; r < rowCount; r++)
                         {
@@ -443,6 +473,7 @@ public class CardSheetGeneratorService
         int pageIndex = 0,
         double cardWidthCm = CardWidthCm,
         double cardHeightCm = CardHeightCm,
+        double topMarginMm = 0.0,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(cards);
@@ -463,6 +494,7 @@ public class CardSheetGeneratorService
             int cardW = Math.Max(10, (int)Math.Round(cardWidthCm * 118.11 * previewScale));
             int cardH = Math.Max(10, (int)Math.Round(cardHeightCm * 118.11 * previewScale));
             int gap = Math.Max(1, (int)Math.Round((scissorGapMm / 10.0) * 118.11 * previewScale));
+            int topMarginPx = (int)Math.Max(0, Math.Round((topMarginMm / 10.0) * 118.11 * previewScale));
 
             int cardsPerPage = GetCardsPerPage(layout);
             var pageCards = validCards.Skip(pageIndex * cardsPerPage).Take(cardsPerPage).ToList();
@@ -497,8 +529,10 @@ public class CardSheetGeneratorService
                 if (layout == CardSheetLayout.SingleCardTopBottom)
                 {
                     var card = pageCards[0];
-                    int startX = Math.Max(15, (a4W - cardW) / 2);
-                    int topY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? 18 : (int)(a4H * 0.16);
+                    if (cardW > a4W) cardW = a4W;
+
+                    int startX = Math.Max(0, (a4W - cardW) / 2);
+                    int topY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? topMarginPx : (int)(a4H * 0.16);
                     int bottomY = topY + cardH + gap + 3;
 
                     var fImg = GetOrLoadCardBitmap(card.FrontImagePath);
@@ -533,12 +567,20 @@ public class CardSheetGeneratorService
                 else
                 {
                     // FiveCardsA4PaperSaver, TwoCardsA4, SingleCardSideBySide
+                    // Strict edge-to-edge clamping: 2 columns + gap must not exceed A4 width
+                    int maxAllowedCardW = Math.Max(10, (a4W - gap) / 2);
+                    if (cardW > maxAllowedCardW) cardW = maxAllowedCardW;
+
                     int totalBlockH = (rowCount * cardH) + ((rowCount - 1) * gap);
                     int totalBlockW = (2 * cardW) + gap;
-                    int startX = Math.Max(15, (a4W - totalBlockW) / 2);
+                    int startX = Math.Max(0, (a4W - totalBlockW) / 2);
+                    if (startX + totalBlockW > a4W)
+                    {
+                        startX = Math.Max(0, a4W - totalBlockW);
+                    }
                     int startY = (alignment == CardSheetAlignment.TopToBottomPaperSaver)
-                        ? 18
-                        : Math.Max(25, (a4H - totalBlockH) / 2);
+                        ? topMarginPx
+                        : Math.Max(0, (a4H - totalBlockH) / 2);
 
                     for (int r = 0; r < rowCount; r++)
                     {
@@ -632,7 +674,8 @@ public class CardSheetGeneratorService
         CardSheetAlignment alignment = CardSheetAlignment.TopToBottomPaperSaver,
         int pageIndex = 0,
         double cardWidthCm = CardWidthCm,
-        double cardHeightCm = CardHeightCm)
+        double cardHeightCm = CardHeightCm,
+        double topMarginMm = 0.0)
     {
         ArgumentNullException.ThrowIfNull(cards);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
@@ -648,6 +691,7 @@ public class CardSheetGeneratorService
             int cardW = (int)(cardWidthCm * 118.11); // e.g. 945 px for 8.0cm
             int cardH = (int)(cardHeightCm * 118.11); // 638 px for 5.4cm
             int gap = (int)((scissorGapMm / 10.0) * 118.11);
+            int topMarginPx = (int)Math.Max(0, Math.Round((topMarginMm / 10.0) * 118.11));
 
             int cardsPerPage = GetCardsPerPage(layout);
             var pageCards = validCards.Skip(pageIndex * cardsPerPage).Take(cardsPerPage).ToList();
@@ -678,8 +722,10 @@ public class CardSheetGeneratorService
                 if (layout == CardSheetLayout.SingleCardTopBottom)
                 {
                     var card = pageCards[0];
-                    int startX = Math.Max(30, (a4W - cardW) / 2);
-                    int topY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? 35 : (int)(a4H * 0.16);
+                    if (cardW > a4W) cardW = a4W;
+
+                    int startX = Math.Max(0, (a4W - cardW) / 2);
+                    int topY = (alignment == CardSheetAlignment.TopToBottomPaperSaver) ? topMarginPx : (int)(a4H * 0.16);
                     int bottomY = topY + cardH + gap + 6;
 
                     var fImg = GetOrLoadCardBitmap(card.FrontImagePath);
@@ -713,13 +759,18 @@ public class CardSheetGeneratorService
                 }
                 else
                 {
+                    // Strict edge-to-edge clamping: 2 columns + gap must not exceed A4 width
+                    int maxAllowedCardW = Math.Max(10, (a4W - gap) / 2);
+                    if (cardW > maxAllowedCardW) cardW = maxAllowedCardW;
+
                     int totalBlockH = (rowCount * cardH) + ((rowCount - 1) * gap);
                     int totalBlockW = (2 * cardW) + gap;
-                    int startX = Math.Max(30, (a4W - totalBlockW) / 2);
+                    int startX = Math.Max(0, (a4W - totalBlockW) / 2);
+                    if (startX + totalBlockW > a4W) startX = Math.Max(0, a4W - totalBlockW);
 
                     int startY = (alignment == CardSheetAlignment.TopToBottomPaperSaver)
-                        ? 35
-                        : Math.Max(50, (a4H - totalBlockH) / 2);
+                        ? topMarginPx
+                        : Math.Max(0, (a4H - totalBlockH) / 2);
 
                     for (int r = 0; r < rowCount; r++)
                     {

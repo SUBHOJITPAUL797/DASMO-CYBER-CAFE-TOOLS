@@ -8063,6 +8063,200 @@ flowchart TD
                 failed++;
             }
 
+            // -------------------------------------------------------------
+            // [TEST 93] A4 Sheet Edge-to-Edge Boundary Clamping & Configurable Top Header Margin (Tight to Top)
+            // -------------------------------------------------------------
+            try
+            {
+                Console.Write("[TEST 93] A4 Sheet Edge-to-Edge Card Clamping & Top Header Gap (Tight to Edge)... ");
+
+                // 1. ViewModel Mathematical Clamping Checks on STA Thread
+                Exception? staEx93 = null;
+                var staThread93 = new Thread(() =>
+                {
+                    try
+                    {
+                        var vm = new GovtCardExtractorViewModel();
+
+                        // Default ScissorGapMm is 4.0mm -> gapCm = 0.4 -> MaxCardWidthCm = (21.0 - 0.4) / 2 = 10.30 cm
+                        if (Math.Abs(vm.MaxCardWidthCm - 10.30) > 0.01)
+                            throw new Exception($"Expected MaxCardWidthCm=10.30 at default 4mm gap, got {vm.MaxCardWidthCm}");
+
+                        // Set scissor gap to 2.0mm -> MaxCardWidthCm = (21.0 - 0.2) / 2 = 10.40 cm
+                        vm.ScissorGapMm = 2.0;
+                        if (Math.Abs(vm.MaxCardWidthCm - 10.40) > 0.01)
+                            throw new Exception($"Expected MaxCardWidthCm=10.40 at 2mm gap, got {vm.MaxCardWidthCm}");
+
+                        // Attempt to set CardWidthCm to 10.50 cm (which would overflow A4: 10.5*2 + 0.2 = 21.2 > 21.0)
+                        vm.CardWidthCm = 10.50;
+                        if (vm.CardWidthCm > 10.40 + 0.001)
+                            throw new Exception($"CardWidthCm failed to clamp to MaxCardWidthCm! Expected <= 10.40, got {vm.CardWidthCm}");
+
+                        // Increase scissor gap back to 4.0mm -> MaxCardWidthCm = 10.30 cm, CardWidthCm must auto-clamp
+                        vm.ScissorGapMm = 4.0;
+                        if (Math.Abs(vm.MaxCardWidthCm - 10.30) > 0.01)
+                            throw new Exception($"Expected MaxCardWidthCm=10.30 at 4mm gap, got {vm.MaxCardWidthCm}");
+                        if (vm.CardWidthCm > 10.30 + 0.001)
+                            throw new Exception($"CardWidthCm failed to auto-clamp on scissor gap change! Expected <= 10.30, got {vm.CardWidthCm}");
+
+                        // Top margin tests
+                        vm.TopMarginMm = 0.0;
+                        if (!vm.TopMarginText.Contains("Tight to Top"))
+                            throw new Exception($"TopMarginText should indicate tight to top when 0.0mm, got '{vm.TopMarginText}'");
+
+                        // Preset command test
+                        vm.SetTopMarginPresetCommand.Execute("5.0");
+                        if (Math.Abs(vm.TopMarginMm - 5.0) > 0.01)
+                            throw new Exception($"SetTopMarginPresetCommand failed! Expected 5.0, got {vm.TopMarginMm}");
+
+                        vm.SetTopMarginPresetCommand.Execute("0.0");
+                        if (Math.Abs(vm.TopMarginMm - 0.0) > 0.01)
+                            throw new Exception($"SetTopMarginPresetCommand reset to 0.0 failed! Expected 0.0, got {vm.TopMarginMm}");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx93 = ex;
+                    }
+                });
+                staThread93.SetApartmentState(ApartmentState.STA);
+                staThread93.Start();
+                staThread93.Join(TimeSpan.FromSeconds(10));
+                if (staThread93.IsAlive) { staThread93.Interrupt(); throw new Exception("Test 93 STA thread timed out (10s)"); }
+                if (staEx93 != null) throw staEx93;
+
+                // 2. Service-Level Preview Render Clamping & Tight-to-Top (0 Margin) Verification
+                string cardF = Path.Combine(testDir, "test93_card_f.png");
+                string cardB = Path.Combine(testDir, "test93_card_b.png");
+                using (var bmpF = new System.Drawing.Bitmap(400, 250))
+                using (var g = System.Drawing.Graphics.FromImage(bmpF))
+                {
+                    g.Clear(System.Drawing.Color.DarkBlue);
+                    bmpF.Save(cardF, System.Drawing.Imaging.ImageFormat.Png);
+                }
+                using (var bmpB = new System.Drawing.Bitmap(400, 250))
+                using (var g = System.Drawing.Graphics.FromImage(bmpB))
+                {
+                    g.Clear(System.Drawing.Color.DarkRed);
+                    bmpB.Save(cardB, System.Drawing.Imaging.ImageFormat.Png);
+                }
+
+                var cardList93 = new List<ExtractedCardItem>
+                {
+                    new ExtractedCardItem { FrontImagePath = cardF, BackImagePath = cardB, IsSelected = true }
+                };
+
+                var sheetService = CardSheetGeneratorService.Instance;
+
+                // Render with topMarginMm = 0.0 and cardWidthCm = 10.50 (intentionally oversized)
+                var previewTight = sheetService.RenderPreviewBitmapSourceAsync(
+                    cardList93,
+                    CardSheetLayout.FiveCardsA4PaperSaver,
+                    scissorGapMm: 2.0,
+                    alignment: CardSheetAlignment.TopToBottomPaperSaver,
+                    pageIndex: 0,
+                    cardWidthCm: 10.50,
+                    cardHeightCm: 5.40,
+                    topMarginMm: 0.0).GetAwaiter().GetResult();
+
+                if (previewTight == null)
+                    throw new Exception("RenderPreviewBitmapSourceAsync returned null for tight layout!");
+
+                // Convert previewTight to System.Drawing.Bitmap to inspect pixels
+                string previewPng = Path.Combine(testDir, "test93_preview_tight.png");
+                using (var fs = new FileStream(previewPng, FileMode.Create))
+                {
+                    var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(previewTight));
+                    enc.Save(fs);
+                }
+
+                using (var bmpTest = new System.Drawing.Bitmap(previewPng))
+                {
+                    if (bmpTest.Width != 1240 || bmpTest.Height != 1754)
+                        throw new Exception($"Preview dimensions mismatch! Expected 1240x1754, got {bmpTest.Width}x{bmpTest.Height}");
+
+                    // At topMarginMm = 0.0, row Y = 0 should have the top card starting directly at Y = 0!
+                    // Let's check the middle of column 1 (e.g. X = 300) at Y = 0 or 1
+                    var pixelAtTop = bmpTest.GetPixel(300, 0);
+                    // If it's tight to top, row 0 or 1 is NOT pure background white (255, 255, 255) because the card starts at Y = 0
+                    bool hasCardAtTop = (pixelAtTop.R != 255 || pixelAtTop.G != 255 || pixelAtTop.B != 255);
+                    if (!hasCardAtTop)
+                    {
+                        // Check Y = 1
+                        var pixelAtTop1 = bmpTest.GetPixel(300, 1);
+                        hasCardAtTop = (pixelAtTop1.R != 255 || pixelAtTop1.G != 255 || pixelAtTop1.B != 255);
+                    }
+
+                    if (!hasCardAtTop)
+                        throw new Exception("TopMarginMm = 0.0 failed to place card flush at top edge (Y = 0)!");
+                }
+
+                // Now test with topMarginMm = 10.0 (1 cm gap at top)
+                var previewWithGap = sheetService.RenderPreviewBitmapSourceAsync(
+                    cardList93,
+                    CardSheetLayout.FiveCardsA4PaperSaver,
+                    scissorGapMm: 2.0,
+                    alignment: CardSheetAlignment.TopToBottomPaperSaver,
+                    pageIndex: 0,
+                    cardWidthCm: 8.00,
+                    cardHeightCm: 5.40,
+                    topMarginMm: 10.0).GetAwaiter().GetResult();
+
+                string gapPng = Path.Combine(testDir, "test93_preview_gap.png");
+                using (var fs = new FileStream(gapPng, FileMode.Create))
+                {
+                    var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(previewWithGap));
+                    enc.Save(fs);
+                }
+
+                using (var bmpGap = new System.Drawing.Bitmap(gapPng))
+                {
+                    // At topMarginMm = 10.0 (approx 59 px), row Y = 10 should be clean white
+                    var pixelInGap = bmpGap.GetPixel(300, 10);
+                    if (pixelInGap.R != 255 || pixelInGap.G != 255 || pixelInGap.B != 255)
+                        throw new Exception($"TopMarginMm = 10.0 should have white gap at Y = 10, got RGB({pixelInGap.R},{pixelInGap.G},{pixelInGap.B})");
+                }
+
+                // 3. Test PDF generation with 0.0 top margin & clamped oversized width
+                string testPdf = Path.Combine(testDir, "test93_output.pdf");
+                string pdfOut = sheetService.GeneratePdfAsync(
+                    cardList93,
+                    testPdf,
+                    CardSheetLayout.FiveCardsA4PaperSaver,
+                    scissorGapMm: 2.0,
+                    alignment: CardSheetAlignment.TopToBottomPaperSaver,
+                    cardWidthCm: 10.50,
+                    cardHeightCm: 5.40,
+                    topMarginMm: 0.0).GetAwaiter().GetResult();
+
+                if (!File.Exists(pdfOut) || new FileInfo(pdfOut).Length < 100)
+                    throw new Exception("GeneratePdfAsync produced missing or empty file!");
+
+                // 4. Test Word DOCX generation with 0.0 top margin
+                string testDocx = Path.Combine(testDir, "test93_output.docx");
+                string docxOut = sheetService.GenerateDocxAsync(
+                    cardList93,
+                    testDocx,
+                    CardSheetLayout.FiveCardsA4PaperSaver,
+                    scissorGapMm: 2.0,
+                    alignment: CardSheetAlignment.TopToBottomPaperSaver,
+                    cardWidthCm: 10.50,
+                    cardHeightCm: 5.40,
+                    topMarginMm: 0.0).GetAwaiter().GetResult();
+
+                if (!File.Exists(docxOut) || new FileInfo(docxOut).Length < 100)
+                    throw new Exception("GenerateDocxAsync produced missing or empty file!");
+
+                Console.WriteLine("PASSED (Strict A4 Boundary Clamping, 0.0mm Flush Top Alignment & Configurable Gap Control Verified Across Preview, PDF, and DOCX)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

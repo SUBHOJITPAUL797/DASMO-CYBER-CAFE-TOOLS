@@ -137,6 +137,27 @@ def trim_and_clean_card_edges(card_bgr):
     return card_bgr
 
 
+def trim_top_whitespace(card_bgr, max_trim_pct=0.08):
+    """Trims unnecessary leading white space above the card header to ensure tight-to-tight extraction."""
+    if cv2 is None or card_bgr is None or card_bgr.size == 0:
+        return card_bgr
+    h, w = card_bgr.shape[:2]
+    if h < 40 or w < 40:
+        return card_bgr
+    gray = cv2.cvtColor(card_bgr, cv2.COLOR_BGR2GRAY)
+    max_trim_y = min(int(h * max_trim_pct), 35)
+    top_trim = 0
+    for y in range(max_trim_y):
+        row = gray[y, :]
+        dark_count = np.sum(row < 210)
+        if dark_count > int(w * 0.015):
+            top_trim = y
+            break
+    if top_trim > 0 and (h - top_trim) > 40:
+        return card_bgr[top_trim:, :]
+    return card_bgr
+
+
 def finalize_card(card_bgr, auto_whiten=True, trim_edges=True):
     """Whitens, trims dashed scissors marks, and preserves crisp clean card boundaries."""
     if card_bgr is None or card_bgr.size == 0:
@@ -145,6 +166,7 @@ def finalize_card(card_bgr, auto_whiten=True, trim_edges=True):
         card_bgr = auto_whiten_image(card_bgr)
     if trim_edges:
         card_bgr = trim_and_clean_card_edges(card_bgr)
+        card_bgr = trim_top_whitespace(card_bgr)
     return card_bgr
 
 
