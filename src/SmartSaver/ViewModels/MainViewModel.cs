@@ -26,7 +26,11 @@ public enum DashboardTab
     GovtCardTab = 9,
     ResizeSignature = 10,
     UpdatesAbout = 11,
-    PrintCounter = 12
+    PrintCounter = 12,
+    PassportStudio = 13,
+    Stacker = 14,
+    ExcelPrinter = 15,
+    PdfEditor = 16
 }
 
 public class MainViewModel : ViewModelBase
@@ -61,6 +65,10 @@ public class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsResizeSignatureTab));
                 OnPropertyChanged(nameof(IsUpdatesAboutTab));
                 OnPropertyChanged(nameof(IsPrintCounterTab));
+                OnPropertyChanged(nameof(IsPassportStudioTab));
+                OnPropertyChanged(nameof(IsStackerTab));
+                OnPropertyChanged(nameof(IsExcelPrinterTab));
+                OnPropertyChanged(nameof(IsPdfEditorTab));
                 OnPropertyChanged(nameof(CurrentHeaderTitle));
             }
         }
@@ -79,6 +87,10 @@ public class MainViewModel : ViewModelBase
     public bool IsResizeSignatureTab => SelectedTabIndex == 10;
     public bool IsUpdatesAboutTab => SelectedTabIndex == 11;
     public bool IsPrintCounterTab => SelectedTabIndex == 12;
+    public bool IsPassportStudioTab => SelectedTabIndex == 13;
+    public bool IsStackerTab => SelectedTabIndex == 14;
+    public bool IsExcelPrinterTab => SelectedTabIndex == 15;
+    public bool IsPdfEditorTab => SelectedTabIndex == 16;
 
     public string CurrentHeaderTitle => SelectedTabIndex switch
     {
@@ -94,6 +106,10 @@ public class MainViewModel : ViewModelBase
         10 => "✍️ Resize Signature & Photo (Exact px/cm & KB for Govt Portals)",
         11 => "🚀 Application Updates & About Developer",
         12 => "🖨️ Cyber Cafe Print Counter & Rush-Hour Billing Studio",
+        13 => "📸 Professional Passport Photo Studio & Multi-Size Sheet Suite",
+        14 => "🖨️ A4 Document & ID Card Stacker (2-in-1 Direct Print)",
+        15 => "📊 Excel A4 Smart Printer & Table Organizer",
+        16 => "📝 PDF Editor Studio (In-Place Edit, Erase & Vector Text)",
         _ => "⚡ DASMO CYBER COMPRESSOR — All-In-One Cyber Cafe Suite"
     };
 
@@ -132,6 +148,8 @@ public class MainViewModel : ViewModelBase
     public GovtCardExtractorViewModel GovtCardVm { get; }
     public SignatureResizeViewModel SignatureResizeVm { get; }
     public PrintTrackerViewModel PrintTrackerVm { get; }
+    public PassportStudioViewModel PassportStudioVm { get; }
+    public DocumentStackerViewModel StackerVm { get; }
 
     // Navigation Commands
     public ICommand NavigateCommand { get; }
@@ -499,6 +517,9 @@ public class MainViewModel : ViewModelBase
         GovtCardVm = new GovtCardExtractorViewModel();
         SignatureResizeVm = new SignatureResizeViewModel(string.Empty);
         PrintTrackerVm = new PrintTrackerViewModel();
+        PassportStudioVm = new PassportStudioViewModel();
+        StackerVm = new DocumentStackerViewModel();
+        WireStackerDialogCallbacks();
 
         ToggleSidebarCommand = new RelayCommand(_ => IsSidebarCollapsed = !IsSidebarCollapsed);
 
@@ -536,8 +557,17 @@ public class MainViewModel : ViewModelBase
             }
         });
 
-        OpenStackerCommand = new RelayCommand(_ => RequestOpenStacker?.Invoke());
-        OpenPassportStudioCommand = new RelayCommand(_ => PassportStudioDialog.ShowStudio());
+        OpenStackerCommand = new RelayCommand(_ =>
+        {
+            var win = new Views.DocumentStackerWindow(StackerVm);
+            win.Show();
+            win.Activate();
+            win.Focus();
+        });
+        OpenPassportStudioCommand = new RelayCommand(_ =>
+        {
+            PassportStudioDialog.ShowStudio(PassportStudioVm.FilePath, existingVm: PassportStudioVm);
+        });
         OpenExcelPrintStudioCommand = new RelayCommand(p => ExcelPrintStudioDialog.ShowStudio(p?.ToString() ?? ""));
         OpenPdfEditorCommand = new RelayCommand(p => ShowPdfEditor(p?.ToString()));
         OpenPrintTrackerStudioCommand = new RelayCommand(_ => PrintTrackerStudioWindow.ShowStudio());
@@ -658,7 +688,113 @@ public class MainViewModel : ViewModelBase
             case DashboardTab.PrintCounter:
                 PrintTrackerStudioWindow.ShowStudio();
                 break;
+            case DashboardTab.PassportStudio:
+                PassportStudioVm.LoadPhoto(filePath);
+                break;
+            case DashboardTab.Stacker:
+                StackerVm.SetSlotFile(true, filePath, triggerAutoCrop: true);
+                break;
+            case DashboardTab.ExcelPrinter:
+                ExcelPrintStudioDialog.ShowStudio(filePath);
+                break;
+            case DashboardTab.PdfEditor:
+                ShowPdfEditor(filePath);
+                break;
         }
+    }
+
+    private void WireStackerDialogCallbacks()
+    {
+        StackerVm.RequestBrowseFront = () =>
+        {
+            try
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "Select Front Side File",
+                    Filter = "Supported files (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf|All Files (*.*)|*.*"
+                };
+                return dlg.ShowDialog(System.Windows.Application.Current?.MainWindow) == true ? dlg.FileName : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error in RequestBrowseFront file dialog");
+                return null;
+            }
+        };
+
+        StackerVm.RequestBrowseBack = () =>
+        {
+            try
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "Select Back Side File",
+                    Filter = "Supported files (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf|All Files (*.*)|*.*"
+                };
+                return dlg.ShowDialog(System.Windows.Application.Current?.MainWindow) == true ? dlg.FileName : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error in RequestBrowseBack file dialog");
+                return null;
+            }
+        };
+
+        StackerVm.RequestBrowseBoth = () =>
+        {
+            try
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "Select 2 Files (1st = Front, 2nd = Back)",
+                    Multiselect = true,
+                    Filter = "Supported files (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf|All Files (*.*)|*.*"
+                };
+                return dlg.ShowDialog(System.Windows.Application.Current?.MainWindow) == true ? dlg.FileNames : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error in RequestBrowseBoth file dialog");
+                return null;
+            }
+        };
+
+        StackerVm.RequestImportPdf = () =>
+        {
+            try
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "Select 2-Page PDF to Import",
+                    Filter = "PDF files (*.pdf)|*.pdf"
+                };
+                return dlg.ShowDialog(System.Windows.Application.Current?.MainWindow) == true ? dlg.FileName : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error in RequestImportPdf file dialog");
+                return null;
+            }
+        };
+
+        StackerVm.RequestSaveFile = (filter, defaultName) =>
+        {
+            try
+            {
+                var dlg = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = filter,
+                    FileName = defaultName
+                };
+                return dlg.ShowDialog(System.Windows.Application.Current?.MainWindow) == true ? dlg.FileName : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error in RequestSaveFile file dialog");
+                return null;
+            }
+        };
     }
 
     private void BrowseFileForCurrentTool(string? toolName)
@@ -694,7 +830,28 @@ public class MainViewModel : ViewModelBase
 
                 case "passport":
                 case "passportstudio":
-                    PassportStudioDialog.ShowStudio();
+                    dlg.Title = "Select Photo for Passport Studio";
+                    dlg.Filter = "All Supported Images (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp|All Files (*.*)|*.*";
+                    if (dlg.ShowDialog() == true) PassportStudioVm.LoadPhoto(dlg.FileName);
+                    break;
+
+                case "stacker":
+                    dlg.Title = "Select Front Document for Stacker";
+                    dlg.Filter = "Supported files (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf|All Files (*.*)|*.*";
+                    if (dlg.ShowDialog() == true) StackerVm.SetSlotFile(true, dlg.FileName, triggerAutoCrop: true);
+                    break;
+
+                case "excel":
+                case "excelprinter":
+                    dlg.Title = "Select Excel File to Print";
+                    dlg.Filter = "Excel Files (*.xlsx;*.xls;*.csv)|*.xlsx;*.xls;*.csv|All Files (*.*)|*.*";
+                    if (dlg.ShowDialog() == true) ExcelPrintStudioDialog.ShowStudio(dlg.FileName);
+                    break;
+
+                case "pdfeditor":
+                    dlg.Title = "Select PDF File to Edit";
+                    dlg.Filter = "PDF Files (*.pdf)|*.pdf|All Files (*.*)|*.*";
+                    if (dlg.ShowDialog() == true) ShowPdfEditor(dlg.FileName);
                     break;
 
                 case "signature":

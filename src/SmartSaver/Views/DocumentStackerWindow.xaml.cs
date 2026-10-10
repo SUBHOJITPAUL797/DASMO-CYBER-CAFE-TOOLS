@@ -8,16 +8,37 @@ public partial class DocumentStackerWindow : Window
     private readonly DocumentStackerViewModel _vm;
 
     public DocumentStackerWindow(string? initialPath = null)
+        : this(new DocumentStackerViewModel())
     {
-        InitializeComponent();
-        _vm = new DocumentStackerViewModel();
-        _vm.RequestClose = () => Close();
-
         if (!string.IsNullOrEmpty(initialPath))
         {
             _vm.FrontPath = initialPath;
         }
+    }
 
+    public DocumentStackerWindow(DocumentStackerViewModel vm)
+    {
+        InitializeComponent();
+        _vm = vm;
+        _vm.RequestClose = () => Close();
+        SetupDialogCallbacks();
+        DataContext = _vm;
+        Closing += Window_Closing;
+
+        // Auto-fit to screen work area so window borders and resize grip are never off-screen
+        try
+        {
+            var workArea = SystemParameters.WorkArea;
+            if (Height > workArea.Height - 30)
+                Height = Math.Max(460, workArea.Height - 30);
+            if (Width > workArea.Width - 30)
+                Width = Math.Max(500, workArea.Width - 30);
+        }
+        catch { }
+    }
+
+    private void SetupDialogCallbacks()
+    {
         // Wire up all file dialogs safely with owner window
         _vm.RequestBrowseFront = () =>
         {
@@ -109,9 +130,6 @@ public partial class DocumentStackerWindow : Window
                 return null;
             }
         };
-
-        DataContext = _vm;
-        Closing += Window_Closing;
     }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)

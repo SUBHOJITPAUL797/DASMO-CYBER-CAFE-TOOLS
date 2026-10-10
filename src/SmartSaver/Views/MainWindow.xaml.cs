@@ -313,5 +313,98 @@ public partial class MainWindow : Window
         }
     }
 
+    private void PassportDimensionTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.PassportStudioVm?.NormalizeDimensionTexts();
+    }
+
+    private void PassportSingleKbTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.PassportStudioVm?.NormalizeSingleKbTexts();
+    }
+
+    private void PassportTab_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop) ? System.Windows.DragDropEffects.Copy : System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PassportTab_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            var files = e.Data.GetData(System.Windows.DataFormats.FileDrop) as string[];
+            var first = files?.FirstOrDefault();
+            if (!string.IsNullOrEmpty(first) && File.Exists(first))
+            {
+                ViewModel?.PassportStudioVm?.LoadPhoto(first);
+            }
+        }
+    }
+
+    private void StackerTab_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop) ? System.Windows.DragDropEffects.Copy : System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void StackerTab_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            var files = e.Data.GetData(System.Windows.DataFormats.FileDrop) as string[];
+            if (files != null && files.Length > 0)
+            {
+                if (files.Length == 1)
+                {
+                    ViewModel?.StackerVm?.SetSlotFile(true, files[0], triggerAutoCrop: true);
+                }
+                else if (files.Length >= 2)
+                {
+                    ViewModel?.StackerVm?.SetSlotFile(true, files[0], triggerAutoCrop: true);
+                    ViewModel?.StackerVm?.SetSlotFile(false, files[1], triggerAutoCrop: true);
+                }
+            }
+        }
+    }
+
+    private void ExcelTab_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop) ? System.Windows.DragDropEffects.Copy : System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void ExcelTab_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            var files = e.Data.GetData(System.Windows.DataFormats.FileDrop) as string[];
+            var first = files?.FirstOrDefault(f => f.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".xls", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".csv", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(first) && File.Exists(first))
+            {
+                ExcelPrintStudioDialog.ShowStudio(first);
+            }
+        }
+    }
+
+    private void PdfEditorTab_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop) ? System.Windows.DragDropEffects.Copy : System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PdfEditorTab_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            var files = e.Data.GetData(System.Windows.DataFormats.FileDrop) as string[];
+            var first = files?.FirstOrDefault(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(first) && File.Exists(first))
+            {
+                MainViewModel.ShowPdfEditor(first);
+            }
+        }
+    }
+
     #endregion
 }

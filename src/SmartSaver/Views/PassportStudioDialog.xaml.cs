@@ -10,11 +10,27 @@ public partial class PassportStudioDialog : Window
     public PassportStudioViewModel ViewModel { get; }
 
     public PassportStudioDialog(string initialPath = "")
+        : this(new PassportStudioViewModel(initialPath))
+    {
+    }
+
+    public PassportStudioDialog(PassportStudioViewModel vm)
     {
         InitializeComponent();
-        ViewModel = new PassportStudioViewModel(initialPath);
+        ViewModel = vm;
         DataContext = ViewModel;
         Closing += Window_Closing;
+
+        // Auto-fit to screen work area so window borders and resize grip are never off-screen
+        try
+        {
+            var workArea = SystemParameters.WorkArea;
+            if (Height > workArea.Height - 30)
+                Height = Math.Max(480, workArea.Height - 30);
+            if (Width > workArea.Width - 30)
+                Width = Math.Max(720, workArea.Width - 30);
+        }
+        catch { }
     }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -43,7 +59,7 @@ public partial class PassportStudioDialog : Window
         ViewModel?.NormalizeSingleKbTexts();
     }
 
-    public static void ShowStudio(string initialPath = "", Window? owner = null)
+    public static void ShowStudio(string initialPath = "", Window? owner = null, PassportStudioViewModel? existingVm = null)
     {
         try
         {
@@ -64,7 +80,7 @@ public partial class PassportStudioDialog : Window
                 }
             }
 
-            var dlg = new PassportStudioDialog(initialPath);
+            var dlg = existingVm != null ? new PassportStudioDialog(existingVm) : new PassportStudioDialog(initialPath);
             if (owner != null)
             {
                 dlg.Owner = owner;

@@ -3,8 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:SmartSaver.Converters"
         Title="📸 Professional Passport Photo Studio &amp; Multi-Size Sheet Suite — DASMO CYBER CAFE TOOLS"
-        Height="760" Width="1140" MinHeight="660" MinWidth="960"
+        Height="720" Width="1140" MinHeight="480" MinWidth="720"
         WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResizeWithGrip"
         Background="#12131C" Foreground="{StaticResource TextBrush}">
 
     <Window.Resources>
