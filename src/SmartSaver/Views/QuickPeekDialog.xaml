@@ -28,15 +28,15 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#F000BCD4"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#00BCD4"/>
-                                <Setter Property="Foreground" Value="#0F172A"/>
+                                <Setter TargetName="border" Property="Background" Value="#F03B82F6"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#3B82F6"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
                                 <Setter Property="Opacity" Value="1.0"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#D000ACC1"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#00ACC1"/>
-                                <Setter Property="Foreground" Value="#0F172A"/>
+                                <Setter TargetName="border" Property="Background" Value="#D02563EB"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#2563EB"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.12"/>

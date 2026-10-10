@@ -11,12 +11,12 @@
         MouseDown="Window_MouseDown">
 
     <Window.Resources>
-        <SolidColorBrush x:Key="BgBrush" Color="#0B0D14"/>
-        <SolidColorBrush x:Key="SurfaceBrush" Color="#161826"/>
-        <SolidColorBrush x:Key="CardBrush" Color="#1C1E2F"/>
-        <SolidColorBrush x:Key="BorderBrush" Color="#2A2C42"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#00BCD4"/>
-        <SolidColorBrush x:Key="AccentHoverBrush" Color="#26C6DA"/>
+        <SolidColorBrush x:Key="BgBrush" Color="#0B0F17"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#151B28"/>
+        <SolidColorBrush x:Key="CardBrush" Color="#1E2638"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#222B3D"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#3B82F6"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#2563EB"/>
         <SolidColorBrush x:Key="SuccessBrush" Color="#10B981"/>
         <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="TextSecondary" Color="#94A3B8"/>

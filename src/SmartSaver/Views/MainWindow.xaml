@@ -17,13 +17,13 @@
         <converters:FileSizeFormatConverter x:Key="FileSizeConverter"/>
         <converters:StringEqualsConverter x:Key="StringEquals"/>
 
-        <!-- Sidebar Navigation Button Style -->
+        <!-- Sidebar Navigation Button Style with Active Indicator Pill -->
         <Style x:Key="SidebarNavButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="12,6.5"/>
+            <Setter Property="Padding" Value="10,7"/>
             <Setter Property="Margin" Value="6,1.5"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -32,16 +32,33 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Grid>
+                            <!-- Main Background Container -->
                             <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- 3.5px Active Left Accent Pill -->
+                                    <Border x:Name="activePill" Width="3.5" Height="18" Background="{StaticResource AccentBrush}"
+                                            CornerRadius="2" HorizontalAlignment="Left" Margin="-7,0,8,0" Visibility="Collapsed"/>
+                                    <ContentPresenter Grid.Column="1" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                                </Grid>
                             </Border>
                             <Border x:Name="hoverOverlay" Background="{StaticResource AccentBrush}" CornerRadius="8" Opacity="0" IsHitTestVisible="False"/>
                         </Grid>
                         <ControlTemplate.Triggers>
+                            <!-- Selected / Active Tab Trigger via Tag binding -->
+                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1A3B82F6"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter TargetName="activePill" Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
                             <EventTrigger RoutedEvent="MouseEnter">
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="hoverOverlay" Storyboard.TargetProperty="Opacity" To="0.1" Duration="0:0:0.15" />
+                                        <DoubleAnimation Storyboard.TargetName="hoverOverlay" Storyboard.TargetProperty="Opacity" To="0.08" Duration="0:0:0.15" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
@@ -53,7 +70,7 @@
                                 </BeginStoryboard>
                             </EventTrigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="hoverOverlay" Property="Opacity" Value="0.2"/>
+                                <Setter TargetName="hoverOverlay" Property="Opacity" Value="0.16"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
@@ -70,8 +87,8 @@
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Padding" Value="18"/>
-            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="Margin" Value="6"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="VerticalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
@@ -85,11 +102,14 @@
                             <Border x:Name="hoverOverlay" Background="{StaticResource TextBrush}" CornerRadius="12" Opacity="0" IsHitTestVisible="False"/>
                         </Grid>
                         <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="cardBorder" Property="Background" Value="{StaticResource SurfaceHoverBrush}"/>
+                                <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource BorderHoverBrush}"/>
+                            </Trigger>
                             <EventTrigger RoutedEvent="MouseEnter">
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="hoverOverlay" Storyboard.TargetProperty="Opacity" To="0.04" Duration="0:0:0.15" />
-                                        <ColorAnimation Storyboard.TargetName="cardBorder" Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)" To="{StaticResource AccentColor}" Duration="0:0:0.15"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
@@ -97,7 +117,6 @@
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="hoverOverlay" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15" />
-                                        <ColorAnimation Storyboard.TargetName="cardBorder" Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)" To="{StaticResource BorderColor}" Duration="0:0:0.15"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
@@ -167,7 +186,7 @@
                     <!-- Super Admin Only Button -->
                     <Button x:Name="BtnTopAdminPanel" Content="🛡️ Admin Panel" Click="AdminPanel_Click"
                             WindowChrome.IsHitTestVisibleInChrome="True" Visibility="Collapsed"
-                            Background="#00BCD4" Foreground="#0F172A" FontWeight="Bold" FontSize="11"
+                            Background="{StaticResource AccentBrush}" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11"
                             Padding="10,3" Margin="16,0,0,0" Cursor="Hand" BorderThickness="0"
                             ToolTip="Cloud Licensing &amp; Hardware Lock Control Center (Subhojit Paul Only)">
                         <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
@@ -365,7 +384,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- LEFT SIDEBAR -->
-                <Border Background="#F210111A" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" Grid.Column="0">
+                <Border Background="#0E131F" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" Grid.Column="0">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -396,61 +415,53 @@
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,6"
                                       PreviewMouseWheel="SidebarScrollViewer_PreviewMouseWheel">
                             <StackPanel>
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="0" ToolTip="Tools Dashboard">
+                                <!-- ================= SECTION 1: CORE HUB ================= -->
+                                <TextBlock Text="CORE HUB" FontSize="9.5" FontWeight="Bold" Foreground="#64748B" Margin="14,8,0,4"
+                                           Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsHomeTab}" Command="{Binding NavigateCommand}" CommandParameter="0" ToolTip="Tools Dashboard">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="🏠" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Tools Dashboard" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                        <TextBlock Text="Dashboard (Home)" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Separator Background="{StaticResource BorderBrush}" Margin="12,4"/>
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsHistoryTab}" Command="{Binding NavigateCommand}" CommandParameter="7" ToolTip="Output History &amp; Recent Activity">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🕒" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Output History" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="1" ToolTip="Merge PDFs">
+                                <!-- ================= SECTION 2: PDF & DOCUMENTS ================= -->
+                                <TextBlock Text="PDF &amp; DOCUMENTS" FontSize="9.5" FontWeight="Bold" Foreground="#64748B" Margin="14,14,0,4"
+                                           Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsMergeTab}" Command="{Binding NavigateCommand}" CommandParameter="1" ToolTip="Merge Multiple PDFs">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="📑" Margin="0,0,10,0" FontSize="14"/>
                                         <TextBlock Text="Merge PDFs" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="2" ToolTip="Split / Extract PDF">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsSplitTab}" Command="{Binding NavigateCommand}" CommandParameter="2" ToolTip="Split / Extract PDF">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="✂️" Margin="0,0,10,0" FontSize="14"/>
                                         <TextBlock Text="Split / Extract PDF" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="3" ToolTip="Images to PDF">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsImg2PdfTab}" Command="{Binding NavigateCommand}" CommandParameter="3" ToolTip="Images to PDF">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="🖼️" Margin="0,0,10,0" FontSize="14"/>
                                         <TextBlock Text="Images to PDF" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="4" ToolTip="PDF to JPG Images">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsPdf2ImgTab}" Command="{Binding NavigateCommand}" CommandParameter="4" ToolTip="PDF to JPG Images">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="📄" Margin="0,0,10,0" FontSize="14"/>
                                         <TextBlock Text="PDF to JPG Images" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="5" ToolTip="Scan Enhancer (Magic White)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="✨" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Scan Enhancer" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="6" ToolTip="Candidate Photo Name &amp; Date Stamp">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🏷️" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Photo Name &amp; Date" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenPassportStudioCommand}" ToolTip="📸 Passport Photo Studio &amp; Multi-Size Sheet (A4 &amp; 4x6)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📸" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Passport Studio" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
@@ -461,6 +472,56 @@
                                     </StackPanel>
                                 </Button>
 
+                                <!-- ================= SECTION 3: ID CARDS & PHOTO STUDIO ================= -->
+                                <TextBlock Text="ID CARDS &amp; PHOTOS" FontSize="9.5" FontWeight="Bold" Foreground="#64748B" Margin="14,14,0,4"
+                                           Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsGovtCardTab}" Command="{Binding NavigateCommand}" CommandParameter="9" ToolTip="Ration / Aadhaar / Ayushman Multi-Card Print">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💳" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Ration / Aadhaar Print" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenPassportStudioCommand}" ToolTip="📸 Passport Photo Studio &amp; Multi-Size Sheet (A4 &amp; 4x6)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📸" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Passport Studio" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenStackerCommand}" ToolTip="A4 Document Stacker">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🖨️" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="A4 Doc Stacker" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsStampTab}" Command="{Binding NavigateCommand}" CommandParameter="6" ToolTip="Candidate Photo Name &amp; Date Stamp">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🏷️" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Photo Name &amp; Date" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsResizeSignatureTab}" Command="{Binding NavigateCommand}" CommandParameter="10" ToolTip="Resize Signature (Exact px/cm &amp; KB)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="✍️" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Resize Signature" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- ================= SECTION 4: PRINT & SHOP OPERATIONS ================= -->
+                                <TextBlock Text="PRINT &amp; SHOP OPERATIONS" FontSize="9.5" FontWeight="Bold" Foreground="#64748B" Margin="14,14,0,4"
+                                           Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsPrintCounterTab}" Command="{Binding OpenPrintTrackerStudioCommand}" ToolTip="🖨️ Print Counter, Hardware Meter, Billing &amp; Cash Accounts Studio">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🖨️" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Print Counter &amp; Accounts" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </Button>
+
                                 <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenExcelPrintStudioCommand}" ToolTip="📊 Excel A4 Smart Printer (Edge-to-Edge &amp; Frozen Headers)">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="📊" Margin="0,0,10,0" FontSize="14"/>
@@ -468,51 +529,25 @@
                                     </StackPanel>
                                 </Button>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="10" ToolTip="Resize Signature (Exact px/cm &amp; KB)">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsEnhanceTab}" Command="{Binding NavigateCommand}" CommandParameter="5" ToolTip="Scan Enhancer (Magic White)">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="✍️" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Resize Signature" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                        <TextBlock Text="✨" Margin="0,0,10,0" FontSize="14"/>
+                                        <TextBlock Text="Scan Enhancer" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="9" ToolTip="Ration / Aadhaar / Ayushman Multi-Card Print">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="💳" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Ration / Aadhaar Print" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
+                                <!-- ================= SECTION 5: SYSTEM & PREFERENCES ================= -->
+                                <TextBlock Text="SYSTEM &amp; PREFERENCES" FontSize="9.5" FontWeight="Bold" Foreground="#64748B" Margin="14,14,0,4"
+                                           Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
 
-                                <Separator Background="{StaticResource BorderBrush}" Margin="12,4"/>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}" ToolTip="🖨️ Print Counter, Hardware Meter, Billing &amp; Cash Accounts Studio">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🖨️" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Print Counter &amp; Accounts" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding OpenStackerCommand}" ToolTip="A4 Document Stacker">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📄" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="A4 Doc Stacker" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="7" ToolTip="Output History &amp; Recent Activity">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🕒" Margin="0,0,10,0" FontSize="14"/>
-                                        <TextBlock Text="Output History" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="8" ToolTip="Application Settings &amp; Folders">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsSettingsTab}" Command="{Binding NavigateCommand}" CommandParameter="8" ToolTip="Application Settings &amp; Folders">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="⚙️" Margin="0,0,10,0" FontSize="14"/>
                                         <TextBlock Text="Settings &amp; Folders" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Style="{StaticResource SidebarNavButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="11" ToolTip="Application Updates &amp; About Developer">
+                                <Button Style="{StaticResource SidebarNavButtonStyle}" Tag="{Binding IsUpdatesAboutTab}" Command="{Binding NavigateCommand}" CommandParameter="11" ToolTip="Application Updates &amp; About Developer">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="🚀" Margin="0,0,10,0" FontSize="14"/>
                                         <TextBlock Text="Updates &amp; About" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
@@ -523,17 +558,17 @@
                                 <Button x:Name="BtnSidebarAdminPanel" Style="{StaticResource SidebarNavButtonStyle}" Click="AdminPanel_Click"
                                         Visibility="Collapsed" ToolTip="Cloud Licensing &amp; Hardware Lock Control Center (Subhojit Paul Only)">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🛡️" Margin="0,0,10,0" FontSize="14" Foreground="#00BCD4"/>
-                                        <TextBlock Text="Admin Panel" FontWeight="Bold" Foreground="#00BCD4" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+                                        <TextBlock Text="🛡️" Margin="0,0,10,0" FontSize="14" Foreground="{StaticResource AccentBrush}"/>
+                                        <TextBlock Text="Admin Panel" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
                         </ScrollViewer>
 
                         <!-- Bottom Auto-Compress Status -->
-                        <Border Grid.Row="2" Background="#141520" Padding="10,10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                        <Border Grid.Row="2" Background="{StaticResource BackgroundBrush}" Padding="10,10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
                             <StackPanel>
-                                <TextBlock Text="🟢 Auto-Watch" FontSize="11" FontWeight="SemiBold" Foreground="#10B981" ToolTip="Auto-Watch Active: Desktop &amp; Downloads Monitored"/>
+                                <TextBlock Text="🟢 Auto-Watch" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" ToolTip="Auto-Watch Active: Desktop &amp; Downloads Monitored"/>
                                 <TextBlock Text="Downloads &amp; Desktop" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" Visibility="{Binding IsSidebarExpanded, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
                         </Border>
@@ -546,127 +581,287 @@
                     <!-- TAB 0: HOME / TOOLS HUB -->
                     <Grid Visibility="{Binding IsHomeTab, Converter={StaticResource BoolToVis}}" Style="{StaticResource ContentFadeStyle}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel>
-                            <!-- Welcome Banner -->
-                            <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="20" Margin="0,0,0,16">
+                        <StackPanel Margin="0,0,0,24">
+                            <!-- Hero Welcome Banner -->
+                            <Border Background="{StaticResource CardSurfaceGradientBrush}" CornerRadius="14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="22,18" Margin="0,0,0,22">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,0,24">
-                                        <TextBlock Text="DASMO CYBER CAFE TOOLS" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                        <TextBlock Text="Instant offline tools for PDF processing, candidate photo stamping, scanner enhancements, and govt exam size presets." FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                            <Border Background="#1E293B" CornerRadius="6" Padding="8,3" Margin="0,0,10,0">
+                                                <TextBlock Text="PRO OPERATOR SUITE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                                            </Border>
+                                            <TextBlock Text="DASMO CYBER CAFE TOOLS" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="High-performance offline suite for cyber cafe operations, instant document processing, Aadhaar/Ration A4 card stacking, photo studio, and hardware printer accounting." FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" MaxWidth="680"/>
                                     </StackPanel>
-                                    <Button Grid.Column="1" Content="🗜️ Instant Compress File" Style="{StaticResource AccentButton}" Command="{Binding OpenCompressDialogCommand}" Padding="16,8" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                                        <Button Content="🗜️ Instant Compress File" Style="{StaticResource AccentButton}" Command="{Binding OpenCompressDialogCommand}" Padding="16,9" FontWeight="SemiBold"/>
+                                    </StackPanel>
                                 </Grid>
                             </Border>
 
-                            <!-- Tool Cards Grid -->
-                            <TextBlock Text="Select a Tool to Begin" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="4,0,0,8"/>
+                            <!-- ========================================== -->
+                            <!-- SECTION 1: ID CARDS & PHOTO STUDIO         -->
+                            <!-- ========================================== -->
+                            <Grid Margin="4,0,4,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🆔" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="GOVERNMENT ID CARDS &amp; CANDIDATE PHOTO STUDIO" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Height="1" Background="{StaticResource BorderBrush}" Margin="16,0,0,0" VerticalAlignment="Center"/>
+                            </Grid>
 
-                            <UniformGrid Columns="2" Margin="-8,0">
-                                <!-- Card 1: Merge PDFs -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="1">
+                            <UniformGrid Columns="2" Margin="-6,0,-6,18">
+                                <!-- Card: Ration / Aadhaar A4 Print -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="9">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="📑" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Merge Multiple PDFs" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                            <TextBlock Text="Combine PDFs with custom page re-ordering and target file size clamp." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#261E14" BorderBrush="#F59E0B" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="💳" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Ration / Aadhaar A4 Print" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                                <Border Background="#F59E0B" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="POPULAR" FontSize="8.5" FontWeight="Bold" Foreground="#000000"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="Batch auto-crop 1-20+ Indian Govt PDFs &amp; layout 5 cards/A4 sheet with scissor lines into Word / PDF." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
 
-                                <!-- Card 2: Split / Extract PDF -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="2">
+                                <!-- Card: Passport Studio & Multi-Size Sheet -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPassportStudioCommand}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="✂️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Split &amp; Extract PDF" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                            <TextBlock Text="Extract page ranges (e.g. 1-3, 5) or split into individual single pages." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#231938" BorderBrush="#8B5CF6" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="📸" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Passport Studio &amp; Multi-Size Sheet" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                                <Border Background="#8B5CF6" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="STUDIO PRO" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="Change background (White/Sky Blue), studio face lighting, zero-waste A4/4x6 packing &amp; combo batches." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
 
-                                <!-- Card 3: Images to PDF -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="3">
+                                <!-- Card: A4 Document Stacker -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenStackerCommand}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="🖼️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Images to PDF Converter" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                            <TextBlock Text="Batch convert scanned images / photos into a single neat A4 PDF." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#0C2338" BorderBrush="#0EA5E9" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="🖨️" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="A4 Document Stacker" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Text="Print 2-in-1 or 4-in-1 Aadhaar / Voter ID front &amp; back onto a single A4 page." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
 
-                                <!-- Card 4: PDF to JPG Images -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="4">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="📄" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="PDF to JPG Images" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                            <TextBlock Text="Convert each page of a PDF document into 300 DPI high-res JPG images." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 5: Scan Enhancer -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="5">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="✨" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Document Scanner Enhancer" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                            <TextBlock Text="Magic White shadow cleanup, Xerox high-contrast B&amp;W, and Grayscale filters." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 6: Photo Stamp -->
+                                <!-- Card: Candidate Photo Stamp -->
                                 <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="6">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="🏷️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Candidate Photo Stamp" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#0E2820" BorderBrush="#10B981" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="🏷️" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Candidate Photo Stamp" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
                                             <TextBlock Text="Passport 3.5x4.5cm sizing with Name + Date of Photo banner (20-50KB SSC clamp)." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
 
-                                <!-- Card: Professional Passport Studio & Multi-Size Sheet -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPassportStudioCommand}">
+                                <!-- Card: Resize Signature & Photo -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="📸" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Passport Studio &amp; Multi-Size Sheet" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                                            <TextBlock Text="Change background (White/Sky Blue), studio face lighting, zero-waste A4/4x6 packing, and combo batches." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#2D1322" BorderBrush="#EC4899" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="✍️" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Resize Signature &amp; Photo" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                                <Border Background="#EC4899" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="SSC / UPSC" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="Resize candidate signatures to exact px/cm &amp; KB limits for SSC, IBPS, UPSC &amp; Govt portals with shadow cleanup." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </UniformGrid>
+
+                            <!-- ========================================== -->
+                            <!-- SECTION 2: PDF & DOCUMENT PROCESSING       -->
+                            <!-- ========================================== -->
+                            <Grid Margin="4,6,4,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="📄" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="PDF &amp; DOCUMENT PROCESSING" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Height="1" Background="{StaticResource BorderBrush}" Margin="16,0,0,0" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <UniformGrid Columns="2" Margin="-6,0,-6,18">
+                                <!-- Card: PDF Editor Studio -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPdfEditorCommand}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#1B1C3D" BorderBrush="#6366F1" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="📝" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="PDF Editor Studio (In-Place Edit)" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                                <Border Background="#6366F1" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="VECTOR EDIT" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="Edit text, whiteout/erase, replace photos &amp; add signatures on any PDF with 100% vector quality." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                                <!-- Card: Merge Multiple PDFs -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#11223B" BorderBrush="#3B82F6" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="📑" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Merge Multiple PDFs" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Text="Combine PDFs with custom page re-ordering and target file size clamp." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                                <!-- Card: Split & Extract PDF -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="2">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#0C2830" BorderBrush="#06B6D4" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="✂️" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Split &amp; Extract PDF" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Text="Extract page ranges (e.g. 1-3, 5) or split into individual single pages." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                                <!-- Card: Images to PDF Converter -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#0F2B28" BorderBrush="#0D9488" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="🖼️" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Images to PDF Converter" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Text="Batch convert scanned images / photos into a single neat A4 PDF." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                                <!-- Card: PDF to JPG Images -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#111E3B" BorderBrush="#2563EB" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="📄" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="PDF to JPG Images" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Text="Convert each page of a PDF document into 300 DPI high-res JPG images." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </UniformGrid>
+
+                            <!-- ========================================== -->
+                            <!-- SECTION 3: OPERATIONS & SHOP UTILITIES     -->
+                            <!-- ========================================== -->
+                            <Grid Margin="4,6,4,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🖨️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="CYBER CAFE OPERATIONS &amp; SMART UTILITIES" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Height="1" Background="{StaticResource BorderBrush}" Margin="16,0,0,0" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <UniformGrid Columns="2" Margin="-6,0,-6,18">
+                                <!-- Card: Auto Print Counter, Meter & Cash Accounts -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#0E281D" BorderBrush="#059669" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="📊" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Auto Print Counter, Meter &amp; Cash Accounts" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                                <Border Background="#059669" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="BILLING &amp; AUDIT" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="Brother DCP-T530DW live print counter, Wi-Fi hardware meter &amp; Xerox audit, real-time ink levels, billing, and daily cash drawer." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
@@ -675,15 +870,17 @@
                                 <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenExcelPrintStudioCommand}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="📊" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#102917" BorderBrush="#16A34A" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="📈" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Excel A4 Smart Printer" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                                                <Border Background="#10B981" CornerRadius="4" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="NEW" FontSize="9" FontWeight="Bold" Foreground="White"/>
+                                                <TextBlock Text="Excel A4 Smart Printer" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                                <Border Background="#16A34A" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="NEW" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                                                 </Border>
                                             </StackPanel>
                                             <TextBlock Text="Format &amp; print massive Excel / CSV sheets fitted edge-to-edge on A4 with frozen repeated headers &amp; zero cutoffs." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
@@ -691,92 +888,41 @@
                                     </Grid>
                                 </Button>
 
-                                <!-- Card 7: A4 Document Stacker -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenStackerCommand}">
+                                <!-- Card: Document Scanner Enhancer -->
+                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="5">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="🖨️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="A4 Document Stacker" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                            <TextBlock Text="Print 2-in-1 or 4-in-1 Aadhaar / Voter ID front &amp; back onto a single A4 page." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#2B1F0E" BorderBrush="#D97706" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="✨" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Document Scanner Enhancer" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                                <Border Background="#D97706" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="MAGIC WHITE" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="Magic White shadow cleanup, Xerox high-contrast B&amp;W, and Grayscale filters." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
 
-                                <!-- Card 8: Output History -->
+                                <!-- Card: Today's Output History -->
                                 <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="7">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="🕒" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Today's Output History" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                        <Border Width="46" Height="46" CornerRadius="12" Background="#18202C" BorderBrush="#64748B" BorderThickness="1" VerticalAlignment="Center">
+                                            <TextBlock Text="🕒" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Today's Output History" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
                                             <TextBlock Text="Quickly access, open in folder, or copy path of all today's processed documents." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 9: e-Ration / Aadhaar / PAN A4 Print Generator -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="9">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="💳" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Ration / Aadhaar A4 Print" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                                            <TextBlock Text="Batch auto-crop 1-20+ Indian Govt PDFs &amp; layout 5 cards/A4 sheet with scissor lines into Word / PDF." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 10: Resize Signature & Photo (Pi7 Resizer) -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding NavigateCommand}" CommandParameter="10">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="✍️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Resize Signature &amp; Photo" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-                                            <TextBlock Text="Resize candidate signatures to exact px/cm &amp; KB limits for SSC, IBPS, UPSC &amp; Govt portals with background shadow cleanup." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 11: PDF Editor Studio (In-Place Vector Editing) -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPdfEditorCommand}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="📝" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="PDF Editor Studio (In-Place Edit)" FontSize="14" FontWeight="Bold" Foreground="#00BCD4"/>
-                                            <TextBlock Text="Edit text, whiteout/erase, replace photos &amp; add signatures on any PDF with 100% vector quality." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-
-                                <!-- Card 12: Unified All-in-One Studio: Print Counter, Meter Audit, Billing & Cash Accounts -->
-                                <Button Style="{StaticResource HubCardButtonStyle}" Command="{Binding OpenPrintTrackerStudioCommand}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="🖨️" FontSize="28" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="Auto Print Counter, Meter &amp; Cash Accounts" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
-                                            <TextBlock Text="Brother DCP-T530DW live print counter, Wi-Fi hardware meter &amp; Xerox audit, real-time ink levels, billing, and daily cash drawer accounts." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </Button>
@@ -2574,14 +2720,14 @@
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <StackPanel>
                                     <!-- Header Badge -->
-                                    <Border Background="#1A2035" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,16" HorizontalAlignment="Center">
+                                    <Border Background="#151B28" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,16" HorizontalAlignment="Center">
                                         <TextBlock Text="👑 LEAD ARCHITECT &amp; DEVELOPER" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
                                     </Border>
 
                                     <!-- Developer Photo with Elegant Frame & Glow -->
-                                    <Border Width="140" Height="140" CornerRadius="70" BorderBrush="{StaticResource AccentBrush}" BorderThickness="3" HorizontalAlignment="Center" Margin="0,0,0,14" Background="#141520" ClipToBounds="True">
+                                    <Border Width="140" Height="140" CornerRadius="70" BorderBrush="{StaticResource AccentBrush}" BorderThickness="3" HorizontalAlignment="Center" Margin="0,0,0,14" Background="#0F1420" ClipToBounds="True">
                                         <Border.Effect>
-                                            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.6" Color="#00BCD4"/>
+                                            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="#3B82F6"/>
                                         </Border.Effect>
                                         <Image Source="pack://application:,,,/Resources/owner_portrait.png" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
                                     </Border>
@@ -2591,7 +2737,7 @@
                                     <TextBlock Text="Founder &amp; Chief Software Architect" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
 
                                     <!-- Short Bio -->
-                                    <Border Background="#141520" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,14">
+                                    <Border Background="#0F1420" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,14">
                                         <TextBlock Text="Creator of DASMO CYBER CAFE TOOLS. Dedicated to developing specialized, high-performance desktop automation suites engineered specifically for Indian cyber cafe entrepreneurs, digital printing studios, and CSC e-Governance centers."
                                                    FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="18" TextAlignment="Center"/>
                                     </Border>
@@ -2615,13 +2761,13 @@
 
                                     <!-- Machine Hardware ID Locked Box -->
                                     <TextBlock Text="Hardware Lock Fingerprint (HWID)" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="2,0,0,4"/>
-                                    <Border Background="#0D0E15" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                                    <Border Background="#0B0F17" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding HardwareIdDisplay}" FontSize="11" FontFamily="Consolas" Foreground="#00BCD4" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding HardwareIdDisplay}" FontSize="11" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                             <Button Grid.Column="1" Content="📋 Copy" Command="{Binding CopyHardwareIdCommand}" Style="{StaticResource OutlineButton}" Padding="8,4" FontSize="10" Margin="6,0,0,0" ToolTip="Copy Hardware ID to Clipboard"/>
                                         </Grid>
                                     </Border>
