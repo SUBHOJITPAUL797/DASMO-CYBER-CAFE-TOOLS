@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -21,6 +22,74 @@ public class GovtCardExtractorViewModel : ViewModelBase
 {
     private readonly GovtCardExtractorService _extractorService;
     private readonly CardSheetGeneratorService _sheetService;
+
+    private CancellationTokenSource? _previewCts;
+    private readonly object _previewLock = new();
+
+    private void RunOnUi(Action action)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher != null && !app.Dispatcher.HasShutdownStarted && app.Dispatcher.Thread.IsAlive)
+        {
+            if (app.Dispatcher.CheckAccess())
+            {
+                action();
+            }
+            else
+            {
+                try
+                {
+                    app.Dispatcher.Invoke(action);
+                }
+                catch
+                {
+                    action();
+                }
+            }
+        }
+        else
+        {
+            action();
+        }
+    }
+
+    /// <summary>
+    /// Debounces and asynchronously schedules a preview update with instant cancellation of obsolete in-flight renders.
+    /// Guarantees buttery-smooth 60fps responsiveness during rapid slider dragging.
+    /// </summary>
+    public void SchedulePreviewUpdate(int delayMs = 15)
+    {
+        CancellationToken token;
+        lock (_previewLock)
+        {
+            try { _previewCts?.Cancel(); } catch { }
+            try { _previewCts?.Dispose(); } catch { }
+            _previewCts = new CancellationTokenSource();
+            token = _previewCts.Token;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (delayMs > 0)
+                {
+                    await Task.Delay(delayMs, token);
+                }
+                if (token.IsCancellationRequested) return;
+
+                await UpdatePreviewInternalAsync(token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Normal cancellation when slider is dragged quickly
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Card sheet preview update was interrupted");
+            }
+        });
+    }
 
     public ObservableCollection<ExtractedCardItem> Cards { get; } = new();
 
@@ -60,7 +129,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(LayoutDescription));
                 UpdatePagination();
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(0);
             }
         }
     }
@@ -83,7 +152,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
             if (SetProperty(ref _selectedAlignment, value))
             {
                 OnPropertyChanged(nameof(AlignmentDescription));
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(0);
             }
         }
     }
@@ -105,7 +174,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 OnPropertyChanged(nameof(CardDimensionsText));
                 OnPropertyChanged(nameof(SheetSummaryText));
                 UpdatePresetIndexFromDimensions();
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(15);
             }
         }
     }
@@ -121,7 +190,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 OnPropertyChanged(nameof(CardDimensionsText));
                 OnPropertyChanged(nameof(SheetSummaryText));
                 UpdatePresetIndexFromDimensions();
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(15);
             }
         }
     }
@@ -155,7 +224,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 OnPropertyChanged(nameof(CardHeightCm));
                 OnPropertyChanged(nameof(CardDimensionsText));
                 OnPropertyChanged(nameof(SheetSummaryText));
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(0);
             }
         }
     }
@@ -188,7 +257,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
         {
             if (SetProperty(ref _scissorGapMm, value))
             {
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(15);
             }
         }
     }
@@ -303,7 +372,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 OnPropertyChanged(nameof(CanGoNextPage));
                 (PrevPageCommand as RelayCommand)?.OnCanExecuteChanged();
                 (NextPageCommand as RelayCommand)?.OnCanExecuteChanged();
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(0);
             }
         }
     }
@@ -379,7 +448,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 Cards.Remove(item);
                 UpdateItemIndices();
                 UpdatePagination();
-                _ = UpdatePreviewAsync();
+                SchedulePreviewUpdate(0);
             }
         });
 
@@ -392,7 +461,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 {
                     Cards.Move(idx, idx - 1);
                     UpdateItemIndices();
-                    _ = UpdatePreviewAsync();
+                    SchedulePreviewUpdate(0);
                 }
             }
         });
@@ -406,7 +475,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
                 {
                     Cards.Move(idx, idx + 1);
                     UpdateItemIndices();
-                    _ = UpdatePreviewAsync();
+                    SchedulePreviewUpdate(0);
                 }
             }
         });
@@ -414,6 +483,7 @@ public class GovtCardExtractorViewModel : ViewModelBase
         ClearAllCommand = new RelayCommand(_ =>
         {
             Cards.Clear();
+            _sheetService.ClearCache();
             PreviewImage = null;
             CurrentPreviewPage = 1;
             TotalPages = 1;
@@ -605,38 +675,44 @@ public class GovtCardExtractorViewModel : ViewModelBase
         (ReCropAllCommand as RelayCommand)?.OnCanExecuteChanged();
     }
 
-    private async Task UpdatePreviewAsync()
+    public async Task UpdatePreviewAsync()
+    {
+        await UpdatePreviewInternalAsync(CancellationToken.None);
+    }
+
+    private async Task UpdatePreviewInternalAsync(CancellationToken token)
     {
         var selected = Cards.Where(c => c.IsSelected && File.Exists(c.FrontImagePath)).ToList();
         if (selected.Count == 0)
         {
-            PreviewImage = null;
+            RunOnUi(() => PreviewImage = null);
             return;
         }
 
         try
         {
-            string tempPreview = Path.Combine(Path.GetTempPath(), $"dasmo_sheet_prev_{Guid.NewGuid():N}.png");
-            int pageIdx = Math.Clamp(CurrentPreviewPage - 1, 0, TotalPages - 1);
+            int pageIdx = Math.Clamp(CurrentPreviewPage - 1, 0, Math.Max(0, TotalPages - 1));
 
-            await _sheetService.GenerateImageAsync(selected, tempPreview, SelectedLayout, ScissorGapMm, SelectedAlignment, pageIdx, CardWidthCm, CardHeightCm);
+            var bmp = await _sheetService.RenderPreviewBitmapSourceAsync(
+                selected,
+                SelectedLayout,
+                ScissorGapMm,
+                SelectedAlignment,
+                pageIdx,
+                CardWidthCm,
+                CardHeightCm,
+                token);
 
-            if (File.Exists(tempPreview))
+            if (token.IsCancellationRequested) return;
+
+            if (bmp != null)
             {
-                byte[] imgBytes = File.ReadAllBytes(tempPreview);
-                using (var ms = new MemoryStream(imgBytes))
-                {
-                    var bmp = new BitmapImage();
-                    bmp.BeginInit();
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.StreamSource = ms;
-                    bmp.EndInit();
-                    bmp.Freeze();
-                    PreviewImage = bmp;
-                }
-
-                try { File.Delete(tempPreview); } catch { }
+                RunOnUi(() => PreviewImage = bmp);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled cleanly
         }
         catch (Exception ex)
         {

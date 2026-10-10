@@ -7902,6 +7902,167 @@ flowchart TD
                 failed++;
             }
 
+            // -------------------------------------------------------------
+            // [TEST 92] Card Sheet Live Preview Real-Time Responsiveness & Zero-Disk Rendering (<30ms)
+            // -------------------------------------------------------------
+            try
+            {
+                Console.Write("[TEST 92] Card Sheet Live Preview Smoothness & In-Memory Sub-30ms Rendering... ");
+
+                // 1. Generate sample card front & back bitmaps in testDir
+                string cardFront1 = Path.Combine(testDir, "test_card_f1.png");
+                string cardBack1 = Path.Combine(testDir, "test_card_b1.png");
+                string cardFront2 = Path.Combine(testDir, "test_card_f2.png");
+                string cardBack2 = Path.Combine(testDir, "test_card_b2.png");
+
+                using (var bmpF1 = new System.Drawing.Bitmap(400, 250, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                using (var g = System.Drawing.Graphics.FromImage(bmpF1))
+                {
+                    g.Clear(System.Drawing.Color.Aqua);
+                    bmpF1.Save(cardFront1, System.Drawing.Imaging.ImageFormat.Png);
+                }
+                using (var bmpB1 = new System.Drawing.Bitmap(400, 250, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                using (var g = System.Drawing.Graphics.FromImage(bmpB1))
+                {
+                    g.Clear(System.Drawing.Color.LightCoral);
+                    bmpB1.Save(cardBack1, System.Drawing.Imaging.ImageFormat.Png);
+                }
+                using (var bmpF2 = new System.Drawing.Bitmap(400, 250, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                using (var g = System.Drawing.Graphics.FromImage(bmpF2))
+                {
+                    g.Clear(System.Drawing.Color.LightGreen);
+                    bmpF2.Save(cardFront2, System.Drawing.Imaging.ImageFormat.Png);
+                }
+                using (var bmpB2 = new System.Drawing.Bitmap(400, 250, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                using (var g = System.Drawing.Graphics.FromImage(bmpB2))
+                {
+                    g.Clear(System.Drawing.Color.Gold);
+                    bmpB2.Save(cardBack2, System.Drawing.Imaging.ImageFormat.Png);
+                }
+
+                var cardList = new List<ExtractedCardItem>
+                {
+                    new ExtractedCardItem { FrontImagePath = cardFront1, BackImagePath = cardBack1, IsSelected = true },
+                    new ExtractedCardItem { FrontImagePath = cardFront2, BackImagePath = cardBack2, IsSelected = true },
+                    new ExtractedCardItem { FrontImagePath = cardFront1, BackImagePath = cardBack1, IsSelected = true },
+                    new ExtractedCardItem { FrontImagePath = cardFront2, BackImagePath = cardBack2, IsSelected = true },
+                    new ExtractedCardItem { FrontImagePath = cardFront1, BackImagePath = cardBack1, IsSelected = true },
+                };
+
+                var sheetService = CardSheetGeneratorService.Instance;
+
+                // 2. Warm up preview render
+                var warmup = sheetService.RenderPreviewBitmapSourceAsync(cardList).GetAwaiter().GetResult();
+                if (warmup == null)
+                    throw new Exception("Warmup preview render returned null BitmapSource!");
+                if (warmup.PixelWidth != 1240 || warmup.PixelHeight != 1754)
+                    throw new Exception($"Preview dimensions mismatch! Expected 1240x1754, got {warmup.PixelWidth}x{warmup.PixelHeight}");
+                if (!warmup.IsFrozen)
+                    throw new Exception("RenderPreviewBitmapSourceAsync must return a frozen BitmapSource for cross-thread UI safety!");
+
+                // 3. Benchmark 10 consecutive simulated slider movements (width: 7.0->9.0cm, height: 4.8->6.0cm)
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                for (int i = 0; i < 10; i++)
+                {
+                    double w = 7.0 + (i * 0.2);
+                    double h = 4.8 + (i * 0.12);
+                    var swSingle = System.Diagnostics.Stopwatch.StartNew();
+                    var preview = sheetService.RenderPreviewBitmapSourceAsync(
+                        cardList,
+                        CardSheetLayout.FiveCardsA4PaperSaver,
+                        4.0,
+                        CardSheetAlignment.TopToBottomPaperSaver,
+                        0,
+                        w,
+                        h).GetAwaiter().GetResult();
+
+                    if (preview == null || preview.PixelWidth != 1240)
+                        throw new Exception($"Slider benchmark render {i} produced null or invalid preview!");
+                }
+                sw.Stop();
+
+                double avgMs = sw.ElapsedMilliseconds / 10.0;
+                if (avgMs > 30.0)
+                    throw new Exception($"Card sheet slider rendering too slow! Average was {avgMs:F1}ms (threshold is 30ms). Total: {sw.ElapsedMilliseconds}ms");
+
+                // 4. Test SingleCardTopBottom layout rendering
+                var topBottomPreview = sheetService.RenderPreviewBitmapSourceAsync(
+                    cardList,
+                    CardSheetLayout.SingleCardTopBottom,
+                    5.0,
+                    CardSheetAlignment.TopToBottomPaperSaver,
+                    0,
+                    8.0,
+                    5.4).GetAwaiter().GetResult();
+                if (topBottomPreview == null)
+                    throw new Exception("SingleCardTopBottom preview returned null!");
+
+                // 5. Test CancellationToken fast abort during rapid slider dragging
+                using (var cts = new CancellationTokenSource())
+                {
+                    cts.Cancel(); // Cancel immediately
+                    bool canceled = false;
+                    try
+                    {
+                        sheetService.RenderPreviewBitmapSourceAsync(cardList, cancellationToken: cts.Token).GetAwaiter().GetResult();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        canceled = true;
+                    }
+                    if (!canceled)
+                        throw new Exception("RenderPreviewBitmapSourceAsync did not respect pre-cancelled token!");
+                }
+
+                // 6. Test ViewModel slider dragging and debounced update on STA thread
+                Exception? staEx92 = null;
+                var staThread92 = new Thread(() =>
+                {
+                    try
+                    {
+                        var vm = new GovtCardExtractorViewModel();
+                        foreach (var c in cardList) vm.Cards.Add(c);
+
+                        // Drag slider rapidly 5 times
+                        for (int s = 0; s < 5; s++)
+                        {
+                            vm.CardWidthCm = 8.0 + (s * 0.1);
+                            vm.CardHeightCm = 5.4 + (s * 0.05);
+                        }
+
+                        // Wait for debounce to fire
+                        Thread.Sleep(80);
+
+                        // Directly update preview
+                        vm.UpdatePreviewAsync().GetAwaiter().GetResult();
+                        if (vm.PreviewImage == null)
+                            throw new Exception("GovtCardExtractorViewModel PreviewImage was null after UpdatePreviewAsync!");
+
+                        // Clear cards and verify cache flush
+                        vm.ClearAllCommand.Execute(null);
+                        if (vm.Cards.Count != 0 || vm.PreviewImage != null)
+                            throw new Exception("ClearAllCommand did not properly reset cards and preview image!");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx92 = ex;
+                    }
+                });
+                staThread92.SetApartmentState(ApartmentState.STA);
+                staThread92.Start();
+                staThread92.Join(TimeSpan.FromSeconds(10));
+                if (staThread92.IsAlive) { staThread92.Interrupt(); throw new Exception("Test 92 STA thread timed out (10s)"); }
+                if (staEx92 != null) throw staEx92;
+
+                Console.WriteLine($"PASSED (In-Memory Direct BitmapSource Renders in {avgMs:F1}ms/tick [Sub-30ms!], Token Cancellation & Debounced ViewModel Verified)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

@@ -1982,7 +1982,7 @@
                                                             <TextBlock Text="Card Width (cm):" FontSize="10" Foreground="{StaticResource TextBrush}"/>
                                                             <TextBlock Grid.Column="1" Text="{Binding CardWidthCm, StringFormat='{}{0:F2} cm'}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" FontSize="11"/>
                                                         </Grid>
-                                                        <Slider Minimum="6.0" Maximum="10.5" Value="{Binding CardWidthCm}" SmallChange="0.05" LargeChange="0.2" Margin="0,0,0,6"/>
+                                                        <Slider Minimum="6.0" Maximum="10.5" Value="{Binding CardWidthCm}" IsMoveToPointEnabled="True" SmallChange="0.05" LargeChange="0.2" Margin="0,0,0,6"/>
 
                                                         <Grid Margin="0,2">
                                                             <Grid.ColumnDefinitions>
@@ -1992,7 +1992,7 @@
                                                             <TextBlock Text="Card Height (cm):" FontSize="10" Foreground="{StaticResource TextBrush}"/>
                                                             <TextBlock Grid.Column="1" Text="{Binding CardHeightCm, StringFormat='{}{0:F2} cm'}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" FontSize="11"/>
                                                         </Grid>
-                                                        <Slider Minimum="4.0" Maximum="8.0" Value="{Binding CardHeightCm}" SmallChange="0.05" LargeChange="0.2" Margin="0,0,0,6"/>
+                                                        <Slider Minimum="4.0" Maximum="8.0" Value="{Binding CardHeightCm}" IsMoveToPointEnabled="True" SmallChange="0.05" LargeChange="0.2" Margin="0,0,0,6"/>
 
                                                         <!-- Quick Preset Shortcut Chips -->
                                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,2,0,0">
@@ -2168,6 +2168,7 @@
                                             <Viewbox Stretch="Uniform">
                                                 <Grid Width="2480" Height="3508" Background="White">
                                                     <Image Source="{Binding PreviewImage}" 
+                                                           Stretch="Uniform"
                                                            RenderOptions.BitmapScalingMode="HighQuality"
                                                            RenderOptions.EdgeMode="Aliased"/>
 
