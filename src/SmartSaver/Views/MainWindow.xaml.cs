@@ -43,6 +43,10 @@ public partial class MainWindow : Window
         };
 
         Loaded += (s, e) => UpdateAdminVisibility();
+        SmartSaver.Services.FirebaseCloudAuthService.Instance.OnAuthStateChanged += (_, _) =>
+        {
+            Dispatcher.Invoke(UpdateAdminVisibility);
+        };
     }
 
     private void UpdateAdminVisibility()

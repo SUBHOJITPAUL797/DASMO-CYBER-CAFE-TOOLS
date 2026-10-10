@@ -11,7 +11,8 @@ using Brushes = System.Windows.Media.Brushes;
 using Color = System.Windows.Media.Color;
 using Button = System.Windows.Controls.Button;
 using Cursors = System.Windows.Input.Cursors;
-using Application = System.Windows.Application;
+using System.IO;
+using System.Diagnostics;
 using SmartSaver.Services;
 using Serilog;
 
@@ -86,6 +87,8 @@ public partial class AdminPanelWindow : Window
     private List<UserRowViewModel> _allLoaded = new();
     private bool _requireApprovalForPc = true;
     private UserRowViewModel? _selectedSpecsUser;
+    private string? _selectedMsiPath;
+    private bool _isPublishing = false;
 
     public AdminPanelWindow()
     {
@@ -308,7 +311,7 @@ public partial class AdminPanelWindow : Window
 
     #endregion
 
-    #region Version Policy Modal Logic
+    #region Version Policy & 1-Click Release Publisher Logic
 
     private async void OpenVersionPolicy_Click(object sender, RoutedEventArgs e)
     {
@@ -325,6 +328,26 @@ public partial class AdminPanelWindow : Window
             TxtPolicyDownloadUrl.Text = policy.UpdateDownloadUrl ?? string.Empty;
             TxtPolicyChangelog.Text = policy.UpdateChangelog ?? string.Empty;
 
+            // Populate 1-Click Release Publisher inputs
+            TxtPublisherVersion.Text = string.IsNullOrWhiteSpace(policy.LatestVersion) ? FirebaseCloudAuthService.CurrentAppVersion : policy.LatestVersion;
+            TxtPublisherTitle.Text = $"DASMO Cyber Cafe Tools v{TxtPublisherVersion.Text} Official Release";
+            TxtPublisherChangelog.Text = string.IsNullOrWhiteSpace(policy.UpdateChangelog)
+                ? "- Performance and stability enhancements\n- Document Stacker & Passport Photo Studio improvements\n- Cloud licensing & auto-update updates"
+                : policy.UpdateChangelog;
+            TxtPublisherMinVersion.Text = string.IsNullOrWhiteSpace(policy.MinRequiredVersion) ? "1.5.0" : policy.MinRequiredVersion;
+            TxtPublisherCustomNotice.Text = policy.CustomUpdateMessage ?? string.Empty;
+            ChkPublisherForceUpdate.IsChecked = policy.ForceUpdate;
+
+            // Auto-detect built MSI if not already selected
+            if (string.IsNullOrEmpty(_selectedMsiPath) || !File.Exists(_selectedMsiPath))
+            {
+                string? detectedMsi = FindBuiltMsiPath();
+                if (!string.IsNullOrEmpty(detectedMsi))
+                {
+                    UpdateSelectedMsi(detectedMsi);
+                }
+            }
+
             OverlayVersionPolicy.Visibility = Visibility.Visible;
         }
         catch (Exception ex)
@@ -340,11 +363,439 @@ public partial class AdminPanelWindow : Window
 
     private void CloseVersionPolicy_Click(object sender, RoutedEventArgs e)
     {
+        if (_isPublishing)
+        {
+            System.Windows.MessageBox.Show("Release publishing is in progress. Please wait until publication finishes.", "Publishing in Progress", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         OverlayVersionPolicy.Visibility = Visibility.Collapsed;
+    }
+
+    private void VersionSubTab_Checked(object sender, RoutedEventArgs e)
+    {
+        if (PanelReleasePublisher == null || PanelManualPolicy == null) return;
+
+        if (TabReleasePublisher.IsChecked == true)
+        {
+            PanelReleasePublisher.Visibility = Visibility.Visible;
+            PanelManualPolicy.Visibility = Visibility.Collapsed;
+            TabReleasePublisher.FontWeight = FontWeights.Bold;
+            TabReleasePublisher.Foreground = Brushes.White;
+            TabManualPolicy.FontWeight = FontWeights.SemiBold;
+            TabManualPolicy.Foreground = new SolidColorBrush(Color.FromRgb(203, 213, 225));
+        }
+        else
+        {
+            PanelReleasePublisher.Visibility = Visibility.Collapsed;
+            PanelManualPolicy.Visibility = Visibility.Visible;
+            TabManualPolicy.FontWeight = FontWeights.Bold;
+            TabManualPolicy.Foreground = Brushes.White;
+            TabReleasePublisher.FontWeight = FontWeights.SemiBold;
+            TabReleasePublisher.Foreground = new SolidColorBrush(Color.FromRgb(203, 213, 225));
+        }
+    }
+
+    private void UpdateSelectedMsi(string path)
+    {
+        if (!File.Exists(path)) return;
+        _selectedMsiPath = path;
+        var fi = new FileInfo(path);
+        double mb = fi.Length / (1024.0 * 1024.0);
+        TxtSelectedMsiFileName.Text = $"📦 {fi.Name}";
+        TxtSelectedMsiFileSize.Text = $"{mb:F2} MB • {fi.FullName}";
+        TxtSelectedMsiFileName.Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248));
+    }
+
+    private void BrowseMsi_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Select Compiled DASMO Setup Installer (.msi)",
+            Filter = "Windows Installer Package (*.msi)|*.msi|All Files (*.*)|*.*",
+            CheckFileExists = true
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            UpdateSelectedMsi(dlg.FileName);
+            AppendPublishLog($"Selected installer package: {dlg.FileName}");
+        }
+    }
+
+    private void AutoDetectMsi_Click(object sender, RoutedEventArgs e)
+    {
+        string? found = FindBuiltMsiPath();
+        if (!string.IsNullOrEmpty(found))
+        {
+            UpdateSelectedMsi(found);
+            AppendPublishLog($"[Auto-Detect] Located compiled installer:\n{found}");
+        }
+        else
+        {
+            System.Windows.MessageBox.Show("Could not find 'DASMO_CYBER_CAFE_TOOLS_Setup.msi' automatically.\n\nPlease click 'Browse .msi...' to select it manually.", "MSI Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private void MsiDropZone_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(System.Windows.DataFormats.FileDrop);
+            if (files != null && files.Length > 0 && files[0].EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
+            {
+                e.Effects = System.Windows.DragDropEffects.Copy;
+                e.Handled = true;
+                return;
+            }
+        }
+        e.Effects = System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void MsiDropZone_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(System.Windows.DataFormats.FileDrop);
+            if (files != null && files.Length > 0)
+            {
+                var msi = files.FirstOrDefault(f => f.EndsWith(".msi", StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrEmpty(msi) && File.Exists(msi))
+                {
+                    UpdateSelectedMsi(msi);
+                    AppendPublishLog($"Dropped installer package: {msi}");
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show("Please drop a valid Windows Installer (.msi) package.", "Invalid File", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+        }
+    }
+
+    private string? FindBuiltMsiPath()
+    {
+        string[] candidates = new[]
+        {
+            @"C:\CODING\coading\DASMO CYBER CAFE\src\SmartSaver.Installer\bin\Release\DASMO_CYBER_CAFE_TOOLS_Setup.msi",
+            @"C:\CODING\coading\DASMO CYBER CAFE\releases\DASMO_CYBER_CAFE_TOOLS_Setup.msi",
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\SmartSaver.Installer\bin\Release\DASMO_CYBER_CAFE_TOOLS_Setup.msi"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\SmartSaver.Installer\bin\Release\DASMO_CYBER_CAFE_TOOLS_Setup.msi"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DASMO_CYBER_CAFE_TOOLS_Setup.msi")
+        };
+
+        foreach (var cand in candidates)
+        {
+            try
+            {
+                string full = Path.GetFullPath(cand);
+                if (File.Exists(full)) return full;
+            }
+            catch { }
+        }
+
+        try
+        {
+            var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            for (int i = 0; i < 5 && dir != null; dir = dir.Parent, i++)
+            {
+                string testPath = Path.Combine(dir.FullName, @"src\SmartSaver.Installer\bin\Release\DASMO_CYBER_CAFE_TOOLS_Setup.msi");
+                if (File.Exists(testPath)) return testPath;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    private void AppendPublishLog(string msg)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            string time = DateTime.Now.ToString("HH:mm:ss");
+            if (string.IsNullOrEmpty(TxtPublishLogs.Text) || TxtPublishLogs.Text.StartsWith("Ready to publish"))
+                TxtPublishLogs.Text = $"[{time}] {msg}";
+            else
+                TxtPublishLogs.Text += $"\n[{time}] {msg}";
+
+            ScrollPublishLogs.ScrollToEnd();
+        });
+    }
+
+    private string? FindGhCliPath()
+    {
+        string defaultPath = @"C:\Program Files\GitHub CLI\gh.exe";
+        if (File.Exists(defaultPath)) return defaultPath;
+
+        string localAppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\GitHub CLI\gh.exe");
+        if (File.Exists(localAppDataPath)) return localAppDataPath;
+
+        string progFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        string cand = Path.Combine(progFiles, @"GitHub CLI\gh.exe");
+        if (File.Exists(cand)) return cand;
+
+        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var dir in pathEnv.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                string full = Path.Combine(dir.Trim(), "gh.exe");
+                if (File.Exists(full)) return full;
+            }
+            catch { }
+        }
+        return "gh";
+    }
+
+    private async Task<(int ExitCode, string StdOut, string StdErr)> RunCliProcessAsync(string exePath, string arguments, Action<string>? onOutputLine = null)
+    {
+        var stdoutSb = new System.Text.StringBuilder();
+        var stderrSb = new System.Text.StringBuilder();
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = exePath,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = new Process { StartInfo = psi };
+        process.OutputDataReceived += (s, e) =>
+        {
+            if (e.Data != null)
+            {
+                stdoutSb.AppendLine(e.Data);
+                onOutputLine?.Invoke(e.Data);
+            }
+        };
+        process.ErrorDataReceived += (s, e) =>
+        {
+            if (e.Data != null)
+            {
+                stderrSb.AppendLine(e.Data);
+                onOutputLine?.Invoke(e.Data);
+            }
+        };
+
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        await process.WaitForExitAsync();
+
+        return (process.ExitCode, stdoutSb.ToString(), stderrSb.ToString());
+    }
+
+    private async void PublishRelease_Click(object sender, RoutedEventArgs e)
+    {
+        if (!FirebaseCloudAuthService.BypassForTests && !FirebaseCloudAuthService.Instance.IsSuperAdmin)
+        {
+            System.Windows.MessageBox.Show("Security Violation: Only Super Admin is authorized to publish releases.", "Security Error", MessageBoxButton.OK, MessageBoxImage.Stop);
+            return;
+        }
+
+        if (_isPublishing)
+        {
+            System.Windows.MessageBox.Show("A release publishing process is already in progress. Please wait for it to complete.", "Operation In Progress", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_selectedMsiPath) || !File.Exists(_selectedMsiPath))
+        {
+            System.Windows.MessageBox.Show("Please select or drop a compiled .msi installer package first.", "MSI Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        string rawVersion = TxtPublisherVersion.Text.Trim();
+        if (string.IsNullOrWhiteSpace(rawVersion))
+        {
+            System.Windows.MessageBox.Show("Please enter the release version (e.g., 1.5.50.0).", "Version Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+            TxtPublisherVersion.Focus();
+            return;
+        }
+
+        string tag = rawVersion.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? rawVersion : $"v{rawVersion}";
+        string cleanVersion = rawVersion.TrimStart('v', 'V');
+        string title = string.IsNullOrWhiteSpace(TxtPublisherTitle.Text) ? $"DASMO Cyber Cafe Tools {tag}" : TxtPublisherTitle.Text.Trim();
+        string changelog = TxtPublisherChangelog.Text.Trim();
+        string repo = string.IsNullOrWhiteSpace(TxtPolicyGithubRepo.Text) ? AppUpdateService.DefaultGithubRepo : TxtPolicyGithubRepo.Text.Trim();
+        string minVersion = string.IsNullOrWhiteSpace(TxtPublisherMinVersion.Text) ? cleanVersion : TxtPublisherMinVersion.Text.Trim();
+        bool forceUpdate = ChkPublisherForceUpdate.IsChecked == true;
+        string customNotice = TxtPublisherCustomNotice.Text.Trim();
+        bool syncPolicy = ChkPublisherSyncPolicy.IsChecked == true;
+
+        string? ghPath = FindGhCliPath();
+        if (string.IsNullOrEmpty(ghPath))
+        {
+            System.Windows.MessageBox.Show("GitHub CLI ('gh.exe') could not be found.\n\nPlease ensure GitHub CLI is installed at 'C:\\Program Files\\GitHub CLI\\gh.exe'.", "GitHub CLI Missing", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var msiInfo = new FileInfo(_selectedMsiPath);
+        double mb = msiInfo.Length / (1024.0 * 1024.0);
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"Are you ready to publish this release to GitHub and broadcast to all users?\n\n" +
+            $"• Release Tag:       {tag}\n" +
+            $"• Release Title:     {title}\n" +
+            $"• MSI Package:       {msiInfo.Name} ({mb:F2} MB)\n" +
+            $"• Repository:        {repo}\n" +
+            $"• Sync Cloud Policy: {(syncPolicy ? "YES" : "NO")}\n" +
+            $"• Force Lockout:     {(forceUpdate ? "YES" : "NO")}\n\n" +
+            "Click YES to begin the 1-Click publish operation.",
+            "Confirm Release Publication",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        _isPublishing = true;
+        BtnPublishRelease.IsEnabled = false;
+        ProgressBarPublish.Visibility = Visibility.Visible;
+        TxtPublishLogs.Text = string.Empty;
+
+        string notesTempFile = Path.Combine(Path.GetTempPath(), $"dasmo_release_notes_{Guid.NewGuid():N}.txt");
+
+        try
+        {
+            AppendPublishLog($"══════════════════════════════════════════════════════════════");
+            AppendPublishLog($"🚀 STARTING 1-CLICK RELEASE PUBLISHER: {tag}");
+            AppendPublishLog($"══════════════════════════════════════════════════════════════");
+            AppendPublishLog($"Installer Package: {_selectedMsiPath} ({mb:F2} MB)");
+            AppendPublishLog($"Target Repository: {repo}");
+
+            // Write notes file
+            await File.WriteAllTextAsync(notesTempFile, changelog);
+
+            // Step 1: Check GitHub CLI authentication
+            AppendPublishLog("Checking GitHub CLI authentication status...");
+            var authCheck = await RunCliProcessAsync(ghPath, "auth status", line => AppendPublishLog($"[gh auth] {line}"));
+            if (authCheck.ExitCode != 0 && (authCheck.StdOut + authCheck.StdErr).Contains("not logged into"))
+            {
+                throw new InvalidOperationException("GitHub CLI is not authenticated. Please run 'gh auth login' in terminal.");
+            }
+
+            // Step 2: Publish release via GitHub CLI
+            AppendPublishLog($"Publishing release {tag} with installer asset to GitHub...");
+            string createArgs = $"release create {tag} \"{_selectedMsiPath}\" --title \"{title}\" -F \"{notesTempFile}\" --latest -R \"{repo}\"";
+            AppendPublishLog($"Running: gh {createArgs}");
+
+            var createRes = await RunCliProcessAsync(ghPath, createArgs, line => AppendPublishLog(line));
+
+            if (createRes.ExitCode != 0)
+            {
+                string combinedErr = (createRes.StdOut + "\n" + createRes.StdErr).ToLowerInvariant();
+                if (combinedErr.Contains("already exists") || combinedErr.Contains("already_exists"))
+                {
+                    AppendPublishLog($"[Notice] Release or tag {tag} already exists on GitHub.");
+                    AppendPublishLog($"Re-uploading asset with --clobber to replace previous MSI...");
+
+                    string uploadArgs = $"release upload {tag} \"{_selectedMsiPath}\" --clobber -R \"{repo}\"";
+                    var uploadRes = await RunCliProcessAsync(ghPath, uploadArgs, line => AppendPublishLog(line));
+                    if (uploadRes.ExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"Asset re-upload failed: {uploadRes.StdErr}");
+                    }
+
+                    AppendPublishLog($"Updating release metadata and marking as latest...");
+                    string editArgs = $"release edit {tag} --title \"{title}\" -F \"{notesTempFile}\" --latest -R \"{repo}\"";
+                    var editRes = await RunCliProcessAsync(ghPath, editArgs, line => AppendPublishLog(line));
+                    if (editRes.ExitCode != 0)
+                    {
+                        AppendPublishLog($"[Warning] Release edit warning: {editRes.StdErr}");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException($"GitHub release creation failed: {createRes.StdErr}");
+                }
+            }
+
+            AppendPublishLog($"✅ GitHub release {tag} published successfully!");
+
+            // Step 3: Broadcast Cloud Policy to Firestore if enabled
+            string directDownloadUrl = $"https://github.com/{repo}/releases/download/{tag}/{msiInfo.Name}";
+            if (syncPolicy)
+            {
+                AppendPublishLog("Broadcasting software policy to Firestore cloud database...");
+                var policy = new AppVersionPolicy
+                {
+                    LatestVersion = cleanVersion,
+                    MinRequiredVersion = minVersion,
+                    BlockedVersions = TxtPolicyBlockedVersions.Text.Trim(),
+                    ForceUpdate = forceUpdate,
+                    CustomUpdateMessage = customNotice,
+                    GithubRepo = repo,
+                    UpdateDownloadUrl = directDownloadUrl,
+                    UpdateChangelog = changelog,
+                    LastUpdatedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+
+                bool cloudOk = await FirebaseCloudAuthService.Instance.SetVersionPolicyAsync(policy);
+                if (cloudOk)
+                {
+                    AppendPublishLog($"✅ Cloud Policy broadcasted! Latest version is now {cleanVersion}.");
+                    // Update manual fields to reflect new policy
+                    TxtPolicyLatestVersion.Text = cleanVersion;
+                    TxtPolicyMinVersion.Text = minVersion;
+                    TxtPolicyDownloadUrl.Text = directDownloadUrl;
+                    TxtPolicyChangelog.Text = changelog;
+                    ChkPolicyForceUpdate.IsChecked = forceUpdate;
+                    TxtPolicyCustomMessage.Text = customNotice;
+                }
+                else
+                {
+                    AppendPublishLog("⚠️ Warning: GitHub upload succeeded, but Firestore policy broadcast failed. Please check internet connection.");
+                }
+            }
+
+            AppendPublishLog($"══════════════════════════════════════════════════════════════");
+            AppendPublishLog($"🎉 ALL OPERATIONS COMPLETED SUCCESSFULLY!");
+            AppendPublishLog($"Release URL: https://github.com/{repo}/releases/tag/{tag}");
+            AppendPublishLog($"Download URL: {directDownloadUrl}");
+            AppendPublishLog($"══════════════════════════════════════════════════════════════");
+
+            await RefreshDataAsync();
+
+            System.Windows.MessageBox.Show(
+                $"Release {tag} published successfully!\n\n" +
+                $"• GitHub Release: https://github.com/{repo}/releases/tag/{tag}\n" +
+                $"• Direct Download: {directDownloadUrl}\n" +
+                $"• Cloud Policy: {(syncPolicy ? "Synchronized to Firestore" : "Manual policy unchanged")}\n\n" +
+                "All user computers will now detect and download this update automatically.",
+                "Release Published Successfully",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to publish release");
+            AppendPublishLog($"❌ ERROR: {ex.Message}");
+            System.Windows.MessageBox.Show($"Publication failed: {ex.Message}", "Publication Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(notesTempFile)) File.Delete(notesTempFile);
+            }
+            catch { }
+
+            _isPublishing = false;
+            BtnPublishRelease.IsEnabled = true;
+            ProgressBarPublish.Visibility = Visibility.Collapsed;
+        }
     }
 
     private async void SaveVersionPolicy_Click(object sender, RoutedEventArgs e)
     {
+        if (!FirebaseCloudAuthService.BypassForTests && !FirebaseCloudAuthService.Instance.IsSuperAdmin)
+        {
+            System.Windows.MessageBox.Show("Security Violation: Only Super Admin is authorized to change version policy.", "Security Error", MessageBoxButton.OK, MessageBoxImage.Stop);
+            return;
+        }
+
         string latest = TxtPolicyLatestVersion.Text.Trim();
         string min = TxtPolicyMinVersion.Text.Trim();
         string blocked = TxtPolicyBlockedVersions.Text.Trim();
@@ -380,7 +831,8 @@ public partial class AdminPanelWindow : Window
                 CustomUpdateMessage = customMsg,
                 GithubRepo = string.IsNullOrEmpty(repo) ? AppUpdateService.DefaultGithubRepo : repo,
                 UpdateDownloadUrl = url,
-                UpdateChangelog = changelog
+                UpdateChangelog = changelog,
+                LastUpdatedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
             bool ok = await FirebaseCloudAuthService.Instance.SetVersionPolicyAsync(policy);
