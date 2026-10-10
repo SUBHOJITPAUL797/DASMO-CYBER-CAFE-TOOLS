@@ -483,7 +483,7 @@
             <Border x:Name="OverlayVersionPolicy" Visibility="Collapsed" Background="#E00B0D14"
                     Grid.RowSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                 <Border Background="#161826" CornerRadius="12" BorderBrush="#00BCD4" BorderThickness="1.5"
-                        Width="820" MaxHeight="680" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="22">
+                        MaxWidth="840" Margin="20,16" VerticalAlignment="Stretch" HorizontalAlignment="Center" Padding="22">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/> <!-- Header -->
@@ -504,10 +504,10 @@
 
                         <!-- Sub-Tabs Switcher -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-                            <RadioButton x:Name="TabReleasePublisher" Content="🚀 1-Click Release Publisher (GitHub + Cloud)" IsChecked="True" Checked="VersionSubTab_Checked"
+                            <RadioButton x:Name="TabReleasePublisher" GroupName="SubTabVersionPolicy" Content="🚀 1-Click Release Publisher (GitHub + Cloud)" IsChecked="True" Checked="VersionSubTab_Checked"
                                          Style="{StaticResource {x:Type ToggleButton}}" Margin="0,0,8,0" Padding="14,6"
                                          Background="#1E2033" Foreground="#FFFFFF" BorderBrush="#00BCD4" Cursor="Hand" FontWeight="Bold"/>
-                            <RadioButton x:Name="TabManualPolicy" Content="⚙️ Cloud Policy Manual Settings" Checked="VersionSubTab_Checked"
+                            <RadioButton x:Name="TabManualPolicy" GroupName="SubTabVersionPolicy" Content="⚙️ Cloud Policy Manual Settings" Checked="VersionSubTab_Checked"
                                          Style="{StaticResource {x:Type ToggleButton}}" Padding="14,6"
                                          Background="#1E2033" Foreground="#CBD5E1" Cursor="Hand" FontWeight="SemiBold"/>
                         </StackPanel>
@@ -549,7 +549,8 @@
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="Target Version (e.g. 1.5.50.0):" FontSize="11" FontWeight="SemiBold" Foreground="#E2E8F0" Margin="0,0,0,4"/>
                                         <TextBox x:Name="TxtPublisherVersion" Height="34" VerticalContentAlignment="Center" Padding="8,0" FontWeight="Bold"
-                                                 Background="#1A1C2B" Foreground="#FFFFFF" BorderBrush="#2F324D" BorderThickness="1"/>
+                                                 Background="#1A1C2B" Foreground="#FFFFFF" BorderBrush="#2F324D" BorderThickness="1"
+                                                 TextChanged="PublisherVersion_TextChanged"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Release Title:" FontSize="11" FontWeight="SemiBold" Foreground="#E2E8F0" Margin="0,0,0,4"/>

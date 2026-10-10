@@ -395,6 +395,17 @@ public partial class AdminPanelWindow : Window
         }
     }
 
+    private void PublisherVersion_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (TxtPublisherVersion == null || TxtPublisherTitle == null) return;
+        string v = TxtPublisherVersion.Text.Trim();
+        if (!string.IsNullOrEmpty(v))
+        {
+            string tag = v.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? v : $"v{v}";
+            TxtPublisherTitle.Text = $"DASMO Cyber Cafe Tools {tag} Official Release";
+        }
+    }
+
     private void UpdateSelectedMsi(string path)
     {
         if (!File.Exists(path)) return;
@@ -546,7 +557,7 @@ public partial class AdminPanelWindow : Window
         return "gh";
     }
 
-    private async Task<(int ExitCode, string StdOut, string StdErr)> RunCliProcessAsync(string exePath, string arguments, Action<string>? onOutputLine = null)
+    private async Task<(int ExitCode, string StdOut, string StdErr)> RunCliProcessAsync(string exePath, IEnumerable<string> arguments, Action<string>? onOutputLine = null)
     {
         var stdoutSb = new System.Text.StringBuilder();
         var stderrSb = new System.Text.StringBuilder();
@@ -554,12 +565,16 @@ public partial class AdminPanelWindow : Window
         var psi = new ProcessStartInfo
         {
             FileName = exePath,
-            Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+
+        foreach (var arg in arguments)
+        {
+            psi.ArgumentList.Add(arg);
+        }
 
         using var process = new Process { StartInfo = psi };
         process.OutputDataReceived += (s, e) =>
@@ -619,8 +634,12 @@ public partial class AdminPanelWindow : Window
         string cleanVersion = rawVersion.TrimStart('v', 'V');
         string title = string.IsNullOrWhiteSpace(TxtPublisherTitle.Text) ? $"DASMO Cyber Cafe Tools {tag}" : TxtPublisherTitle.Text.Trim();
         string changelog = TxtPublisherChangelog.Text.Trim();
+        if (string.IsNullOrWhiteSpace(changelog))
+        {
+            changelog = $"## DASMO Cyber Cafe Tools {tag}\n\n- Performance, stability, and UI improvements\n- Built for high-productivity Cyber Cafe workflows";
+        }
         string repo = string.IsNullOrWhiteSpace(TxtPolicyGithubRepo.Text) ? AppUpdateService.DefaultGithubRepo : TxtPolicyGithubRepo.Text.Trim();
-        string minVersion = string.IsNullOrWhiteSpace(TxtPublisherMinVersion.Text) ? cleanVersion : TxtPublisherMinVersion.Text.Trim();
+        string minVersion = string.IsNullOrWhiteSpace(TxtPublisherMinVersion.Text) ? "1.5.0" : TxtPublisherMinVersion.Text.Trim();
         bool forceUpdate = ChkPublisherForceUpdate.IsChecked == true;
         string customNotice = TxtPublisherCustomNotice.Text.Trim();
         bool syncPolicy = ChkPublisherSyncPolicy.IsChecked == true;
@@ -670,7 +689,7 @@ public partial class AdminPanelWindow : Window
 
             // Step 1: Check GitHub CLI authentication
             AppendPublishLog("Checking GitHub CLI authentication status...");
-            var authCheck = await RunCliProcessAsync(ghPath, "auth status", line => AppendPublishLog($"[gh auth] {line}"));
+            var authCheck = await RunCliProcessAsync(ghPath, new[] { "auth", "status" }, line => AppendPublishLog($"[gh auth] {line}"));
             if (authCheck.ExitCode != 0 && (authCheck.StdOut + authCheck.StdErr).Contains("not logged into"))
             {
                 throw new InvalidOperationException("GitHub CLI is not authenticated. Please run 'gh auth login' in terminal.");
@@ -678,8 +697,8 @@ public partial class AdminPanelWindow : Window
 
             // Step 2: Publish release via GitHub CLI
             AppendPublishLog($"Publishing release {tag} with installer asset to GitHub...");
-            string createArgs = $"release create {tag} \"{_selectedMsiPath}\" --title \"{title}\" -F \"{notesTempFile}\" --latest -R \"{repo}\"";
-            AppendPublishLog($"Running: gh {createArgs}");
+            var createArgs = new[] { "release", "create", tag, _selectedMsiPath, "--title", title, "-F", notesTempFile, "--latest", "-R", repo };
+            AppendPublishLog($"Running: gh release create {tag} \"{msiInfo.Name}\" --title \"{title}\" --latest -R \"{repo}\"");
 
             var createRes = await RunCliProcessAsync(ghPath, createArgs, line => AppendPublishLog(line));
 
@@ -691,7 +710,7 @@ public partial class AdminPanelWindow : Window
                     AppendPublishLog($"[Notice] Release or tag {tag} already exists on GitHub.");
                     AppendPublishLog($"Re-uploading asset with --clobber to replace previous MSI...");
 
-                    string uploadArgs = $"release upload {tag} \"{_selectedMsiPath}\" --clobber -R \"{repo}\"";
+                    var uploadArgs = new[] { "release", "upload", tag, _selectedMsiPath, "--clobber", "-R", repo };
                     var uploadRes = await RunCliProcessAsync(ghPath, uploadArgs, line => AppendPublishLog(line));
                     if (uploadRes.ExitCode != 0)
                     {
@@ -699,7 +718,7 @@ public partial class AdminPanelWindow : Window
                     }
 
                     AppendPublishLog($"Updating release metadata and marking as latest...");
-                    string editArgs = $"release edit {tag} --title \"{title}\" -F \"{notesTempFile}\" --latest -R \"{repo}\"";
+                    var editArgs = new[] { "release", "edit", tag, "--title", title, "-F", notesTempFile, "--latest", "-R", repo };
                     var editRes = await RunCliProcessAsync(ghPath, editArgs, line => AppendPublishLog(line));
                     if (editRes.ExitCode != 0)
                     {
