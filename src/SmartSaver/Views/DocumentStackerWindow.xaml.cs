@@ -37,9 +37,17 @@ public partial class DocumentStackerWindow : Window
         catch { }
     }
 
+    private Window? GetActiveOwner()
+    {
+        if (IsLoaded && IsVisible) return this;
+        var main = System.Windows.Application.Current?.MainWindow;
+        if (main != null && main.IsLoaded && main.IsVisible) return main;
+        return null;
+    }
+
     private void SetupDialogCallbacks()
     {
-        // Wire up all file dialogs safely with owner window
+        // Wire up all file dialogs safely with active owner window
         _vm.RequestBrowseFront = () =>
         {
             try
@@ -49,7 +57,8 @@ public partial class DocumentStackerWindow : Window
                     Title = "Select Front Side File",
                     Filter = "Supported files (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf|All Files (*.*)|*.*"
                 };
-                return dlg.ShowDialog(this) == true ? dlg.FileName : null;
+                var owner = GetActiveOwner();
+                return (owner != null ? dlg.ShowDialog(owner) : dlg.ShowDialog()) == true ? dlg.FileName : null;
             }
             catch (Exception ex)
             {
@@ -67,7 +76,8 @@ public partial class DocumentStackerWindow : Window
                     Title = "Select Back Side File",
                     Filter = "Supported files (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf|All Files (*.*)|*.*"
                 };
-                return dlg.ShowDialog(this) == true ? dlg.FileName : null;
+                var owner = GetActiveOwner();
+                return (owner != null ? dlg.ShowDialog(owner) : dlg.ShowDialog()) == true ? dlg.FileName : null;
             }
             catch (Exception ex)
             {
@@ -86,7 +96,8 @@ public partial class DocumentStackerWindow : Window
                     Multiselect = true,
                     Filter = "Supported files (*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf)|*.jpg;*.jpeg;*.jpe;*.jfif;*.png;*.webp;*.bmp;*.tiff;*.pdf|All Files (*.*)|*.*"
                 };
-                return dlg.ShowDialog(this) == true ? dlg.FileNames : null;
+                var owner = GetActiveOwner();
+                return (owner != null ? dlg.ShowDialog(owner) : dlg.ShowDialog()) == true ? dlg.FileNames : null;
             }
             catch (Exception ex)
             {
@@ -104,7 +115,8 @@ public partial class DocumentStackerWindow : Window
                     Title = "Select 2-Page PDF to Import",
                     Filter = "PDF files (*.pdf)|*.pdf"
                 };
-                return dlg.ShowDialog(this) == true ? dlg.FileName : null;
+                var owner = GetActiveOwner();
+                return (owner != null ? dlg.ShowDialog(owner) : dlg.ShowDialog()) == true ? dlg.FileName : null;
             }
             catch (Exception ex)
             {
@@ -122,7 +134,8 @@ public partial class DocumentStackerWindow : Window
                     Filter = filter,
                     FileName = defaultName
                 };
-                return dlg.ShowDialog(this) == true ? dlg.FileName : null;
+                var owner = GetActiveOwner();
+                return (owner != null ? dlg.ShowDialog(owner) : dlg.ShowDialog()) == true ? dlg.FileName : null;
             }
             catch (Exception ex)
             {
@@ -134,6 +147,11 @@ public partial class DocumentStackerWindow : Window
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        bool hasParentMainWindow = System.Windows.Application.Current?.MainWindow != null &&
+                                    System.Windows.Application.Current.MainWindow.IsVisible &&
+                                    System.Windows.Application.Current.MainWindow != this;
+        if (hasParentMainWindow) return;
+
         if (_vm == null || !_vm.HasUnsavedWork) return;
 
         var res = System.Windows.MessageBox.Show(

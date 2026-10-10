@@ -35,6 +35,11 @@ public partial class PassportStudioDialog : Window
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        bool hasParentMainWindow = System.Windows.Application.Current?.MainWindow != null &&
+                                    System.Windows.Application.Current.MainWindow.IsVisible &&
+                                    System.Windows.Application.Current.MainWindow != this;
+        if (hasParentMainWindow) return;
+
         if (ViewModel == null || !ViewModel.HasUnsavedWork) return;
 
         var res = System.Windows.MessageBox.Show(

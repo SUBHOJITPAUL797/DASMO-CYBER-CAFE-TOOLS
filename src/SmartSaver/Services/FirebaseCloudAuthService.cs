@@ -1035,11 +1035,12 @@ public class FirebaseCloudAuthService
 
     private static string NormalizeVersion(string v)
     {
-        if (string.IsNullOrWhiteSpace(v)) return "0.0.0";
+        if (string.IsNullOrWhiteSpace(v)) return "0.0.0.0";
         v = v.Trim().TrimStart('v', 'V');
         var segments = v.Split('.');
-        if (segments.Length == 1) return $"{v}.0.0";
-        if (segments.Length == 2) return $"{v}.0";
+        if (segments.Length == 1) return $"{v}.0.0.0";
+        if (segments.Length == 2) return $"{v}.0.0";
+        if (segments.Length == 3) return $"{v}.0";
         return v;
     }
 
