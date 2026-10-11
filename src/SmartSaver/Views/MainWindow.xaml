@@ -2584,54 +2584,37 @@
                                         </Grid>
 
                                         <CheckBox IsChecked="{Binding CleanBackground}" Margin="0,0,0,6">
-                                            <TextBlock Text="✨ Clean Paper Background &amp; Boost Dark Ink (Magic White)" TextWrapping="Wrap" FontWeight="SemiBold"/>
-                                        </CheckBox>
-                                        <CheckBox IsChecked="{Binding ConvertBlueToBlack}" Margin="0,0,0,6"
-                                                  ToolTip="Detects blue ballpoint/gel pen ink and converts it to pure crisp black to prevent online portal rejection">
-                                            <TextBlock Text="⬛ Convert Blue Ink to Pitch Black (Strict Exam / SSC / UPSC Standard)" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                            <TextBlock Text="✨ Clean Paper Background &amp; Boost Ink (Magic White)" TextWrapping="Wrap" FontWeight="SemiBold"/>
                                         </CheckBox>
                                         <CheckBox IsChecked="{Binding AutoCrop}" Margin="0,0,0,6"
                                                   ToolTip="Trims empty paper margins around signature so it scales to full crisp size">
                                             <TextBlock Text="✂️ Auto-Crop Signature (Trim blank scanner margins)" TextWrapping="Wrap" FontWeight="SemiBold"/>
                                         </CheckBox>
-                                        <CheckBox IsChecked="{Binding MaintainAspectRatio}" Margin="0,0,0,6">
+                                        <CheckBox IsChecked="{Binding MaintainAspectRatio}" Margin="0,0,0,8">
                                             <TextBlock Text="Fit inside bounds (Keep original aspect ratio with white border)" TextWrapping="Wrap"/>
                                         </CheckBox>
+
                                         <!-- Signature Ink Color Selector -->
-                                        <TextBlock Text="Signature Ink Color (Daily Cyber Cafe Ink Standard):" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,4"/>
-                                        <UniformGrid Columns="4" Margin="0,0,0,8">
-                                            <Button Content="⬛ Pitch Black" Command="{Binding SetInkColorModeCommand}" CommandParameter="Black" 
-                                                    Style="{StaticResource OutlineButton}" Padding="2,5" Margin="0,0,3,0" FontSize="11" FontWeight="Bold"
-                                                    ToolTip="Strict Exam / SSC / UPSC Pitch Black standard — transforms any blue/pale signature to solid pitch black"/>
-                                            <Button Content="🖊️ Royal Blue" Command="{Binding SetInkColorModeCommand}" CommandParameter="RoyalBlue" 
-                                                    Style="{StaticResource OutlineButton}" Padding="2,5" Margin="0,0,3,0" FontSize="11" FontWeight="Bold" Foreground="#60A5FA"
-                                                    ToolTip="Official Indian Bank, PAN &amp; Document Royal Blue Pen Ink — converts signature to realistic ballpoint/gel blue ink"/>
-                                            <Button Content="🖋️ Dark Navy" Command="{Binding SetInkColorModeCommand}" CommandParameter="NavyBlue" 
-                                                    Style="{StaticResource OutlineButton}" Padding="2,5" Margin="0,0,3,0" FontSize="11" FontWeight="Bold" Foreground="#93C5FD"
-                                                    ToolTip="Deep classic Navy / Fountain Pen Blue ink tone"/>
-                                            <Button Content="🎨 Original Ink" Command="{Binding SetInkColorModeCommand}" CommandParameter="Original" 
-                                                    Style="{StaticResource OutlineButton}" Padding="2,5" FontSize="11"
-                                                    ToolTip="Preserve customer's original pen ink color with enhanced contrast"/>
+                                        <TextBlock Text="Signature Ink Color (Daily Cyber Cafe Ink Standard):" FontSize="11.5" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,4,0,6"/>
+                                        <UniformGrid Columns="4" Margin="0,0,0,10">
+                                            <RadioButton Content="⬛ Pitch Black" IsChecked="{Binding IsInkBlack}" Command="{Binding SetInkColorModeCommand}" CommandParameter="Black" 
+                                                         FontWeight="Bold" FontSize="11" ToolTip="Strict Exam / SSC / UPSC Pitch Black standard — transforms any blue/pale signature to solid pitch black"/>
+                                            <RadioButton Content="🖊️ Royal Blue" IsChecked="{Binding IsInkRoyalBlue}" Command="{Binding SetInkColorModeCommand}" CommandParameter="RoyalBlue" 
+                                                         FontWeight="Bold" FontSize="11" Foreground="#60A5FA" ToolTip="Official Indian Bank, PAN &amp; Document Royal Blue Pen Ink — converts signature to realistic ballpoint/gel blue ink"/>
+                                            <RadioButton Content="🖋️ Dark Navy" IsChecked="{Binding IsInkNavyBlue}" Command="{Binding SetInkColorModeCommand}" CommandParameter="NavyBlue" 
+                                                         FontWeight="Bold" FontSize="11" Foreground="#93C5FD" ToolTip="Deep classic Navy / Fountain Pen Blue ink tone"/>
+                                            <RadioButton Content="🎨 Original Ink" IsChecked="{Binding IsInkOriginal}" Command="{Binding SetInkColorModeCommand}" CommandParameter="Original" 
+                                                         FontSize="11" ToolTip="Preserve customer's original pen ink color with enhanced contrast"/>
                                         </UniformGrid>
 
                                         <!-- Background Color / Mode Selection -->
-                                        <TextBlock Text="Signature Background Style:" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,4"/>
-                                        <UniformGrid Columns="3" Margin="0,0,0,8">
-                                            <Button Content="🪄 Transparent (No BG)" Command="{Binding SetBackgroundModeCommand}" CommandParameter="Transparent" 
-                                                    Style="{StaticResource OutlineButton}" Padding="4,5" Margin="0,0,4,0" FontSize="11" FontWeight="Bold"
-                                                    ToolTip="100% Transparent PNG without white box for card printing &amp; document pasting"/>
-                                            <Button Content="💳 PAN Card Blue (JPEG)" Command="{Binding SetBackgroundModeCommand}" CommandParameter="PanCardBlue" 
-                                                    Style="{StaticResource OutlineButton}" Padding="4,5" Margin="0,0,4,0" FontSize="11" FontWeight="Bold"
-                                                    ToolTip="Matches PAN card light-blue background (#DCE8F5) so JPEG blends with ZERO white box"/>
-                                            <Button Content="⚪ Clean White (JPEG)" Command="{Binding SetBackgroundModeCommand}" CommandParameter="White" 
-                                                    Style="{StaticResource OutlineButton}" Padding="4,5" FontSize="11"
-                                                    ToolTip="Crisp clean white background for official exam &amp; portal uploads"/>
-                                        </UniformGrid>
-
-                                        <CheckBox IsChecked="{Binding TransparentBackground}" Margin="0,0,0,4"
-                                                  ToolTip="Removes paper background completely so only handwriting ink is preserved with transparent alpha channel. Perfect for PAN card printing directly over card pattern lines.">
-                                            <TextBlock Text="🪄 Transparent Background (PNG — No White Box on PAN / PVC Card)" TextWrapping="Wrap" FontWeight="Bold" Foreground="#38BDF8"/>
-                                        </CheckBox>
+                                        <TextBlock Text="Signature Background (Paper vs Transparent):" FontSize="11.5" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,4,0,6"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <RadioButton Content="⚪ Clean White (JPEG — Portals)" IsChecked="{Binding IsBackgroundWhite}" Margin="0,0,20,0" FontWeight="Bold" FontSize="11.5"
+                                                         ToolTip="Clean pure white paper background for official exam &amp; job portal uploads (NSDL, UTI, SSC, UPSC)"/>
+                                            <RadioButton Content="✨ Transparent (PNG — No White Box)" IsChecked="{Binding IsBackgroundTransparent}" FontWeight="Bold" FontSize="11.5" Foreground="#38BDF8"
+                                                         ToolTip="100% Transparent background (Zero white box) — for pasting directly onto PAN cards, PVC cards, and documents"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </GroupBox>
 
@@ -2639,10 +2622,8 @@
                                 <GroupBox Header="3. Quick Indian Exam &amp; Portal Presets" Margin="0,0,0,12">
                                     <StackPanel Margin="0,4">
                                         <WrapPanel Margin="0,0,0,6">
-                                            <Button Content="💳 PAN Signature (2×4.5 cm)" Command="{Binding QuickPresetCommand}" CommandParameter="PAN" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="Official NSDL &amp; UTI 2 × 4.5 cm Signature | 200 DPI | 10–50 KB"/>
-                                            <Button Content="💳 PAN Blue BG (2×4.5 cm)" Command="{Binding QuickPresetCommand}" CommandParameter="PANBLUE" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="PAN Card Blue background (#DCE8F5) | 200 DPI | No White Box"/>
+                                            <Button Content="💳 PAN Portal (2×4.5 cm)" Command="{Binding QuickPresetCommand}" CommandParameter="PAN" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="Official NSDL &amp; UTI 2 × 4.5 cm Signature | 200 DPI | 10–50 KB"/>
                                             <Button Content="🖊️ Royal Blue (2×4.5 cm)" Command="{Binding QuickPresetCommand}" CommandParameter="BLUE" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" Foreground="#60A5FA" ToolTip="2 × 4.5 cm Signature | 200 DPI | Authentic Royal Blue Ballpoint Pen Ink"/>
-                                            <Button Content="💳 PAN Photo (2.5×3.5 cm)" Command="{Binding QuickPresetCommand}" CommandParameter="PANPHOTO" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="Official NSDL &amp; UTI 2.5 × 3.5 cm Photo | 200 DPI | &lt;50 KB"/>
                                             <Button Content="✨ Transparent (No BG)" Command="{Binding QuickPresetCommand}" CommandParameter="Transparent" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" FontWeight="Bold" ToolTip="100% Transparent PNG without white box for card printing"/>
                                             <Button Content="⚡ SSC (10-20 KB)" Command="{Binding QuickPresetCommand}" CommandParameter="SSC" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" ToolTip="140 × 60 px | 10–20 KB"/>
                                             <Button Content="⚡ UPSC (20-50 KB)" Command="{Binding QuickPresetCommand}" CommandParameter="UPSC" Style="{StaticResource OutlineButton}" Padding="6,3" Margin="0,0,4,4" FontSize="11" ToolTip="350 × 350 px | 20–50 KB"/>
@@ -2699,7 +2680,6 @@
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="Preview On:" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Button Content="🏁 Alpha" Command="{Binding SetPreviewBackgroundModeCommand}" CommandParameter="Checkerboard" Margin="0,0,3,0" Padding="6,2" FontSize="10.5" Style="{StaticResource SecondaryButton}" ToolTip="View on transparent checkerboard grid"/>
-                                    <Button Content="💳 Blue PAN" Command="{Binding SetPreviewBackgroundModeCommand}" CommandParameter="PanCardBlue" Margin="0,0,3,0" Padding="6,2" FontSize="10.5" Style="{StaticResource SecondaryButton}" ToolTip="View on Indian PAN Card blue background (#DCE8F5)"/>
                                     <Button Content="⚪ Paper" Command="{Binding SetPreviewBackgroundModeCommand}" CommandParameter="White" Margin="0,0,3,0" Padding="6,2" FontSize="10.5" Style="{StaticResource SecondaryButton}" ToolTip="View on clean white paper"/>
                                     <Button Content="⚡ Auto" Command="{Binding SetPreviewBackgroundModeCommand}" CommandParameter="Auto" Padding="6,2" FontSize="10.5" Style="{StaticResource SecondaryButton}" ToolTip="Auto-match preview to selected output background"/>
                                 </StackPanel>
@@ -2763,12 +2743,11 @@
                                 <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" 
                                         Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
                                     <WrapPanel HorizontalAlignment="Right">
-                                        <Button Content="💳 Save PAN Card Blue (JPEG)" Style="{StaticResource AccentButton}" Command="{Binding SavePanCardBlueJpegCommand}" Padding="12,8" Margin="0,0,8,0" FontWeight="Bold" ToolTip="Save strictly 2 × 4.5 cm @ 200 DPI JPEG with PAN Card Blue (#DCE8F5) background — ZERO white box on blue card!"/>
-                                        <Button Content="💳 Save PAN Portal (JPEG)" Style="{StaticResource SecondaryButton}" Command="{Binding SavePanPortalJpegCommand}" Padding="12,8" Margin="0,0,8,0" FontWeight="Bold" ToolTip="Save strictly 2 × 4.5 cm @ 200 DPI JPEG under 50 KB ready for NSDL &amp; UTIITSL upload"/>
-                                        <Button Content="✨ Save Transparent PNG" Style="{StaticResource SecondaryButton}" Command="{Binding SaveTransparentPngCommand}" Padding="12,8" Margin="0,0,8,0" FontWeight="Bold" ToolTip="Save 100% transparent PNG with isolated handwriting ink (no white box)"/>
-                                        <Button Content="💾 Save As..." Style="{StaticResource PrimaryButton}" Command="{Binding SaveAsCommand}" Padding="14,8" Margin="0,0,8,0" FontWeight="Bold"/>
-                                        <Button Content="📋 Copy to Clipboard" Style="{StaticResource SecondaryButton}" Command="{Binding CopyResultCommand}" Padding="12,8" Margin="0,0,8,0" ToolTip="Copies to clipboard with PNG alpha transparency (paste directly without white box)"/>
-                                        <Button Content="🖨️ Direct Print" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}" Padding="14,8"/>
+                                        <Button Content="💳 Save PAN / Portal (JPEG)" Style="{StaticResource AccentButton}" Command="{Binding SavePanPortalJpegCommand}" Padding="14,8" Margin="0,0,8,0" FontWeight="Bold" ToolTip="Save strictly 2 × 4.5 cm @ 200 DPI JPEG under 50 KB with selected ink color (NSDL &amp; UTIITSL upload ready)"/>
+                                        <Button Content="✨ Save Transparent PNG" Style="{StaticResource PrimaryButton}" Command="{Binding SaveTransparentPngCommand}" Padding="14,8" Margin="0,0,8,0" FontWeight="Bold" ToolTip="Save 100% transparent PNG with isolated handwriting ink (ZERO white box — fits seamlessly on PAN card)"/>
+                                        <Button Content="💾 Save As..." Style="{StaticResource SecondaryButton}" Command="{Binding SaveAsCommand}" Padding="12,8" Margin="0,0,8,0" FontWeight="Bold"/>
+                                        <Button Content="📋 Copy Transparent (No BG)" Style="{StaticResource SecondaryButton}" Command="{Binding CopyResultCommand}" Padding="12,8" Margin="0,0,8,0" ToolTip="Copies handwriting with alpha channel to clipboard (Ctrl+V into Word, Photoshop, or PVC card software without white box)"/>
+                                        <Button Content="🖨️ Direct Print" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}" Padding="12,8"/>
                                     </WrapPanel>
                                 </Border>
                             </Grid>

@@ -543,10 +543,29 @@ public class SignatureResizeViewModel : ViewModelBase
         }
     }
 
-    public bool IsInkBlack => string.Equals(InkColorMode, "Black", StringComparison.OrdinalIgnoreCase);
-    public bool IsInkRoyalBlue => string.Equals(InkColorMode, "RoyalBlue", StringComparison.OrdinalIgnoreCase) || string.Equals(InkColorMode, "Blue", StringComparison.OrdinalIgnoreCase);
-    public bool IsInkNavyBlue => string.Equals(InkColorMode, "NavyBlue", StringComparison.OrdinalIgnoreCase);
-    public bool IsInkOriginal => string.Equals(InkColorMode, "Original", StringComparison.OrdinalIgnoreCase);
+    public bool IsInkBlack
+    {
+        get => string.Equals(InkColorMode, "Black", StringComparison.OrdinalIgnoreCase);
+        set { if (value) InkColorMode = "Black"; }
+    }
+
+    public bool IsInkRoyalBlue
+    {
+        get => string.Equals(InkColorMode, "RoyalBlue", StringComparison.OrdinalIgnoreCase) || string.Equals(InkColorMode, "Blue", StringComparison.OrdinalIgnoreCase);
+        set { if (value) InkColorMode = "RoyalBlue"; }
+    }
+
+    public bool IsInkNavyBlue
+    {
+        get => string.Equals(InkColorMode, "NavyBlue", StringComparison.OrdinalIgnoreCase);
+        set { if (value) InkColorMode = "NavyBlue"; }
+    }
+
+    public bool IsInkOriginal
+    {
+        get => string.Equals(InkColorMode, "Original", StringComparison.OrdinalIgnoreCase);
+        set { if (value) InkColorMode = "Original"; }
+    }
 
     public string InkColorBadgeText => InkColorMode switch
     {
@@ -630,9 +649,17 @@ public class SignatureResizeViewModel : ViewModelBase
         }
     }
 
-    public bool IsBackgroundTransparent => BackgroundMode == "Transparent";
+    public bool IsBackgroundTransparent
+    {
+        get => BackgroundMode == "Transparent";
+        set { if (value) BackgroundMode = "Transparent"; }
+    }
     public bool IsBackgroundPanBlue => BackgroundMode == "PanCardBlue";
-    public bool IsBackgroundWhite => BackgroundMode == "White";
+    public bool IsBackgroundWhite
+    {
+        get => BackgroundMode == "White";
+        set { if (value) BackgroundMode = "White"; }
+    }
 
     private bool _transparentBackground = false;
     public bool TransparentBackground
@@ -806,7 +833,7 @@ public class SignatureResizeViewModel : ViewModelBase
             {
                 if (value.Name.StartsWith("⚡")) return;
 
-                if (value.Name.Contains("Royal Blue Pen Signature"))
+                if (value.Name.Contains("Royal Blue"))
                 {
                     IsCentimeterMode = true;
                     WidthCm = 4.5;
@@ -820,6 +847,23 @@ public class SignatureResizeViewModel : ViewModelBase
                     MaintainAspectRatio = true;
                     BackgroundMode = "White";
                     SelectedOutputFormat = ".jpg";
+                    TriggerAutoPreview(0);
+                    return;
+                }
+
+                if (value.Name.Contains("PAN Card Blue BG"))
+                {
+                    IsCentimeterMode = true;
+                    WidthCm = 4.5;
+                    HeightCm = 2.0;
+                    SelectedDpi = 200;
+                    TargetSizeKB = 30;
+                    MinSizeKB = 10;
+                    CleanBackground = true;
+                    ConvertBlueToBlack = true;
+                    AutoCrop = true;
+                    MaintainAspectRatio = true;
+                    BackgroundMode = "PanCardBlue";
                     TriggerAutoPreview(0);
                     return;
                 }
@@ -1686,8 +1730,9 @@ public class SignatureResizeViewModel : ViewModelBase
             case "BLUE":
             case "BLUEINK":
             case "ROYALBLUE":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Royal Blue Pen")) ?? Presets[3];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Royal Blue")) ?? Presets[3];
                 InkColorMode = "RoyalBlue";
+                BackgroundMode = "White";
                 break;
             case "PANPHOTO":
             case "PAN_PHOTO":
