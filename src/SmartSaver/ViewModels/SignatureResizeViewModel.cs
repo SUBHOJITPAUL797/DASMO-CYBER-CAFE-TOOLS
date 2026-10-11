@@ -491,10 +491,70 @@ public class SignatureResizeViewModel : ViewModelBase
         {
             if (SetProperty(ref _convertBlueToBlack, value))
             {
+                if (value && !IsInkBlack)
+                {
+                    _inkColorMode = "Black";
+                    OnPropertyChanged(nameof(InkColorMode));
+                    OnPropertyChanged(nameof(IsInkBlack));
+                    OnPropertyChanged(nameof(IsInkRoyalBlue));
+                    OnPropertyChanged(nameof(IsInkNavyBlue));
+                    OnPropertyChanged(nameof(IsInkOriginal));
+                    OnPropertyChanged(nameof(InkColorBadgeText));
+                }
+                else if (!value && IsInkBlack)
+                {
+                    _inkColorMode = "Original";
+                    OnPropertyChanged(nameof(InkColorMode));
+                    OnPropertyChanged(nameof(IsInkBlack));
+                    OnPropertyChanged(nameof(IsInkRoyalBlue));
+                    OnPropertyChanged(nameof(IsInkNavyBlue));
+                    OnPropertyChanged(nameof(IsInkOriginal));
+                    OnPropertyChanged(nameof(InkColorBadgeText));
+                }
                 TriggerAutoPreview(50);
             }
         }
     }
+
+    private string _inkColorMode = "Black"; // "Black", "RoyalBlue", "NavyBlue", "Original"
+    public string InkColorMode
+    {
+        get => _inkColorMode;
+        set
+        {
+            if (SetProperty(ref _inkColorMode, value))
+            {
+                if (string.Equals(value, "Black", StringComparison.OrdinalIgnoreCase))
+                {
+                    _convertBlueToBlack = true;
+                }
+                else
+                {
+                    _convertBlueToBlack = false;
+                }
+                OnPropertyChanged(nameof(ConvertBlueToBlack));
+                OnPropertyChanged(nameof(IsInkBlack));
+                OnPropertyChanged(nameof(IsInkRoyalBlue));
+                OnPropertyChanged(nameof(IsInkNavyBlue));
+                OnPropertyChanged(nameof(IsInkOriginal));
+                OnPropertyChanged(nameof(InkColorBadgeText));
+                TriggerAutoPreview(50);
+            }
+        }
+    }
+
+    public bool IsInkBlack => string.Equals(InkColorMode, "Black", StringComparison.OrdinalIgnoreCase);
+    public bool IsInkRoyalBlue => string.Equals(InkColorMode, "RoyalBlue", StringComparison.OrdinalIgnoreCase) || string.Equals(InkColorMode, "Blue", StringComparison.OrdinalIgnoreCase);
+    public bool IsInkNavyBlue => string.Equals(InkColorMode, "NavyBlue", StringComparison.OrdinalIgnoreCase);
+    public bool IsInkOriginal => string.Equals(InkColorMode, "Original", StringComparison.OrdinalIgnoreCase);
+
+    public string InkColorBadgeText => InkColorMode switch
+    {
+        "RoyalBlue" or "Blue" => "🖊️ Royal Blue Pen Ink Active (Official Indian Ballpoint / Gel Pen Ink)",
+        "NavyBlue" => "🖋️ Dark Navy Blue Ink Active (Classic Fountain Pen Standard)",
+        "Original" => "🎨 Original Pen Ink Active (Enhanced Contrast)",
+        _ => "⬛ Pitch Black Ink Active (Strict Exam / SSC / UPSC Standard)"
+    };
 
     private bool _autoCrop = true;
     public bool AutoCrop
@@ -724,6 +784,7 @@ public class SignatureResizeViewModel : ViewModelBase
         new("⚡ Select Exam / Portal Preset...", 140, 60, true, 20, 0),
         new("💳 PAN Card Signature (2 × 4.5 cm | 200 DPI | <50 KB)", 4.5, 2.0, false, 30, 10, "Official NSDL & UTIITSL e-PAN portal specification"),
         new("💳 PAN Card Blue BG (2 × 4.5 cm | 200 DPI | No White Box)", 4.5, 2.0, false, 30, 10, "Matches PAN Card Blue background (#DCE8F5) so JPEG blends with ZERO white box"),
+        new("🖊️ Royal Blue Pen Signature (2 × 4.5 cm | 200 DPI | Blue Ink)", 4.5, 2.0, false, 30, 10, "Authentic Royal Blue ballpoint/gel pen ink signature for bank, PAN & official documents"),
         new("💳 PAN Card Photo (2.5 × 3.5 cm | 200 DPI | <50 KB)", 2.5, 3.5, false, 30, 10, "Official NSDL & UTIITSL 2.5 x 3.5 cm Photo (<50 KB)"),
         new("✨ Transparent Signature (PNG | No White Box)", 4.5, 2.0, false, 50, 0, "100% transparent background for printing directly on card patterns"),
         new("✍️ SSC / IBPS Signature (140 × 60 px | 10–20 KB)", 140, 60, true, 20, 10, "Standard SSC, IBPS, Bank PO signature"),
@@ -744,6 +805,24 @@ public class SignatureResizeViewModel : ViewModelBase
             if (SetProperty(ref _selectedPreset, value) && value != null)
             {
                 if (value.Name.StartsWith("⚡")) return;
+
+                if (value.Name.Contains("Royal Blue Pen Signature"))
+                {
+                    IsCentimeterMode = true;
+                    WidthCm = 4.5;
+                    HeightCm = 2.0;
+                    SelectedDpi = 200;
+                    TargetSizeKB = 30;
+                    MinSizeKB = 10;
+                    CleanBackground = true;
+                    InkColorMode = "RoyalBlue";
+                    AutoCrop = true;
+                    MaintainAspectRatio = true;
+                    BackgroundMode = "White";
+                    SelectedOutputFormat = ".jpg";
+                    TriggerAutoPreview(0);
+                    return;
+                }
 
                 if (value.Name.Contains("PAN Card Blue BG"))
                 {
@@ -914,6 +993,7 @@ public class SignatureResizeViewModel : ViewModelBase
     public ICommand ResetCommand { get; }
     public ICommand SetBackgroundModeCommand { get; }
     public ICommand SetPreviewBackgroundModeCommand { get; }
+    public ICommand SetInkColorModeCommand { get; }
 
     public ICommand IncrementWidthCommand { get; }
     public ICommand DecrementWidthCommand { get; }
@@ -949,6 +1029,7 @@ public class SignatureResizeViewModel : ViewModelBase
         QuickPresetCommand = new RelayCommand(p => ApplyQuickPreset(p?.ToString()));
         SetBackgroundModeCommand = new RelayCommand(p => BackgroundMode = p?.ToString() ?? "White");
         SetPreviewBackgroundModeCommand = new RelayCommand(p => PreviewBackgroundMode = p?.ToString() ?? "Auto");
+        SetInkColorModeCommand = new RelayCommand(p => InkColorMode = p?.ToString() ?? "Black");
 
         IncrementWidthCommand = new RelayCommand(_ => IncrementWidth());
         DecrementWidthCommand = new RelayCommand(_ => DecrementWidth());
@@ -1155,7 +1236,8 @@ public class SignatureResizeViewModel : ViewModelBase
                 dpi: SelectedDpi,
                 convertBlueToBlack: ConvertBlueToBlack,
                 transparentBackground: TransparentBackground,
-                customBackgroundColor: customBg);
+                customBackgroundColor: customBg,
+                inkColor: InkColorMode);
 
             if (result.Success && result.OutputBytes != null)
             {
@@ -1175,9 +1257,17 @@ public class SignatureResizeViewModel : ViewModelBase
                     ? " • ✨ Transparent (No White Box)" 
                     : (BackgroundMode == "PanCardBlue" ? " • 💳 PAN Card Blue (No White Box)" : " • ⚪ Crisp White BG");
 
+                string inkTag = InkColorMode switch
+                {
+                    "RoyalBlue" or "Blue" => " • 🖊️ Royal Blue Ink",
+                    "NavyBlue" => " • 🖋️ Navy Blue Ink",
+                    "Original" => " • 🎨 Original Ink",
+                    _ => " • ⬛ Pitch Black Ink"
+                };
+
                 if (isManualSave)
                 {
-                    ResultSummary = $"✅ Ready! {unitInfo} • {result.OutputSizeFormatted} ({pct:F1}% saved){bgTag}";
+                    ResultSummary = $"✅ Ready! {unitInfo} • {result.OutputSizeFormatted} ({pct:F1}% saved){bgTag}{inkTag}";
 
                     // Auto-save alongside source file if source is on disk
                     if (!string.IsNullOrWhiteSpace(FilePath) && File.Exists(FilePath))
@@ -1197,7 +1287,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 }
                 else
                 {
-                    ResultSummary = $"⚡ Live Preview: {unitInfo} • {result.OutputSizeFormatted} ({pct:F1}% saved){bgTag}";
+                    ResultSummary = $"⚡ Live Preview: {unitInfo} • {result.OutputSizeFormatted} ({pct:F1}% saved){bgTag}{inkTag}";
                 }
             }
             else
@@ -1237,7 +1327,8 @@ public class SignatureResizeViewModel : ViewModelBase
                 transparentBackground: false,
                 targetBytes: 30 * 1024,
                 minBytes: 10 * 1024,
-                customBackgroundColor: null);
+                customBackgroundColor: null,
+                inkColor: InkColorMode);
 
             if (result.Success && result.OutputBytes != null)
             {
@@ -1301,7 +1392,8 @@ public class SignatureResizeViewModel : ViewModelBase
                 transparentBackground: false,
                 targetBytes: 30 * 1024,
                 minBytes: 10 * 1024,
-                customBackgroundColor: SignatureResizeService.PanCardBlue);
+                customBackgroundColor: SignatureResizeService.PanCardBlue,
+                inkColor: InkColorMode);
 
             if (result.Success && result.OutputBytes != null)
             {
@@ -1366,7 +1458,9 @@ public class SignatureResizeViewModel : ViewModelBase
                 _inputBytes,
                 transparentBackground: true,
                 targetBytes: 50 * 1024,
-                minBytes: 0);
+                minBytes: 0,
+                customBackgroundColor: null,
+                inkColor: InkColorMode);
 
             if (result.Success && result.OutputBytes != null)
             {
@@ -1589,27 +1683,33 @@ public class SignatureResizeViewModel : ViewModelBase
             case "BLUEPAN":
                 SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Blue BG")) ?? Presets[2];
                 break;
+            case "BLUE":
+            case "BLUEINK":
+            case "ROYALBLUE":
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Royal Blue Pen")) ?? Presets[3];
+                InkColorMode = "RoyalBlue";
+                break;
             case "PANPHOTO":
             case "PAN_PHOTO":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Photo")) ?? Presets[3];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Photo")) ?? Presets[4];
                 break;
             case "TRANSPARENT":
             case "NOBG":
             case "PNG":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Transparent Signature")) ?? Presets[4];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Transparent Signature")) ?? Presets[5];
                 break;
             case "SSC":
             case "IBPS":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("SSC / IBPS")) ?? Presets[4];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("SSC / IBPS")) ?? Presets[6];
                 break;
             case "UPSC":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("UPSC Signature")) ?? Presets[6];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("UPSC Signature")) ?? Presets[8];
                 break;
             case "PSC":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("State PSC")) ?? Presets[5];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("State PSC")) ?? Presets[7];
                 break;
             case "THUMB":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Thumb")) ?? Presets[8];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Thumb")) ?? Presets[10];
                 break;
         }
     }
@@ -1641,6 +1741,7 @@ public class SignatureResizeViewModel : ViewModelBase
         SelectedDpi = 300;
         CleanBackground = true;
         ConvertBlueToBlack = true;
+        InkColorMode = "Black";
         AutoCrop = true;
         MaintainAspectRatio = true;
         TransparentBackground = false;

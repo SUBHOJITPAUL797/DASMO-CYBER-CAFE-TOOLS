@@ -72,7 +72,8 @@ public class SignatureResizeService
         int dpi = 300,
         bool convertBlueToBlack = true,
         bool transparentBackground = false,
-        SixLabors.ImageSharp.Color? customBackgroundColor = null)
+        SixLabors.ImageSharp.Color? customBackgroundColor = null,
+        string inkColor = "Black")
     {
         if (!File.Exists(inputPath))
         {
@@ -80,7 +81,7 @@ public class SignatureResizeService
         }
 
         byte[] inputBytes = await File.ReadAllBytesAsync(inputPath);
-        var result = await ResizeSignatureFromBytesAsync(inputBytes, targetWidthPx, targetHeightPx, targetBytes, minBytes, cleanBackground, autoCrop, maintainAspectRatio, outputExtension, dpi, convertBlueToBlack, transparentBackground, customBackgroundColor);
+        var result = await ResizeSignatureFromBytesAsync(inputBytes, targetWidthPx, targetHeightPx, targetBytes, minBytes, cleanBackground, autoCrop, maintainAspectRatio, outputExtension, dpi, convertBlueToBlack, transparentBackground, customBackgroundColor, inkColor);
 
         if (result.Success && result.OutputBytes != null && !string.IsNullOrWhiteSpace(outputPath))
         {
@@ -117,7 +118,8 @@ public class SignatureResizeService
         int dpi = 300,
         bool convertBlueToBlack = true,
         bool transparentBackground = false,
-        SixLabors.ImageSharp.Color? customBackgroundColor = null)
+        SixLabors.ImageSharp.Color? customBackgroundColor = null,
+        string inkColor = "Black")
     {
         return await Task.Run(() =>
         {
@@ -137,7 +139,7 @@ public class SignatureResizeService
                 // 2. Optional: Clean paper shadows, enhance dark ink, and auto-crop to ink
                 if (cleanBackground)
                 {
-                    CleanPaperAndBoostInk(image, autoCrop: autoCrop, convertBlueToBlack: convertBlueToBlack, transparentBackground: transparentBackground, customBackgroundColor: customBackgroundColor);
+                    CleanPaperAndBoostInk(image, autoCrop: autoCrop, convertBlueToBlack: convertBlueToBlack, transparentBackground: transparentBackground, customBackgroundColor: customBackgroundColor, inkColor: inkColor);
                 }
 
                 // 3. Resize to exact dimensions without squeezing
@@ -228,7 +230,8 @@ public class SignatureResizeService
         bool transparentBackground = false,
         long targetBytes = 30 * 1024,
         long minBytes = 10 * 1024,
-        SixLabors.ImageSharp.Color? customBackgroundColor = null)
+        SixLabors.ImageSharp.Color? customBackgroundColor = null,
+        string inkColor = "Black")
     {
         // 4.5 cm wide by 2.0 cm high at 200 DPI
         // 4.5 * 200 / 2.54 = ~354 px width
@@ -248,9 +251,10 @@ public class SignatureResizeService
             maintainAspectRatio: true,
             outputExtension: ext,
             dpi: 200,
-            convertBlueToBlack: true,
+            convertBlueToBlack: string.Equals(inkColor, "Black", StringComparison.OrdinalIgnoreCase),
             transparentBackground: transparentBackground,
-            customBackgroundColor: customBackgroundColor);
+            customBackgroundColor: customBackgroundColor,
+            inkColor: inkColor);
     }
 
     /// <summary>
@@ -263,8 +267,19 @@ public class SignatureResizeService
         bool autoCrop = true, 
         bool convertBlueToBlack = true,
         bool transparentBackground = false,
-        SixLabors.ImageSharp.Color? customBackgroundColor = null)
+        SixLabors.ImageSharp.Color? customBackgroundColor = null,
+        string inkColor = "Black")
     {
+        string effectiveInkMode = inkColor;
+        if (string.Equals(inkColor, "Black", StringComparison.OrdinalIgnoreCase) && !convertBlueToBlack)
+        {
+            effectiveInkMode = "Original";
+        }
+        else if (convertBlueToBlack && (string.IsNullOrWhiteSpace(inkColor) || string.Equals(inkColor, "Black", StringComparison.OrdinalIgnoreCase)))
+        {
+            effectiveInkMode = "Black";
+        }
+
         // 1. Adaptive paper background luminance estimation
         // Sample pixels on a regular grid across the image to find the true paper brightness peak,
         // ensuring mobile camera photos taken under dim, warm, or shadow-cast desk lighting clean flawlessly.
@@ -339,19 +354,56 @@ public class SignatureResizeService
                     }
                     else
                     {
-                        if (convertBlueToBlack || isBlueInk)
+                        // Ink pixel -> apply selected professional ink color
+                        float factor = Math.Min(1.0f, (float)lum / effectiveThreshold);
+
+                        switch (effectiveInkMode.ToLowerInvariant())
                         {
-                            // Convert ink (including pale/royal blue ink) to pitch black
-                            float factor = Math.Min(1.0f, (float)lum / effectiveThreshold);
-                            byte darkVal = (byte)Math.Clamp(factor * 20, 0, 255);
-                            p = new Rgba32(darkVal, darkVal, darkVal, 255);
-                        }
-                        else
-                        {
-                            // Ink pixel -> enhance contrast (darken to rich dark tone)
-                            float factor = (float)lum / effectiveThreshold;
-                            byte darkVal = (byte)Math.Clamp(factor * 30, 0, 255);
-                            p = new Rgba32(darkVal, darkVal, darkVal, 255);
+                            case "blue":
+                            case "royalblue":
+                                // Authentic Indian Royal Blue Gel / Ballpoint Pen Ink (Reynolds 045 / Cello Gripper / Parker style)
+                                // Core: Rich deep royal blue (14, 48, 158)
+                                // Feathering / Taper edge: Vibrant pen blue (42, 108, 235)
+                                byte rBlue = (byte)Math.Clamp(14 + factor * 32, 0, 255);
+                                byte gBlue = (byte)Math.Clamp(48 + factor * 64, 0, 255);
+                                byte bBlue = (byte)Math.Clamp(158 + factor * 78, 0, 255);
+                                byte aBlue = transparentBackground
+                                    ? (factor > 0.88f ? (byte)Math.Clamp((1.0f - (factor - 0.88f) / 0.12f * 0.35f) * 255, 160, 255) : (byte)255)
+                                    : (byte)255;
+                                p = new Rgba32(rBlue, gBlue, bBlue, aBlue);
+                                break;
+
+                            case "navy":
+                            case "navyblue":
+                                // Deep Classic Navy / Fountain Pen Blue Ink
+                                byte rNavy = (byte)Math.Clamp(10 + factor * 22, 0, 255);
+                                byte gNavy = (byte)Math.Clamp(32 + factor * 44, 0, 255);
+                                byte bNavy = (byte)Math.Clamp(115 + factor * 70, 0, 255);
+                                byte aNavy = transparentBackground
+                                    ? (factor > 0.88f ? (byte)Math.Clamp((1.0f - (factor - 0.88f) / 0.12f * 0.35f) * 255, 160, 255) : (byte)255)
+                                    : (byte)255;
+                                p = new Rgba32(rNavy, gNavy, bNavy, aNavy);
+                                break;
+
+                            case "original":
+                                // Preserve original pen hue & saturation, but boost contrast
+                                float darkScale = Math.Clamp(factor * 0.75f, 0.15f, 1.0f);
+                                byte rOrig = (byte)Math.Clamp(p.R * darkScale, 0, 255);
+                                byte gOrig = (byte)Math.Clamp(p.G * darkScale, 0, 255);
+                                byte bOrig = (byte)Math.Clamp(p.B * darkScale, 0, 255);
+                                byte aOrig = transparentBackground ? (byte)255 : (byte)255;
+                                p = new Rgba32(rOrig, gOrig, bOrig, aOrig);
+                                break;
+
+                            case "black":
+                            default:
+                                // Pure Pitch Black (Strict Exam / SSC / UPSC Standard)
+                                byte darkVal = (byte)Math.Clamp(factor * 20, 0, 255);
+                                byte aBlack = transparentBackground
+                                    ? (factor > 0.88f ? (byte)Math.Clamp((1.0f - (factor - 0.88f) / 0.12f * 0.35f) * 255, 160, 255) : (byte)255)
+                                    : (byte)255;
+                                p = new Rgba32(darkVal, darkVal, darkVal, aBlack);
+                                break;
                         }
 
                         if (x < minX) minX = x;

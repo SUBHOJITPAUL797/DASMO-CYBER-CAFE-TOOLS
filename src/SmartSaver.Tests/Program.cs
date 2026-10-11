@@ -8372,6 +8372,128 @@ flowchart TD
                 failed++;
             }
 
+            // [TEST 95] Professional Signature Blue Ink Engine: Royal Blue & Navy Blue Pen Transformation
+            try
+            {
+                Console.Write("[TEST 95] Professional Signature Blue Ink Engine: Royal Blue & Navy Blue Pen Ink Mapping... ");
+
+                // 1. Prepare sample pitch-black pen signature on white paper
+                string blackSigPath = Path.Combine(testDir, "test_sig_black95.jpg");
+                using (var sigImage = new Image<Rgba32>(400, 200))
+                {
+                    for (int y = 0; y < 200; y++)
+                    {
+                        for (int x = 0; x < 400; x++)
+                        {
+                            if (y >= 95 && y <= 105 && x >= 50 && x <= 350)
+                                sigImage[x, y] = new Rgba32(10, 10, 10, 255); // Solid pitch-black ink line
+                            else
+                                sigImage[x, y] = new Rgba32(255, 255, 255, 255); // White paper
+                        }
+                    }
+                    sigImage.SaveAsJpeg(blackSigPath);
+                }
+
+                var sigService = new SignatureResizeService(new ImageCompressor());
+                byte[] blackSigBytes = File.ReadAllBytes(blackSigPath);
+
+                // A. Test Royal Blue ink transformation (black pen -> authentic Indian royal blue pen ink)
+                var royalBlueResult = sigService.ResizePanCardSignatureAsync(blackSigBytes, transparentBackground: false, inkColor: "RoyalBlue").GetAwaiter().GetResult();
+                if (!royalBlueResult.Success || royalBlueResult.OutputBytes == null)
+                    throw new Exception($"RoyalBlue ResizePanCardSignatureAsync failed: {royalBlueResult.Message}");
+
+                using (var royalBlueImage = SixLabors.ImageSharp.Image.Load<Rgba32>(royalBlueResult.OutputBytes))
+                {
+                    // Center pixel inside stroke (scaled center approx (177, 78))
+                    var inkPixel = royalBlueImage[royalBlueImage.Width / 2, royalBlueImage.Height / 2];
+                    // Royal blue must have strong blue dominance: B > R + 50, B > G + 40, B >= 140
+                    if (inkPixel.B < 130 || inkPixel.B <= inkPixel.R + 40 || inkPixel.B <= inkPixel.G + 30)
+                        throw new Exception($"Expected Royal Blue ink pixel at stroke core, but got RGB({inkPixel.R},{inkPixel.G},{inkPixel.B})");
+                }
+
+                // B. Test Navy Blue ink transformation
+                var navyResult = sigService.ResizePanCardSignatureAsync(blackSigBytes, transparentBackground: false, inkColor: "NavyBlue").GetAwaiter().GetResult();
+                if (!navyResult.Success || navyResult.OutputBytes == null)
+                    throw new Exception($"NavyBlue ResizePanCardSignatureAsync failed: {navyResult.Message}");
+
+                using (var navyImage = SixLabors.ImageSharp.Image.Load<Rgba32>(navyResult.OutputBytes))
+                {
+                    var inkPixel = navyImage[navyImage.Width / 2, navyImage.Height / 2];
+                    if (inkPixel.B < 100 || inkPixel.B <= inkPixel.R + 25 || inkPixel.B <= inkPixel.G + 20)
+                        throw new Exception($"Expected Navy Blue ink pixel at stroke core, but got RGB({inkPixel.R},{inkPixel.G},{inkPixel.B})");
+                }
+
+                // C. Test Royal Blue ink on 100% Transparent Background (Zero white box + Royal Blue ink)
+                var transRoyalResult = sigService.ResizePanCardSignatureAsync(blackSigBytes, transparentBackground: true, inkColor: "RoyalBlue").GetAwaiter().GetResult();
+                if (!transRoyalResult.Success || transRoyalResult.OutputBytes == null)
+                    throw new Exception($"Transparent RoyalBlue failed: {transRoyalResult.Message}");
+
+                using (var transRoyalImage = SixLabors.ImageSharp.Image.Load<Rgba32>(transRoyalResult.OutputBytes))
+                {
+                    // Background corner must be 100% transparent
+                    var corner = transRoyalImage[0, 0];
+                    if (corner.A != 0)
+                        throw new Exception($"Expected transparent corner pixel, got Alpha={corner.A}");
+
+                    // Stroke core must be royal blue ink
+                    var ink = transRoyalImage[transRoyalImage.Width / 2, transRoyalImage.Height / 2];
+                    if (ink.A == 0 || ink.B < 130 || ink.B <= ink.R + 40)
+                        throw new Exception($"Expected opaque Royal Blue ink on transparent canvas, got RGBA({ink.R},{ink.G},{ink.B},{ink.A})");
+                }
+
+                // D. Test SignatureResizeViewModel ink color modes and quick preset
+                Exception? staEx95 = null;
+                var staThread95 = new Thread(() =>
+                {
+                    try
+                    {
+                        var vm = new SignatureResizeViewModel(blackSigPath);
+
+                        // Quick preset "BLUE"
+                        vm.ApplyQuickPreset("BLUE");
+                        if (!vm.IsInkRoyalBlue || vm.InkColorMode != "RoyalBlue")
+                            throw new Exception($"Expected InkColorMode 'RoyalBlue' after preset BLUE, got '{vm.InkColorMode}'");
+                        if (Math.Abs(vm.WidthCm - 4.5) > 0.01 || Math.Abs(vm.HeightCm - 2.0) > 0.01)
+                            throw new Exception($"Dimensions mismatch after BLUE preset: {vm.WidthCm}x{vm.HeightCm}");
+
+                        // Mode switching
+                        vm.SetInkColorModeCommand.Execute("NavyBlue");
+                        if (!vm.IsInkNavyBlue || vm.InkColorMode != "NavyBlue")
+                            throw new Exception("SetInkColorModeCommand('NavyBlue') failed");
+
+                        vm.SetInkColorModeCommand.Execute("Original");
+                        if (!vm.IsInkOriginal || vm.InkColorMode != "Original")
+                            throw new Exception("SetInkColorModeCommand('Original') failed");
+
+                        vm.SetInkColorModeCommand.Execute("Black");
+                        if (!vm.IsInkBlack || vm.InkColorMode != "Black" || !vm.ConvertBlueToBlack)
+                            throw new Exception("SetInkColorModeCommand('Black') failed");
+
+                        vm.SetInkColorModeCommand.Execute("RoyalBlue");
+                        if (!vm.IsInkRoyalBlue || vm.InkColorMode != "RoyalBlue")
+                            throw new Exception("SetInkColorModeCommand('RoyalBlue') failed");
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx95 = ex;
+                    }
+                });
+                staThread95.SetApartmentState(ApartmentState.STA);
+                staThread95.Start();
+                staThread95.Join();
+
+                if (staEx95 != null)
+                    throw staEx95;
+
+                Console.WriteLine("PASSED (Black-to-Royal Blue & Navy Mapping, Transparent Alpha Ink Blending & ViewModel Commands Verified)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");
