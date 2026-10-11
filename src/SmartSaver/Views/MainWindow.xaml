@@ -2363,7 +2363,7 @@
                           Style="{StaticResource ContentFadeStyle}"
                           AllowDrop="True" Drop="SignatureTab_Drop" DragOver="SignatureTab_DragOver">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="460"/>
+                            <ColumnDefinition Width="490" MinWidth="440" MaxWidth="540"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
@@ -2434,14 +2434,14 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="26"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBox Text="{Binding WidthPx, UpdateSourceTrigger=PropertyChanged}" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                                    <TextBox Text="{Binding WidthPxText, UpdateSourceTrigger=PropertyChanged}" LostFocus="SignatureDimensionTextBox_LostFocus" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                                                     <Grid Grid.Column="1" Margin="2,0,0,0">
                                                         <Grid.RowDefinitions>
                                                             <RowDefinition Height="*"/>
                                                             <RowDefinition Height="*"/>
                                                         </Grid.RowDefinitions>
-                                                        <Button Content="▲" Command="{Binding IncrementWidthCommand}" FontSize="8" Padding="0" Margin="0,0,0,1" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
-                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementWidthCommand}" FontSize="8" Padding="0" Margin="0,1,0,0" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
+                                                        <Button Content="▲" Command="{Binding IncrementWidthCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,0,0,1"/>
+                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementWidthCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,1,0,0"/>
                                                     </Grid>
                                                 </Grid>
                                             </StackPanel>
@@ -2453,14 +2453,14 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="26"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBox Text="{Binding HeightPx, UpdateSourceTrigger=PropertyChanged}" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                                    <TextBox Text="{Binding HeightPxText, UpdateSourceTrigger=PropertyChanged}" LostFocus="SignatureDimensionTextBox_LostFocus" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                                                     <Grid Grid.Column="1" Margin="2,0,0,0">
                                                         <Grid.RowDefinitions>
                                                             <RowDefinition Height="*"/>
                                                             <RowDefinition Height="*"/>
                                                         </Grid.RowDefinitions>
-                                                        <Button Content="▲" Command="{Binding IncrementHeightCommand}" FontSize="8" Padding="0" Margin="0,0,0,1" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
-                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementHeightCommand}" FontSize="8" Padding="0" Margin="0,1,0,0" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
+                                                        <Button Content="▲" Command="{Binding IncrementHeightCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,0,0,1"/>
+                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementHeightCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,1,0,0"/>
                                                     </Grid>
                                                 </Grid>
                                             </StackPanel>
@@ -2488,8 +2488,8 @@
                                                             <RowDefinition Height="*"/>
                                                             <RowDefinition Height="*"/>
                                                         </Grid.RowDefinitions>
-                                                        <Button Content="▲" Command="{Binding IncrementWidthCommand}" FontSize="8" Padding="0" Margin="0,0,0,1" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
-                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementWidthCommand}" FontSize="8" Padding="0" Margin="0,1,0,0" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
+                                                        <Button Content="▲" Command="{Binding IncrementWidthCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,0,0,1"/>
+                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementWidthCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,1,0,0"/>
                                                     </Grid>
                                                 </Grid>
                                             </StackPanel>
@@ -2507,8 +2507,8 @@
                                                             <RowDefinition Height="*"/>
                                                             <RowDefinition Height="*"/>
                                                         </Grid.RowDefinitions>
-                                                        <Button Content="▲" Command="{Binding IncrementHeightCommand}" FontSize="8" Padding="0" Margin="0,0,0,1" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
-                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementHeightCommand}" FontSize="8" Padding="0" Margin="0,1,0,0" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
+                                                        <Button Content="▲" Command="{Binding IncrementHeightCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,0,0,1"/>
+                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementHeightCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,1,0,0"/>
                                                     </Grid>
                                                 </Grid>
                                             </StackPanel>
@@ -2529,64 +2529,78 @@
                                     <StackPanel Margin="0,6">
                                         <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="110"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="20"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="100"/>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="16"/>
+                                                <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Max Limit:" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,8,0"/>
-                                            <Grid Grid.Column="1">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="24"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBox Text="{Binding TargetSizeKB, UpdateSourceTrigger=PropertyChanged}" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
-                                                <Grid Grid.Column="1" Margin="2,0,0,0">
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="*"/>
-                                                        <RowDefinition Height="*"/>
-                                                    </Grid.RowDefinitions>
-                                                    <Button Content="▲" Command="{Binding IncrementSizeCommand}" FontSize="8" Padding="0" Margin="0,0,0,1" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
-                                                    <Button Grid.Row="1" Content="▼" Command="{Binding DecrementSizeCommand}" FontSize="8" Padding="0" Margin="0,1,0,0" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
-                                                </Grid>
-                                            </Grid>
-                                            <TextBlock Grid.Column="2" Text="KB" VerticalAlignment="Center" FontWeight="Bold" FontSize="12" Margin="6,0,0,0"/>
 
-                                            <TextBlock Grid.Column="4" Text="Min Size:" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,8,0" ToolTip="Minimum size requirement (e.g. SSC requires 10-20 KB)"/>
-                                            <Grid Grid.Column="5">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="24"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBox Text="{Binding MinSizeKB, UpdateSourceTrigger=PropertyChanged}" Height="32" FontSize="14" FontWeight="Bold" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" ToolTip="Set to 0 if no minimum requirement"/>
-                                                <Grid Grid.Column="1" Margin="2,0,0,0">
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="*"/>
-                                                        <RowDefinition Height="*"/>
-                                                    </Grid.RowDefinitions>
-                                                    <Button Content="▲" Command="{Binding IncrementMinSizeCommand}" FontSize="8" Padding="0" Margin="0,0,0,1" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
-                                                    <Button Grid.Row="1" Content="▼" Command="{Binding DecrementMinSizeCommand}" FontSize="8" Padding="0" Margin="0,1,0,0" Style="{StaticResource SecondaryButton}" Cursor="Hand"/>
+                                            <!-- Column 0: Max Size -->
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Max File Size (KB):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="26"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Text="{Binding TargetSizeKBText, UpdateSourceTrigger=PropertyChanged}" 
+                                                             LostFocus="SignatureDimensionTextBox_LostFocus"
+                                                             Height="32" FontSize="14" FontWeight="Bold" 
+                                                             VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                                    <Grid Grid.Column="1" Margin="2,0,0,0">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="*"/>
+                                                            <RowDefinition Height="*"/>
+                                                        </Grid.RowDefinitions>
+                                                        <Button Content="▲" Command="{Binding IncrementSizeCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,0,0,1"/>
+                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementSizeCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,1,0,0"/>
+                                                    </Grid>
                                                 </Grid>
-                                            </Grid>
-                                            <TextBlock Grid.Column="6" Text="KB" VerticalAlignment="Center" FontWeight="Bold" FontSize="12" Margin="6,0,0,0"/>
+                                            </StackPanel>
+
+                                            <!-- Column 1: Min Size -->
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Min Size (0 = No Min):" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" 
+                                                           ToolTip="Minimum size requirement (e.g. SSC requires 10-20 KB)"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="26"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Text="{Binding MinSizeKBText, UpdateSourceTrigger=PropertyChanged}" 
+                                                             LostFocus="SignatureDimensionTextBox_LostFocus"
+                                                             Height="32" FontSize="14" FontWeight="Bold" 
+                                                             VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
+                                                             ToolTip="Set to 0 if no minimum requirement"/>
+                                                    <Grid Grid.Column="1" Margin="2,0,0,0">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="*"/>
+                                                            <RowDefinition Height="*"/>
+                                                        </Grid.RowDefinitions>
+                                                        <Button Content="▲" Command="{Binding IncrementMinSizeCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,0,0,1"/>
+                                                        <Button Grid.Row="1" Content="▼" Command="{Binding DecrementMinSizeCommand}" Style="{StaticResource SpinnerButtonStyle}" Margin="0,1,0,0"/>
+                                                    </Grid>
+                                                </Grid>
+                                            </StackPanel>
                                         </Grid>
 
-                                        <CheckBox Content="✨ Clean Paper Background &amp; Boost Dark Ink (Magic White)" 
-                                                  IsChecked="{Binding CleanBackground}" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                        <CheckBox Content="⬛ Convert Blue Ink to Pitch Black (Strict Exam / SSC / UPSC Standard)" 
-                                                  IsChecked="{Binding ConvertBlueToBlack}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,6"
-                                                  ToolTip="Detects blue ballpoint/gel pen ink and converts it to pure crisp black to prevent online portal rejection"/>
-                                        <CheckBox Content="✂️ Auto-Crop Signature (Trim blank scanner margins)" 
-                                                  IsChecked="{Binding AutoCrop}" FontWeight="SemiBold" Margin="0,0,0,6"
-                                                  ToolTip="Trims empty paper margins around signature so it scales to full crisp size"/>
-                                        <CheckBox Content="Fit inside bounds (Keep original aspect ratio with white border)" 
-                                                  IsChecked="{Binding MaintainAspectRatio}" Margin="0,0,0,6"/>
-                                        <CheckBox Content="🪄 Transparent Background (PNG — No White Box on PAN / PVC Card)" 
-                                                  IsChecked="{Binding TransparentBackground}" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,4"
-                                                  ToolTip="Removes paper background completely so only handwriting ink is preserved with transparent alpha channel. Perfect for PAN card printing directly over card pattern lines."/>
+                                        <CheckBox IsChecked="{Binding CleanBackground}" Margin="0,0,0,6">
+                                            <TextBlock Text="✨ Clean Paper Background &amp; Boost Dark Ink (Magic White)" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                        </CheckBox>
+                                        <CheckBox IsChecked="{Binding ConvertBlueToBlack}" Margin="0,0,0,6"
+                                                  ToolTip="Detects blue ballpoint/gel pen ink and converts it to pure crisp black to prevent online portal rejection">
+                                            <TextBlock Text="⬛ Convert Blue Ink to Pitch Black (Strict Exam / SSC / UPSC Standard)" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                        </CheckBox>
+                                        <CheckBox IsChecked="{Binding AutoCrop}" Margin="0,0,0,6"
+                                                  ToolTip="Trims empty paper margins around signature so it scales to full crisp size">
+                                            <TextBlock Text="✂️ Auto-Crop Signature (Trim blank scanner margins)" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                        </CheckBox>
+                                        <CheckBox IsChecked="{Binding MaintainAspectRatio}" Margin="0,0,0,6">
+                                            <TextBlock Text="Fit inside bounds (Keep original aspect ratio with white border)" TextWrapping="Wrap"/>
+                                        </CheckBox>
+                                        <CheckBox IsChecked="{Binding TransparentBackground}" Margin="0,0,0,4"
+                                                  ToolTip="Removes paper background completely so only handwriting ink is preserved with transparent alpha channel. Perfect for PAN card printing directly over card pattern lines.">
+                                            <TextBlock Text="🪄 Transparent Background (PNG — No White Box on PAN / PVC Card)" TextWrapping="Wrap" FontWeight="Bold" Foreground="#38BDF8"/>
+                                        </CheckBox>
                                     </StackPanel>
                                 </GroupBox>
 

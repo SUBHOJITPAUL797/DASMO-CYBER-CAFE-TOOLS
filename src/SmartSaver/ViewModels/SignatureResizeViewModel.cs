@@ -139,6 +139,34 @@ public class SignatureResizeViewModel : ViewModelBase
     public string DimensionUnitLabel => IsPixelMode ? "px" : "cm";
 
     // Pixel Dimensions (defaults to Pi7 standard: 140 x 60)
+    private string _widthPxText = "140";
+    public string WidthPxText
+    {
+        get => _widthPxText;
+        set
+        {
+            if (SetProperty(ref _widthPxText, value))
+            {
+                string raw = (value ?? string.Empty).Trim();
+                if (int.TryParse(raw, out int parsed))
+                {
+                    if (parsed >= 10 && parsed <= 5000)
+                    {
+                        if (_widthPx != parsed)
+                        {
+                            _widthPx = parsed;
+                            OnPropertyChanged(nameof(WidthPx));
+                            OnPropertyChanged(nameof(EffectiveWidthPx));
+                            OnPropertyChanged(nameof(EquivalentPixelsText));
+                            OnPropertyChanged(nameof(CanResize));
+                            TriggerAutoPreview(120);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private int _widthPx = 140;
     public int WidthPx
     {
@@ -147,10 +175,40 @@ public class SignatureResizeViewModel : ViewModelBase
         {
             if (SetProperty(ref _widthPx, value))
             {
+                _widthPxText = value.ToString();
+                OnPropertyChanged(nameof(WidthPxText));
                 OnPropertyChanged(nameof(EffectiveWidthPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
                 TriggerAutoPreview(120);
+            }
+        }
+    }
+
+    private string _heightPxText = "60";
+    public string HeightPxText
+    {
+        get => _heightPxText;
+        set
+        {
+            if (SetProperty(ref _heightPxText, value))
+            {
+                string raw = (value ?? string.Empty).Trim();
+                if (int.TryParse(raw, out int parsed))
+                {
+                    if (parsed >= 10 && parsed <= 5000)
+                    {
+                        if (_heightPx != parsed)
+                        {
+                            _heightPx = parsed;
+                            OnPropertyChanged(nameof(HeightPx));
+                            OnPropertyChanged(nameof(EffectiveHeightPx));
+                            OnPropertyChanged(nameof(EquivalentPixelsText));
+                            OnPropertyChanged(nameof(CanResize));
+                            TriggerAutoPreview(120);
+                        }
+                    }
+                }
             }
         }
     }
@@ -163,6 +221,8 @@ public class SignatureResizeViewModel : ViewModelBase
         {
             if (SetProperty(ref _heightPx, value))
             {
+                _heightPxText = value.ToString();
+                OnPropertyChanged(nameof(HeightPxText));
                 OnPropertyChanged(nameof(EffectiveHeightPx));
                 OnPropertyChanged(nameof(EquivalentPixelsText));
                 OnPropertyChanged(nameof(CanResize));
@@ -272,6 +332,14 @@ public class SignatureResizeViewModel : ViewModelBase
         OnPropertyChanged(nameof(WidthCmText));
         _heightCmText = _heightCm.ToString("0.##", CultureInfo.InvariantCulture);
         OnPropertyChanged(nameof(HeightCmText));
+        _widthPxText = _widthPx.ToString();
+        OnPropertyChanged(nameof(WidthPxText));
+        _heightPxText = _heightPx.ToString();
+        OnPropertyChanged(nameof(HeightPxText));
+        _targetSizeKBText = _targetSizeKB.ToString();
+        OnPropertyChanged(nameof(TargetSizeKBText));
+        _minSizeKBText = _minSizeKB.ToString();
+        OnPropertyChanged(nameof(MinSizeKBText));
     }
 
     public ObservableCollection<int> DpiOptions { get; } = new() { 300, 200, 150 };
@@ -322,6 +390,31 @@ public class SignatureResizeViewModel : ViewModelBase
     #endregion
 
     #region Target File Size & Options
+    private string _targetSizeKBText = "20";
+    public string TargetSizeKBText
+    {
+        get => _targetSizeKBText;
+        set
+        {
+            if (SetProperty(ref _targetSizeKBText, value))
+            {
+                string raw = (value ?? string.Empty).Trim();
+                if (int.TryParse(raw, out int parsed))
+                {
+                    if (parsed >= 5 && parsed <= 10000)
+                    {
+                        if (_targetSizeKB != parsed)
+                        {
+                            _targetSizeKB = parsed;
+                            OnPropertyChanged(nameof(TargetSizeKB));
+                            TriggerAutoPreview(150);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private int _targetSizeKB = 20;
     public int TargetSizeKB
     {
@@ -330,7 +423,34 @@ public class SignatureResizeViewModel : ViewModelBase
         {
             if (SetProperty(ref _targetSizeKB, value))
             {
+                _targetSizeKBText = value.ToString();
+                OnPropertyChanged(nameof(TargetSizeKBText));
                 TriggerAutoPreview(150);
+            }
+        }
+    }
+
+    private string _minSizeKBText = "0";
+    public string MinSizeKBText
+    {
+        get => _minSizeKBText;
+        set
+        {
+            if (SetProperty(ref _minSizeKBText, value))
+            {
+                string raw = (value ?? string.Empty).Trim();
+                if (int.TryParse(raw, out int parsed))
+                {
+                    if (parsed >= 0 && parsed <= 10000)
+                    {
+                        if (_minSizeKB != parsed)
+                        {
+                            _minSizeKB = parsed;
+                            OnPropertyChanged(nameof(MinSizeKB));
+                            TriggerAutoPreview(150);
+                        }
+                    }
+                }
             }
         }
     }
@@ -343,6 +463,8 @@ public class SignatureResizeViewModel : ViewModelBase
         {
             if (SetProperty(ref _minSizeKB, value))
             {
+                _minSizeKBText = value.ToString();
+                OnPropertyChanged(nameof(MinSizeKBText));
                 TriggerAutoPreview(150);
             }
         }
