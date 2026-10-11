@@ -522,6 +522,58 @@ public class SignatureResizeViewModel : ViewModelBase
         }
     }
 
+    private static readonly System.Windows.Media.Brush PanCardBlueMediaBrush = 
+        new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(220, 232, 245));
+
+    private string _backgroundMode = "White"; // "Transparent", "PanCardBlue", "White"
+    public string BackgroundMode
+    {
+        get => _backgroundMode;
+        set
+        {
+            if (SetProperty(ref _backgroundMode, value))
+            {
+                if (value == "Transparent")
+                {
+                    _transparentBackground = true;
+                    _selectedOutputFormat = ".png";
+                    OnPropertyChanged(nameof(TransparentBackground));
+                    OnPropertyChanged(nameof(SelectedOutputFormat));
+                    OnPropertyChanged(nameof(IsTransparentPngMode));
+                }
+                else if (value == "PanCardBlue")
+                {
+                    _transparentBackground = false;
+                    _selectedOutputFormat = ".jpg";
+                    OnPropertyChanged(nameof(TransparentBackground));
+                    OnPropertyChanged(nameof(SelectedOutputFormat));
+                    OnPropertyChanged(nameof(IsTransparentPngMode));
+                }
+                else
+                {
+                    _transparentBackground = false;
+                    _selectedOutputFormat = ".jpg";
+                    OnPropertyChanged(nameof(TransparentBackground));
+                    OnPropertyChanged(nameof(SelectedOutputFormat));
+                    OnPropertyChanged(nameof(IsTransparentPngMode));
+                }
+                OnPropertyChanged(nameof(IsBackgroundTransparent));
+                OnPropertyChanged(nameof(IsBackgroundPanBlue));
+                OnPropertyChanged(nameof(IsBackgroundWhite));
+                OnPropertyChanged(nameof(PreviewBackgroundBrush));
+                OnPropertyChanged(nameof(EffectivePreviewMode));
+                OnPropertyChanged(nameof(IsPreviewCheckerboard));
+                OnPropertyChanged(nameof(IsPreviewPanCardBlue));
+                OnPropertyChanged(nameof(IsPreviewWhite));
+                TriggerAutoPreview(50);
+            }
+        }
+    }
+
+    public bool IsBackgroundTransparent => BackgroundMode == "Transparent";
+    public bool IsBackgroundPanBlue => BackgroundMode == "PanCardBlue";
+    public bool IsBackgroundWhite => BackgroundMode == "White";
+
     private bool _transparentBackground = false;
     public bool TransparentBackground
     {
@@ -532,19 +584,106 @@ public class SignatureResizeViewModel : ViewModelBase
             {
                 if (value)
                 {
+                    _backgroundMode = "Transparent";
                     SelectedOutputFormat = ".png";
                 }
                 else
                 {
+                    if (_backgroundMode == "Transparent")
+                        _backgroundMode = "White";
                     SelectedOutputFormat = ".jpg";
                 }
+                OnPropertyChanged(nameof(BackgroundMode));
+                OnPropertyChanged(nameof(IsBackgroundTransparent));
+                OnPropertyChanged(nameof(IsBackgroundPanBlue));
+                OnPropertyChanged(nameof(IsBackgroundWhite));
                 OnPropertyChanged(nameof(IsTransparentPngMode));
+                OnPropertyChanged(nameof(PreviewBackgroundBrush));
+                OnPropertyChanged(nameof(EffectivePreviewMode));
+                OnPropertyChanged(nameof(IsPreviewCheckerboard));
+                OnPropertyChanged(nameof(IsPreviewPanCardBlue));
+                OnPropertyChanged(nameof(IsPreviewWhite));
                 TriggerAutoPreview(50);
             }
         }
     }
 
     public bool IsTransparentPngMode => TransparentBackground || SelectedOutputFormat == ".png";
+
+    private string _previewBackgroundMode = "Auto"; // "Auto", "Checkerboard", "PanCardBlue", "White"
+    public string PreviewBackgroundMode
+    {
+        get => _previewBackgroundMode;
+        set
+        {
+            if (SetProperty(ref _previewBackgroundMode, value))
+            {
+                OnPropertyChanged(nameof(PreviewBackgroundBrush));
+                OnPropertyChanged(nameof(EffectivePreviewMode));
+                OnPropertyChanged(nameof(IsPreviewCheckerboard));
+                OnPropertyChanged(nameof(IsPreviewPanCardBlue));
+                OnPropertyChanged(nameof(IsPreviewWhite));
+            }
+        }
+    }
+
+    public string EffectivePreviewMode
+    {
+        get
+        {
+            if (_previewBackgroundMode != "Auto") return _previewBackgroundMode;
+            if (IsTransparentPngMode) return "Checkerboard";
+            if (BackgroundMode == "PanCardBlue") return "PanCardBlue";
+            return "White";
+        }
+    }
+
+    public System.Windows.Media.Brush PreviewBackgroundBrush
+    {
+        get
+        {
+            string mode = EffectivePreviewMode;
+            if (mode == "Checkerboard")
+            {
+                if (System.Windows.Application.Current != null &&
+                    System.Windows.Application.Current.TryFindResource("CheckerboardBrush") is System.Windows.Media.Brush cbBrush)
+                {
+                    return cbBrush;
+                }
+                return CreateDefaultCheckerboardBrush();
+            }
+            if (mode == "PanCardBlue")
+            {
+                return PanCardBlueMediaBrush;
+            }
+            return System.Windows.Media.Brushes.White;
+        }
+    }
+
+    public bool IsPreviewCheckerboard => EffectivePreviewMode == "Checkerboard";
+    public bool IsPreviewPanCardBlue => EffectivePreviewMode == "PanCardBlue";
+    public bool IsPreviewWhite => EffectivePreviewMode == "White";
+
+    private static System.Windows.Media.DrawingBrush CreateDefaultCheckerboardBrush()
+    {
+        var db = new System.Windows.Media.DrawingBrush
+        {
+            Viewport = new System.Windows.Rect(0, 0, 16, 16),
+            ViewportUnits = System.Windows.Media.BrushMappingMode.Absolute,
+            TileMode = System.Windows.Media.TileMode.Tile
+        };
+        var group = new System.Windows.Media.DrawingGroup();
+        group.Children.Add(new System.Windows.Media.GeometryDrawing(
+            System.Windows.Media.Brushes.White, null, new System.Windows.Media.RectangleGeometry(new System.Windows.Rect(0, 0, 16, 16))));
+        var grayGroup = new System.Windows.Media.GeometryGroup();
+        grayGroup.Children.Add(new System.Windows.Media.RectangleGeometry(new System.Windows.Rect(0, 0, 8, 8)));
+        grayGroup.Children.Add(new System.Windows.Media.RectangleGeometry(new System.Windows.Rect(8, 8, 8, 8)));
+        var slateBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(203, 213, 225));
+        group.Children.Add(new System.Windows.Media.GeometryDrawing(slateBrush, null, grayGroup));
+        db.Drawing = group;
+        db.Freeze();
+        return db;
+    }
 
     public ObservableCollection<string> OutputFormats { get; } = new() { ".jpg", ".png" };
 
@@ -558,9 +697,21 @@ public class SignatureResizeViewModel : ViewModelBase
             {
                 if (value == ".jpg" && TransparentBackground)
                 {
-                    TransparentBackground = false;
+                    _transparentBackground = false;
+                    if (_backgroundMode == "Transparent")
+                        _backgroundMode = "White";
+                    OnPropertyChanged(nameof(TransparentBackground));
+                    OnPropertyChanged(nameof(BackgroundMode));
+                    OnPropertyChanged(nameof(IsBackgroundTransparent));
+                    OnPropertyChanged(nameof(IsBackgroundPanBlue));
+                    OnPropertyChanged(nameof(IsBackgroundWhite));
                 }
                 OnPropertyChanged(nameof(IsTransparentPngMode));
+                OnPropertyChanged(nameof(PreviewBackgroundBrush));
+                OnPropertyChanged(nameof(EffectivePreviewMode));
+                OnPropertyChanged(nameof(IsPreviewCheckerboard));
+                OnPropertyChanged(nameof(IsPreviewPanCardBlue));
+                OnPropertyChanged(nameof(IsPreviewWhite));
                 TriggerAutoPreview(50);
             }
         }
@@ -572,6 +723,7 @@ public class SignatureResizeViewModel : ViewModelBase
     {
         new("⚡ Select Exam / Portal Preset...", 140, 60, true, 20, 0),
         new("💳 PAN Card Signature (2 × 4.5 cm | 200 DPI | <50 KB)", 4.5, 2.0, false, 30, 10, "Official NSDL & UTIITSL e-PAN portal specification"),
+        new("💳 PAN Card Blue BG (2 × 4.5 cm | 200 DPI | No White Box)", 4.5, 2.0, false, 30, 10, "Matches PAN Card Blue background (#DCE8F5) so JPEG blends with ZERO white box"),
         new("💳 PAN Card Photo (2.5 × 3.5 cm | 200 DPI | <50 KB)", 2.5, 3.5, false, 30, 10, "Official NSDL & UTIITSL 2.5 x 3.5 cm Photo (<50 KB)"),
         new("✨ Transparent Signature (PNG | No White Box)", 4.5, 2.0, false, 50, 0, "100% transparent background for printing directly on card patterns"),
         new("✍️ SSC / IBPS Signature (140 × 60 px | 10–20 KB)", 140, 60, true, 20, 10, "Standard SSC, IBPS, Bank PO signature"),
@@ -593,6 +745,23 @@ public class SignatureResizeViewModel : ViewModelBase
             {
                 if (value.Name.StartsWith("⚡")) return;
 
+                if (value.Name.Contains("PAN Card Blue BG"))
+                {
+                    IsCentimeterMode = true;
+                    WidthCm = 4.5;
+                    HeightCm = 2.0;
+                    SelectedDpi = 200;
+                    TargetSizeKB = 30;
+                    MinSizeKB = 10;
+                    CleanBackground = true;
+                    ConvertBlueToBlack = true;
+                    AutoCrop = true;
+                    MaintainAspectRatio = true;
+                    BackgroundMode = "PanCardBlue";
+                    TriggerAutoPreview(0);
+                    return;
+                }
+
                 if (value.Name.Contains("PAN Card Photo"))
                 {
                     IsCentimeterMode = true;
@@ -605,7 +774,7 @@ public class SignatureResizeViewModel : ViewModelBase
                     ConvertBlueToBlack = false;
                     AutoCrop = false;
                     MaintainAspectRatio = true;
-                    TransparentBackground = false;
+                    BackgroundMode = "White";
                     SelectedOutputFormat = ".jpg";
                     TriggerAutoPreview(0);
                     return;
@@ -623,7 +792,7 @@ public class SignatureResizeViewModel : ViewModelBase
                     ConvertBlueToBlack = true;
                     AutoCrop = true;
                     MaintainAspectRatio = true;
-                    TransparentBackground = false;
+                    BackgroundMode = "White";
                     SelectedOutputFormat = ".jpg";
                     TriggerAutoPreview(0);
                     return;
@@ -738,10 +907,13 @@ public class SignatureResizeViewModel : ViewModelBase
     public ICommand ResizeCommand { get; }
     public ICommand SaveAsCommand { get; }
     public ICommand SavePanPortalJpegCommand { get; }
+    public ICommand SavePanCardBlueJpegCommand { get; }
     public ICommand SaveTransparentPngCommand { get; }
     public ICommand CopyResultCommand { get; }
     public ICommand PrintCommand { get; }
     public ICommand ResetCommand { get; }
+    public ICommand SetBackgroundModeCommand { get; }
+    public ICommand SetPreviewBackgroundModeCommand { get; }
 
     public ICommand IncrementWidthCommand { get; }
     public ICommand DecrementWidthCommand { get; }
@@ -769,11 +941,14 @@ public class SignatureResizeViewModel : ViewModelBase
         ResizeCommand = new RelayCommand(async _ => await ExecuteResizeAsync(), _ => CanResize);
         SaveAsCommand = new RelayCommand(_ => SaveAs(), _ => HasResult && _outputBytes != null);
         SavePanPortalJpegCommand = new RelayCommand(async _ => await SavePanPortalJpegAsync(), _ => HasInputImage);
+        SavePanCardBlueJpegCommand = new RelayCommand(async _ => await SavePanCardBlueJpegAsync(), _ => HasInputImage);
         SaveTransparentPngCommand = new RelayCommand(async _ => await SaveTransparentPngAsync(), _ => HasInputImage);
         CopyResultCommand = new RelayCommand(_ => CopyResultToClipboard(), _ => HasResult && ResultImage != null);
         PrintCommand = new RelayCommand(_ => PrintResult(), _ => HasResult && ResultImage != null);
         ResetCommand = new RelayCommand(_ => Reset());
         QuickPresetCommand = new RelayCommand(p => ApplyQuickPreset(p?.ToString()));
+        SetBackgroundModeCommand = new RelayCommand(p => BackgroundMode = p?.ToString() ?? "White");
+        SetPreviewBackgroundModeCommand = new RelayCommand(p => PreviewBackgroundMode = p?.ToString() ?? "Auto");
 
         IncrementWidthCommand = new RelayCommand(_ => IncrementWidth());
         DecrementWidthCommand = new RelayCommand(_ => DecrementWidth());
@@ -965,6 +1140,8 @@ public class SignatureResizeViewModel : ViewModelBase
             long targetBytes = (long)TargetSizeKB * 1024;
             long minBytes = (long)MinSizeKB * 1024;
 
+            SixLabors.ImageSharp.Color? customBg = BackgroundMode == "PanCardBlue" ? SignatureResizeService.PanCardBlue : null;
+
             var result = await _resizeService.ResizeSignatureFromBytesAsync(
                 inputBytes: _inputBytes,
                 targetWidthPx: targetW,
@@ -977,7 +1154,8 @@ public class SignatureResizeViewModel : ViewModelBase
                 outputExtension: SelectedOutputFormat,
                 dpi: SelectedDpi,
                 convertBlueToBlack: ConvertBlueToBlack,
-                transparentBackground: TransparentBackground);
+                transparentBackground: TransparentBackground,
+                customBackgroundColor: customBg);
 
             if (result.Success && result.OutputBytes != null)
             {
@@ -993,7 +1171,9 @@ public class SignatureResizeViewModel : ViewModelBase
                     ? $"{result.Width} × {result.Height} px"
                     : $"{WidthCm:F1} × {HeightCm:F1} cm ({result.Width} × {result.Height} px)";
 
-                string bgTag = TransparentBackground ? " • ✨ Transparent (No White Box)" : " • ⚪ Crisp White BG";
+                string bgTag = TransparentBackground 
+                    ? " • ✨ Transparent (No White Box)" 
+                    : (BackgroundMode == "PanCardBlue" ? " • 💳 PAN Card Blue (No White Box)" : " • ⚪ Crisp White BG");
 
                 if (isManualSave)
                 {
@@ -1048,7 +1228,7 @@ public class SignatureResizeViewModel : ViewModelBase
         if (_inputBytes == null || _inputBytes.Length == 0) return;
 
         IsProcessing = true;
-        ProgressText = "Generating NSDL/UTIITSL PAN Card Upload JPEG (<50 KB, 200 DPI)...";
+        ProgressText = "Generating NSDL/UTIITSL Official PAN Card Upload JPEG (<50 KB, 200 DPI)...";
 
         try
         {
@@ -1056,16 +1236,15 @@ public class SignatureResizeViewModel : ViewModelBase
                 _inputBytes,
                 transparentBackground: false,
                 targetBytes: 30 * 1024,
-                minBytes: 10 * 1024);
+                minBytes: 10 * 1024,
+                customBackgroundColor: null);
 
             if (result.Success && result.OutputBytes != null)
             {
                 _outputBytes = result.OutputBytes;
                 ResultImage = SignatureResizeService.BytesToBitmapSource(_outputBytes);
                 HasResult = true;
-                TransparentBackground = false;
-                SelectedOutputFormat = ".jpg";
-                ResultSummary = $"✅ NSDL/UTI Ready! 2 × 4.5 cm (354 × 157 px @ 200 DPI) • {result.OutputSizeFormatted} (Portal Limit: <50 KB)";
+                ResultSummary = $"✅ NSDL/UTI Portal Ready! 2 × 4.5 cm (354 × 157 px @ 200 DPI) • {result.OutputSizeFormatted} (Portal Limit: <50 KB)";
 
                 string defaultName = string.IsNullOrWhiteSpace(FilePath)
                     ? "PAN_Signature_NSDL_200DPI.jpg"
@@ -1076,7 +1255,7 @@ public class SignatureResizeViewModel : ViewModelBase
                 {
                     var dlg = new Microsoft.Win32.SaveFileDialog
                     {
-                        Title = "Save PAN Portal Signature (NSDL / UTIITSL)",
+                        Title = "Save Official PAN Portal Signature (NSDL / UTIITSL)",
                         FileName = defaultName,
                         Filter = "JPEG Image (*.jpg)|*.jpg|All Files (*.*)|*.*"
                     };
@@ -1099,6 +1278,72 @@ public class SignatureResizeViewModel : ViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Error in SavePanPortalJpegAsync");
+            ResultSummary = $"❌ Error: {ex.Message}";
+        }
+        finally
+        {
+            IsProcessing = false;
+            ProgressText = string.Empty;
+        }
+    }
+
+    public async Task SavePanCardBlueJpegAsync()
+    {
+        if (_inputBytes == null || _inputBytes.Length == 0) return;
+
+        IsProcessing = true;
+        ProgressText = "Generating PAN Card Blue Matched JPEG (<50 KB, 200 DPI, No White Box)...";
+
+        try
+        {
+            var result = await _resizeService.ResizePanCardSignatureAsync(
+                _inputBytes,
+                transparentBackground: false,
+                targetBytes: 30 * 1024,
+                minBytes: 10 * 1024,
+                customBackgroundColor: SignatureResizeService.PanCardBlue);
+
+            if (result.Success && result.OutputBytes != null)
+            {
+                _outputBytes = result.OutputBytes;
+                ResultImage = SignatureResizeService.BytesToBitmapSource(_outputBytes);
+                HasResult = true;
+                BackgroundMode = "PanCardBlue";
+                PreviewBackgroundMode = "PanCardBlue";
+                ResultSummary = $"✅ PAN Card Blue Matched JPEG Ready! 2 × 4.5 cm (354 × 157 px @ 200 DPI) • {result.OutputSizeFormatted} (Zero White Box — Blends seamlessly on blue PAN card)";
+
+                string defaultName = string.IsNullOrWhiteSpace(FilePath)
+                    ? "PAN_Signature_BlueMatched_200DPI.jpg"
+                    : $"{Path.GetFileNameWithoutExtension(FilePath)}_PAN_BlueMatched_200DPI.jpg";
+
+                string? savePath = RequestSaveFile?.Invoke("JPEG Image (*.jpg)|*.jpg", defaultName);
+                if (string.IsNullOrWhiteSpace(savePath))
+                {
+                    var dlg = new Microsoft.Win32.SaveFileDialog
+                    {
+                        Title = "Save PAN Card Matched Blue JPEG (No White Box)",
+                        FileName = defaultName,
+                        Filter = "JPEG Image (*.jpg)|*.jpg|All Files (*.*)|*.*"
+                    };
+                    if (dlg.ShowDialog() == true) savePath = dlg.FileName;
+                }
+
+                if (!string.IsNullOrWhiteSpace(savePath))
+                {
+                    File.WriteAllBytes(savePath, result.OutputBytes);
+                    LastSavedPath = savePath;
+                    OutputHistoryService.Instance.Record(savePath, "PAN Signature Blue JPEG", result.OriginalSizeBytes, result.OutputSizeBytes);
+                    WpfMessageBox.Show($"✅ PAN Card Matched Blue JPEG saved successfully!\n\nFile: {Path.GetFileName(savePath)}\nBackground: Official PAN Card Blue (#DCE8F5)\nSize: {result.OutputSizeFormatted} (<50 KB)\nResolution: 200 DPI (2 × 4.5 cm)\n\nZero white background box! Blends perfectly into blue PAN card designs even on sites requiring .JPG format!", "PAN Signature Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            else
+            {
+                ResultSummary = $"❌ Failed: {result.Message}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in SavePanCardBlueJpegAsync");
             ResultSummary = $"❌ Error: {ex.Message}";
         }
         finally
@@ -1224,21 +1469,34 @@ public class SignatureResizeViewModel : ViewModelBase
 
         try
         {
-            var dataObj = new System.Windows.DataObject();
-            dataObj.SetImage(ResultImage);
+            bool isTransparent = TransparentBackground || SelectedOutputFormat == ".png";
+            bool copied;
 
-            if (_outputBytes != null && (TransparentBackground || SelectedOutputFormat == ".png"))
+            if (isTransparent)
             {
-                // Write PNG stream to clipboard so transparency (alpha channel) is preserved across Windows apps
-                var ms = new MemoryStream(_outputBytes);
-                dataObj.SetData("PNG", ms, false);
+                copied = ClipboardHelper.CopyTransparentBitmapToClipboard(ResultImage, _outputBytes);
+            }
+            else
+            {
+                var dataObj = new System.Windows.DataObject();
+                dataObj.SetImage(ResultImage);
+                if (_outputBytes != null)
+                {
+                    dataObj.SetData("PNG", new MemoryStream(_outputBytes), false);
+                }
+                System.Windows.Clipboard.SetDataObject(dataObj, true);
+                copied = true;
             }
 
-            System.Windows.Clipboard.SetDataObject(dataObj, true);
-            string msg = TransparentBackground
-                ? "✨ Transparent signature copied to clipboard (with alpha transparency)!\nYou can paste directly into Photoshop, Word, or card printing templates without any white background."
-                : "✅ Resized signature copied to clipboard!\nYou can paste it directly into portals or WhatsApp.";
-            WpfMessageBox.Show(msg, "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (copied)
+            {
+                string msg = isTransparent
+                    ? "✨ Pure handwriting signature copied to clipboard (100% alpha transparency)!\n\nPress Ctrl+V in Photoshop, Word, Paint, CorelDRAW, or PVC card software — NO white background box will appear! Only the isolated handwriting ink fits perfectly onto any document or blue PAN card."
+                    : (BackgroundMode == "PanCardBlue"
+                        ? "💳 Signature copied with PAN Card Blue matched background!\n\nReady to paste onto PAN card forms and PVC card software without white edges."
+                        : "✅ Resized signature copied to clipboard!\n\nYou can paste it directly into portals or WhatsApp.");
+                WpfMessageBox.Show(msg, "Copied to Clipboard", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
@@ -1324,16 +1582,21 @@ public class SignatureResizeViewModel : ViewModelBase
             case "NSDL":
             case "UTI":
             case "PANSIGN":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Signature") || (p.Name.Contains("PAN Card") && !p.Name.Contains("Photo"))) ?? Presets[1];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Signature") || (p.Name.Contains("PAN Card") && !p.Name.Contains("Photo") && !p.Name.Contains("Blue"))) ?? Presets[1];
+                break;
+            case "PANBLUE":
+            case "PAN_BLUE":
+            case "BLUEPAN":
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Blue BG")) ?? Presets[2];
                 break;
             case "PANPHOTO":
             case "PAN_PHOTO":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Photo")) ?? Presets[2];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("PAN Card Photo")) ?? Presets[3];
                 break;
             case "TRANSPARENT":
             case "NOBG":
             case "PNG":
-                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Transparent Signature")) ?? Presets[3];
+                SelectedPreset = Presets.FirstOrDefault(p => p.Name.Contains("Transparent Signature")) ?? Presets[4];
                 break;
             case "SSC":
             case "IBPS":

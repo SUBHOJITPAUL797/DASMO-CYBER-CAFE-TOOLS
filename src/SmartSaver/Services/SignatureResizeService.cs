@@ -35,6 +35,12 @@ public class SignatureResizeResult
 
 public class SignatureResizeService
 {
+    /// <summary>
+    /// Official Indian PAN Card Light Blue tint (#DCE8F5: R=220, G=232, B=245)
+    /// used across NSDL and UTIITSL cards so JPEGs blend seamlessly with ZERO white background box.
+    /// </summary>
+    public static readonly SixLabors.ImageSharp.Color PanCardBlue = SixLabors.ImageSharp.Color.FromRgb(220, 232, 245);
+
     private readonly ImageCompressor _imageCompressor;
     private readonly SignatureCleanerService _cleanerService;
 
@@ -48,7 +54,6 @@ public class SignatureResizeService
         _cleanerService = new SignatureCleanerService(imageCompressor);
     }
 
-    /// <summary>
     /// <summary>
     /// Resizes a signature image from a file path to exact pixel or centimeter dimensions,
     /// cleans paper background, and compresses to strict target KB.
@@ -66,7 +71,8 @@ public class SignatureResizeService
         string outputExtension = ".jpg",
         int dpi = 300,
         bool convertBlueToBlack = true,
-        bool transparentBackground = false)
+        bool transparentBackground = false,
+        SixLabors.ImageSharp.Color? customBackgroundColor = null)
     {
         if (!File.Exists(inputPath))
         {
@@ -74,7 +80,7 @@ public class SignatureResizeService
         }
 
         byte[] inputBytes = await File.ReadAllBytesAsync(inputPath);
-        var result = await ResizeSignatureFromBytesAsync(inputBytes, targetWidthPx, targetHeightPx, targetBytes, minBytes, cleanBackground, autoCrop, maintainAspectRatio, outputExtension, dpi, convertBlueToBlack, transparentBackground);
+        var result = await ResizeSignatureFromBytesAsync(inputBytes, targetWidthPx, targetHeightPx, targetBytes, minBytes, cleanBackground, autoCrop, maintainAspectRatio, outputExtension, dpi, convertBlueToBlack, transparentBackground, customBackgroundColor);
 
         if (result.Success && result.OutputBytes != null && !string.IsNullOrWhiteSpace(outputPath))
         {
@@ -110,7 +116,8 @@ public class SignatureResizeService
         string outputExtension = ".jpg",
         int dpi = 300,
         bool convertBlueToBlack = true,
-        bool transparentBackground = false)
+        bool transparentBackground = false,
+        SixLabors.ImageSharp.Color? customBackgroundColor = null)
     {
         return await Task.Run(() =>
         {
@@ -130,7 +137,7 @@ public class SignatureResizeService
                 // 2. Optional: Clean paper shadows, enhance dark ink, and auto-crop to ink
                 if (cleanBackground)
                 {
-                    CleanPaperAndBoostInk(image, autoCrop: autoCrop, convertBlueToBlack: convertBlueToBlack, transparentBackground: transparentBackground);
+                    CleanPaperAndBoostInk(image, autoCrop: autoCrop, convertBlueToBlack: convertBlueToBlack, transparentBackground: transparentBackground, customBackgroundColor: customBackgroundColor);
                 }
 
                 // 3. Resize to exact dimensions without squeezing
@@ -159,7 +166,10 @@ public class SignatureResizeService
                     canvas = new SixLabors.ImageSharp.Image<Rgba32>(targetWidthPx, targetHeightPx);
                     canvas.Mutate(ctx =>
                     {
-                        ctx.BackgroundColor(transparentBackground ? SixLabors.ImageSharp.Color.Transparent : SixLabors.ImageSharp.Color.White);
+                        SixLabors.ImageSharp.Color bgCol = transparentBackground 
+                            ? SixLabors.ImageSharp.Color.Transparent 
+                            : (customBackgroundColor ?? SixLabors.ImageSharp.Color.White);
+                        ctx.BackgroundColor(bgCol);
                         int posX = (targetWidthPx - scaledW) / 2;
                         int posY = (targetHeightPx - scaledH) / 2;
                         ctx.DrawImage(image, new SixLabors.ImageSharp.Point(posX, posY), 1.0f);
@@ -217,7 +227,8 @@ public class SignatureResizeService
         byte[] inputBytes,
         bool transparentBackground = false,
         long targetBytes = 30 * 1024,
-        long minBytes = 10 * 1024)
+        long minBytes = 10 * 1024,
+        SixLabors.ImageSharp.Color? customBackgroundColor = null)
     {
         // 4.5 cm wide by 2.0 cm high at 200 DPI
         // 4.5 * 200 / 2.54 = ~354 px width
@@ -238,7 +249,8 @@ public class SignatureResizeService
             outputExtension: ext,
             dpi: 200,
             convertBlueToBlack: true,
-            transparentBackground: transparentBackground);
+            transparentBackground: transparentBackground,
+            customBackgroundColor: customBackgroundColor);
     }
 
     /// <summary>
@@ -250,7 +262,8 @@ public class SignatureResizeService
         int threshold = 185, 
         bool autoCrop = true, 
         bool convertBlueToBlack = true,
-        bool transparentBackground = false)
+        bool transparentBackground = false,
+        SixLabors.ImageSharp.Color? customBackgroundColor = null)
     {
         // 1. Adaptive paper background luminance estimation
         // Sample pixels on a regular grid across the image to find the true paper brightness peak,
@@ -310,10 +323,14 @@ public class SignatureResizeService
 
                     if (lum > effectiveThreshold && !isBlueInk)
                     {
-                        // Background paper shadow -> transparent or pure white
+                        // Background paper shadow -> transparent, custom color (e.g. PAN Blue), or pure white
                         if (transparentBackground)
                         {
                             p = new Rgba32(0, 0, 0, 0); // 100% transparent (no white block!)
+                        }
+                        else if (customBackgroundColor.HasValue)
+                        {
+                            p = customBackgroundColor.Value.ToPixel<Rgba32>(); // Matched card color!
                         }
                         else
                         {

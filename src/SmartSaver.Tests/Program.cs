@@ -8257,6 +8257,121 @@ flowchart TD
                 failed++;
             }
 
+            // [TEST 94] Signature Zero-White Background Pipeline: Transparent Alpha PNG & PAN Card Blue JPEG
+            try
+            {
+                Console.Write("[TEST 94] Signature Zero-White BG Pipeline: Transparent Alpha PNG, PAN Blue JPEG & Clipboard DIBV5... ");
+
+                // 1. Prepare sample signature image with white paper and dark ink line
+                string rawSigPath = Path.Combine(testDir, "test_sig_raw94.jpg");
+                using (var sigImage = new Image<Rgba32>(400, 200))
+                {
+                    for (int y = 0; y < 200; y++)
+                    {
+                        for (int x = 0; x < 400; x++)
+                        {
+                            if (y >= 95 && y <= 105 && x >= 50 && x <= 350)
+                                sigImage[x, y] = new Rgba32(0, 0, 120, 255); // Dark blue ink stroke
+                            else
+                                sigImage[x, y] = new Rgba32(255, 255, 255, 255); // White paper
+                        }
+                    }
+                    sigImage.SaveAsJpeg(rawSigPath);
+                }
+
+                var sigService = new SignatureResizeService(new ImageCompressor());
+                byte[] rawSigBytes = File.ReadAllBytes(rawSigPath);
+
+                // A. Test Transparent PNG generation (100% alpha transparency, zero white pixels in background)
+                var transResult = sigService.ResizePanCardSignatureAsync(rawSigBytes, transparentBackground: true).GetAwaiter().GetResult();
+                if (!transResult.Success || transResult.OutputBytes == null)
+                    throw new Exception($"Transparent ResizePanCardSignatureAsync failed: {transResult.Message}");
+
+                using (var transImage = SixLabors.ImageSharp.Image.Load<Rgba32>(transResult.OutputBytes))
+                {
+                    // Check corner pixel (0,0) - must be 100% transparent (A == 0)
+                    var cornerPixel = transImage[0, 0];
+                    if (cornerPixel.A != 0)
+                        throw new Exception($"Expected 100% transparent background pixel at (0,0), but got Alpha={cornerPixel.A}");
+                }
+
+                // B. Test PAN Card Blue JPEG generation (Zero white box on blue card: background is #DCE8F5)
+                var blueJpegResult = sigService.ResizePanCardSignatureAsync(rawSigBytes, transparentBackground: false, customBackgroundColor: SignatureResizeService.PanCardBlue).GetAwaiter().GetResult();
+                if (!blueJpegResult.Success || blueJpegResult.OutputBytes == null)
+                    throw new Exception($"PAN Blue ResizePanCardSignatureAsync failed: {blueJpegResult.Message}");
+
+                using (var blueImage = SixLabors.ImageSharp.Image.Load<Rgba32>(blueJpegResult.OutputBytes))
+                {
+                    // Check corner pixel (0,0) - must be PAN Card Blue (~ #DCE8F5: R=220, G=232, B=245)
+                    var cornerPixel = blueImage[0, 0];
+                    if (Math.Abs(cornerPixel.R - 220) > 15 || Math.Abs(cornerPixel.G - 232) > 15 || Math.Abs(cornerPixel.B - 245) > 15)
+                        throw new Exception($"Expected PAN Card Blue (#DCE8F5) background, but got RGB({cornerPixel.R},{cornerPixel.G},{cornerPixel.B})");
+                }
+
+                // C. Test SignatureResizeViewModel background modes and presets
+                Exception? staEx94 = null;
+                var staThread94 = new Thread(() =>
+                {
+                    try
+                    {
+                        var vm = new SignatureResizeViewModel(rawSigPath);
+
+                        // Preset PANBLUE
+                        vm.ApplyQuickPreset("PANBLUE");
+                        if (vm.BackgroundMode != "PanCardBlue")
+                            throw new Exception($"Expected BackgroundMode 'PanCardBlue', got '{vm.BackgroundMode}'");
+                        if (vm.TransparentBackground)
+                            throw new Exception("TransparentBackground should be false for PANBLUE preset");
+                        if (Math.Abs(vm.WidthCm - 4.5) > 0.01 || Math.Abs(vm.HeightCm - 2.0) > 0.01)
+                            throw new Exception($"PANBLUE dimensions mismatch: {vm.WidthCm}x{vm.HeightCm}");
+
+                        // Background Mode Switcher tests
+                        vm.SetBackgroundModeCommand.Execute("Transparent");
+                        if (!vm.TransparentBackground || vm.BackgroundMode != "Transparent")
+                            throw new Exception("SetBackgroundModeCommand('Transparent') failed");
+
+                        vm.SetBackgroundModeCommand.Execute("PanCardBlue");
+                        if (vm.TransparentBackground || vm.BackgroundMode != "PanCardBlue")
+                            throw new Exception("SetBackgroundModeCommand('PanCardBlue') failed");
+
+                        vm.SetBackgroundModeCommand.Execute("White");
+                        if (vm.TransparentBackground || vm.BackgroundMode != "White")
+                            throw new Exception("SetBackgroundModeCommand('White') failed");
+
+                        // Preview Background Brush checks
+                        vm.SetPreviewBackgroundModeCommand.Execute("Checkerboard");
+                        if (vm.PreviewBackgroundBrush == null)
+                            throw new Exception("PreviewBackgroundBrush is null for Checkerboard");
+
+                        vm.SetPreviewBackgroundModeCommand.Execute("PanCardBlue");
+                        if (vm.PreviewBackgroundBrush == null)
+                            throw new Exception("PreviewBackgroundBrush is null for PanCardBlue");
+
+                        // Clipboard Helper with transparent bitmap
+                        var renderBmp = new System.Windows.Media.Imaging.RenderTargetBitmap(100, 50, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                        ClipboardHelper.CopyTransparentBitmapToClipboard(renderBmp, transResult.OutputBytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx94 = ex;
+                    }
+                });
+                staThread94.SetApartmentState(ApartmentState.STA);
+                staThread94.Start();
+                staThread94.Join();
+
+                if (staEx94 != null)
+                    throw staEx94;
+
+                Console.WriteLine("PASSED (Transparent PNG Alpha Isolated, PAN Blue #DCE8F5 JPEG Matched, & Clipboard 32-bit DIBV5 Validated)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

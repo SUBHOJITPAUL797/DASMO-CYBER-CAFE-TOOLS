@@ -48,6 +48,32 @@
     <!-- Window Photo Background Brush -->
     <ImageBrush x:Key="WindowPhotoBrush" ImageSource="pack://application:,,,/Resources/background_photo.png" Stretch="UniformToFill"/>
 
+    <!-- Transparency Checkerboard Brush (Universal Alpha Grid Pattern) -->
+    <DrawingBrush x:Key="CheckerboardBrush" 
+                  Viewport="0,0,16,16" ViewportUnits="Absolute" 
+                  TileMode="Tile">
+        <DrawingBrush.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#FFFFFF">
+                    <GeometryDrawing.Geometry>
+                        <RectangleGeometry Rect="0,0,16,16"/>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#CBD5E1">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <RectangleGeometry Rect="0,0,8,8"/>
+                            <RectangleGeometry Rect="8,8,8,8"/>
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <!-- Official Indian PAN Card Light Blue Brush (#DCE8F5) -->
+    <SolidColorBrush x:Key="PanCardBlueBrush" Color="#DCE8F5"/>
+
     <!-- Base Window Style -->
     <Style TargetType="Window">
         <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
