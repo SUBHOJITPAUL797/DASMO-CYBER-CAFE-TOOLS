@@ -8494,6 +8494,121 @@ flowchart TD
                 failed++;
             }
 
+            // -------------------------------------------------------------
+            // [TEST 96] Modern Tray ContextMenu, Template Integrity, Zero-White-Gutter & State Sync
+            // -------------------------------------------------------------
+            try
+            {
+                Console.Write("[TEST 96] Modern Tray ContextMenu, Zero-White-Gutter & State Sync... ");
+
+                Exception? staEx96 = null;
+                var staThread96 = new Thread(() =>
+                {
+                    try
+                    {
+                        var trayService = new TrayIconService();
+                        var contextMenu = trayService.BuildContextMenu();
+
+                        if (contextMenu == null)
+                            throw new Exception("BuildContextMenu() returned null");
+
+                        if (contextMenu.Template == null)
+                            throw new Exception("ContextMenu has no custom template assigned");
+
+                        if (contextMenu.Items.Count < 20)
+                            throw new Exception($"Expected at least 20 items in Tray ContextMenu (including header & sections), got {contextMenu.Items.Count}");
+
+                        // 1. Verify Header Card as first item
+                        var firstItem = contextMenu.Items[0] as System.Windows.Controls.Border;
+                        if (firstItem == null)
+                            throw new Exception($"First item in context menu should be Header Card Border, got {contextMenu.Items[0]?.GetType().Name}");
+
+                        // 2. Verify MenuItems use custom template (zero white Aero gutter)
+                        int menuItemCount = 0;
+                        bool foundExit = false;
+                        bool foundPrintStudio = false;
+                        bool foundA4Stacker = false;
+                        bool foundGovtCards = false;
+                        bool foundMagicWhite = false;
+
+                        foreach (var item in contextMenu.Items)
+                        {
+                            if (item is System.Windows.Controls.MenuItem mi)
+                            {
+                                menuItemCount++;
+                                if (mi.Template == null)
+                                    throw new Exception("MenuItem must use custom ControlTemplate to eliminate white gutter");
+
+                                // Header must be a Grid with 2 columns (Icon + Title)
+                                if (mi.Header is System.Windows.Controls.Grid g)
+                                {
+                                    if (g.ColumnDefinitions.Count != 2)
+                                        throw new Exception($"MenuItem Header grid should have 2 columns, got {g.ColumnDefinitions.Count}");
+
+                                    var tb = g.Children[1] as System.Windows.Controls.TextBlock;
+                                    string text = tb?.Text ?? string.Empty;
+
+                                    if (text.Contains("Exit")) foundExit = true;
+                                    if (text.Contains("Print Counter")) foundPrintStudio = true;
+                                    if (text.Contains("A4 Document Stacker")) foundA4Stacker = true;
+                                    if (text.Contains("Ration / Aadhaar")) foundGovtCards = true;
+                                    if (text.Contains("Enhance Phone Scan")) foundMagicWhite = true;
+                                }
+                            }
+                        }
+
+                        if (!foundExit) throw new Exception("Exit MenuItem not found in Tray ContextMenu");
+                        if (!foundPrintStudio) throw new Exception("Print Counter MenuItem not found in Tray ContextMenu");
+                        if (!foundA4Stacker) throw new Exception("A4 Document Stacker MenuItem not found in Tray ContextMenu");
+                        if (!foundGovtCards) throw new Exception("Ration / Aadhaar MenuItem not found in Tray ContextMenu");
+                        if (!foundMagicWhite) throw new Exception("Enhance Phone Scan MenuItem not found in Tray ContextMenu");
+
+                        // 3. Verify State Synchronization (Pause / Resume dynamics)
+                        trayService.SetPaused(true);
+                        if (!trayService.IsPaused) throw new Exception("trayService.IsPaused should be true");
+
+                        // Verify Header status text via reflection
+                        var statusField = typeof(TrayIconService).GetField("_headerStatusText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        var statusTb = (System.Windows.Controls.TextBlock?)statusField?.GetValue(trayService);
+                        if (statusTb == null || !statusTb.Text.Contains("PAUSED"))
+                            throw new Exception($"Header status text should contain 'PAUSED', got '{statusTb?.Text}'");
+
+                        var pauseTitleField = typeof(TrayIconService).GetField("_pauseTitleTb", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        var pauseTitleTb = (System.Windows.Controls.TextBlock?)pauseTitleField?.GetValue(trayService);
+                        if (pauseTitleTb == null || !pauseTitleTb.Text.Contains("Resume"))
+                            throw new Exception($"Pause title should contain 'Resume', got '{pauseTitleTb?.Text}'");
+
+                        trayService.SetPaused(false);
+                        if (trayService.IsPaused) throw new Exception("trayService.IsPaused should be false");
+                        if (statusTb == null || !statusTb.Text.Contains("ACTIVE"))
+                            throw new Exception($"Header status text should contain 'ACTIVE', got '{statusTb?.Text}'");
+                        if (pauseTitleTb == null || !pauseTitleTb.Text.Contains("Pause"))
+                            throw new Exception($"Pause title should contain 'Pause', got '{pauseTitleTb?.Text}'");
+
+                        // 4. Dispose cleanly
+                        trayService.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        staEx96 = ex;
+                    }
+                });
+                staThread96.SetApartmentState(ApartmentState.STA);
+                staThread96.Start();
+                staThread96.Join();
+
+                if (staEx96 != null)
+                    throw staEx96;
+
+                Console.WriteLine("PASSED (Custom Dark Fluent Templates, 0 White Gutter Artifacts, Categorized Studios & Active State Sync Verified)");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION: {ex.Message}");
+                failed++;
+            }
+
             Console.WriteLine("==================================================================");
             Console.WriteLine($"   TEST RESULTS: {passed} PASSED, {failed} FAILED");
             Console.WriteLine("==================================================================");

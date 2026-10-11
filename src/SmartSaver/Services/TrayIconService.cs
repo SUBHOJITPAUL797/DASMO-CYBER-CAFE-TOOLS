@@ -2,8 +2,11 @@ using System.IO;
 using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Hardcodet.Wpf.TaskbarNotification;
 using Serilog;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using Cursors = System.Windows.Input.Cursors;
 
 namespace SmartSaver.Services;
 
@@ -156,52 +159,300 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private ContextMenu BuildContextMenu()
-    {
-        // --- Color palette (dark theme, always visible regardless of Windows accent/theme) ---
-        var bgBrush       = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(28, 28, 40));   // deep navy
-        var fgBrush       = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White);
-        var hoverBrush    = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(60, 60, 90));   // lighter on hover
-        var separatorBrush= new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(60, 60, 80));
+    private static readonly ControlTemplate TrayContextMenuTemplate = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"
+<ControlTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
+                 xmlns:x=""http://schemas.microsoft.com/winfx/2006/xaml""
+                 TargetType=""{x:Type ContextMenu}"">
+    <Border Background=""#0F172A""
+            BorderBrush=""#253248""
+            BorderThickness=""1""
+            CornerRadius=""12""
+            Padding=""4,6,4,6""
+            SnapsToDevicePixels=""True""
+            MinWidth=""315"">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius=""24"" ShadowDepth=""6"" Direction=""270"" Color=""#000000"" Opacity=""0.65"" />
+        </Border.Effect>
+        <ScrollViewer CanContentScroll=""True""
+                      VerticalScrollBarVisibility=""Auto""
+                      HorizontalScrollBarVisibility=""Disabled"">
+            <StackPanel IsItemsHost=""True"" KeyboardNavigation.DirectionalNavigation=""Cycle"" />
+        </ScrollViewer>
+    </Border>
+</ControlTemplate>");
 
+    private static readonly ControlTemplate TrayMenuItemTemplate = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"
+<ControlTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
+                 xmlns:x=""http://schemas.microsoft.com/winfx/2006/xaml""
+                 TargetType=""{x:Type MenuItem}"">
+    <Border x:Name=""ItemBorder""
+            Background=""Transparent""
+            BorderBrush=""Transparent""
+            BorderThickness=""1""
+            CornerRadius=""6""
+            Margin=""3,1,3,1""
+            Padding=""{TemplateBinding Padding}""
+            Cursor=""Hand""
+            SnapsToDevicePixels=""True"">
+        <ContentPresenter ContentSource=""Header""
+                          RecognizesAccessKey=""True""
+                          VerticalAlignment=""Center"" />
+    </Border>
+    <ControlTemplate.Triggers>
+        <Trigger Property=""IsHighlighted"" Value=""True"">
+            <Setter TargetName=""ItemBorder"" Property=""Background"" Value=""#1E293B"" />
+            <Setter TargetName=""ItemBorder"" Property=""BorderBrush"" Value=""#38BDF8"" />
+            <Setter Property=""Foreground"" Value=""#38BDF8"" />
+        </Trigger>
+        <Trigger Property=""IsEnabled"" Value=""False"">
+            <Setter Property=""Opacity"" Value=""0.4"" />
+        </Trigger>
+    </ControlTemplate.Triggers>
+</ControlTemplate>");
+
+    private static readonly ControlTemplate TrayExitMenuItemTemplate = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"
+<ControlTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
+                 xmlns:x=""http://schemas.microsoft.com/winfx/2006/xaml""
+                 TargetType=""{x:Type MenuItem}"">
+    <Border x:Name=""ItemBorder""
+            Background=""Transparent""
+            BorderBrush=""Transparent""
+            BorderThickness=""1""
+            CornerRadius=""6""
+            Margin=""3,1,3,1""
+            Padding=""{TemplateBinding Padding}""
+            Cursor=""Hand""
+            SnapsToDevicePixels=""True"">
+        <ContentPresenter ContentSource=""Header""
+                          RecognizesAccessKey=""True""
+                          VerticalAlignment=""Center"" />
+    </Border>
+    <ControlTemplate.Triggers>
+        <Trigger Property=""IsHighlighted"" Value=""True"">
+            <Setter TargetName=""ItemBorder"" Property=""Background"" Value=""#3F1717"" />
+            <Setter TargetName=""ItemBorder"" Property=""BorderBrush"" Value=""#EF4444"" />
+            <Setter Property=""Foreground"" Value=""#FCA5A5"" />
+        </Trigger>
+        <Trigger Property=""IsEnabled"" Value=""False"">
+            <Setter Property=""Opacity"" Value=""0.4"" />
+        </Trigger>
+    </ControlTemplate.Triggers>
+</ControlTemplate>");
+
+    private static readonly ControlTemplate TraySeparatorTemplate = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"
+<ControlTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
+                 xmlns:x=""http://schemas.microsoft.com/winfx/2006/xaml""
+                 TargetType=""{x:Type Separator}"">
+    <Border Background=""#1E293B"" Height=""1"" Margin=""8,4,8,4"" SnapsToDevicePixels=""True"" />
+</ControlTemplate>");
+
+    private Border? _headerStatusPill;
+    private TextBlock? _headerStatusText;
+    private TextBlock? _pauseIconTb;
+    private TextBlock? _pauseTitleTb;
+
+    internal ContextMenu BuildContextMenu()
+    {
         var menu = new ContextMenu
         {
-            Background = bgBrush,
-            BorderBrush = separatorBrush,
-            BorderThickness = new System.Windows.Thickness(1),
-            Padding = new System.Windows.Thickness(0, 4, 0, 4)
+            Template = TrayContextMenuTemplate,
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0)
         };
 
-        MenuItem MakeItem(string header, RoutedEventHandler onClick)
+        MenuItem MakeItem(string icon, string title, RoutedEventHandler onClick, bool isExit = false)
         {
+            var grid = new Grid { SnapsToDevicePixels = true };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var iconTb = new TextBlock
+            {
+                Text = icon,
+                FontSize = 13.5,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI Emoji, Segoe UI"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(iconTb, 0);
+
+            var titleTb = new TextBlock
+            {
+                Text = title,
+                FontSize = 12.5,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 8, 0)
+            };
+            Grid.SetColumn(titleTb, 1);
+
+            grid.Children.Add(iconTb);
+            grid.Children.Add(titleTb);
+
             var item = new MenuItem
             {
-                Header = header,
-                Background = bgBrush,
-                Foreground = fgBrush,
-                Padding = new System.Windows.Thickness(12, 6, 16, 6),
-                FontSize = 13,
-                FontFamily = new System.Windows.Media.FontFamily("Segoe UI")
+                Header = grid,
+                Template = isExit ? TrayExitMenuItemTemplate : TrayMenuItemTemplate,
+                Foreground = isExit
+                    ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 113, 113)) // #F87171 soft red
+                    : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 245, 249)), // #F1F5F9 crisp white
+                Padding = new Thickness(8, 6, 10, 6),
+                Cursor = Cursors.Hand
             };
-            // Keep hover visible
-            item.MouseEnter += (_, _) => item.Background = hoverBrush;
-            item.MouseLeave += (_, _) => item.Background = bgBrush;
+
             item.Click += onClick;
             return item;
+        }
+
+        UIElement MakeSectionHeader(string title)
+        {
+            var border = new Border
+            {
+                Padding = new Thickness(10, 8, 10, 3),
+                Margin = new Thickness(0, 2, 0, 1),
+                SnapsToDevicePixels = true
+            };
+            var tb = new TextBlock
+            {
+                Text = title,
+                FontSize = 9.5,
+                FontWeight = FontWeights.Bold,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(100, 116, 139)), // #64748B
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI")
+            };
+            border.Child = tb;
+            return border;
         }
 
         Separator MakeSep()
         {
             return new Separator
             {
-                Background = separatorBrush,
-                Margin = new System.Windows.Thickness(6, 2, 6, 2),
-                Height = 1
+                Template = TraySeparatorTemplate
             };
         }
 
-        // Open DASMO CYBER CAFE TOOLS (All Tools)
-        var openDashboardItem = MakeItem("⚡   Open DASMO CYBER CAFE TOOLS", (_, _) =>
+        // --- 1. Top Header Card (Clickable to Open Dashboard) ---
+        var headerCard = new Border
+        {
+            Background = new System.Windows.Media.LinearGradientBrush(
+                System.Windows.Media.Color.FromRgb(21, 27, 40),
+                System.Windows.Media.Color.FromRgb(15, 23, 42),
+                new System.Windows.Point(0, 0),
+                new System.Windows.Point(1, 1)),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 43, 61)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10, 8, 10, 8),
+            Margin = new Thickness(3, 2, 3, 4),
+            Cursor = Cursors.Hand,
+            SnapsToDevicePixels = true
+        };
+
+        var headerGrid = new Grid();
+        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var iconBadge = new Border
+        {
+            Width = 26,
+            Height = 26,
+            CornerRadius = new CornerRadius(6),
+            Background = new System.Windows.Media.LinearGradientBrush(
+                System.Windows.Media.Color.FromRgb(59, 130, 246),
+                System.Windows.Media.Color.FromRgb(14, 165, 233),
+                new System.Windows.Point(0, 0),
+                new System.Windows.Point(1, 1)),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var iconTxt = new TextBlock
+        {
+            Text = "⚡",
+            FontSize = 13,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        iconBadge.Child = iconTxt;
+        Grid.SetColumn(iconBadge, 0);
+
+        var titleSp = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 8, 0)
+        };
+        var titleTb = new TextBlock
+        {
+            Text = "DASMO CYBER CAFE TOOLS",
+            FontWeight = FontWeights.Bold,
+            FontSize = 11.5,
+            Foreground = System.Windows.Media.Brushes.White
+        };
+        string appVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.5.54";
+        var subtitleTb = new TextBlock
+        {
+            Text = $"Daily Cyber Cafe Suite • v{appVer}",
+            FontSize = 9.5,
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184))
+        };
+        titleSp.Children.Add(titleTb);
+        titleSp.Children.Add(subtitleTb);
+        Grid.SetColumn(titleSp, 1);
+
+        _headerStatusPill = new Border
+        {
+            CornerRadius = new CornerRadius(9),
+            Padding = new Thickness(7, 2, 7, 2),
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(6, 78, 59)),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(5, 150, 105)),
+            BorderThickness = new Thickness(1)
+        };
+        _headerStatusText = new TextBlock
+        {
+            Text = "● ACTIVE",
+            FontSize = 9,
+            FontWeight = FontWeights.Bold,
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(52, 211, 153))
+        };
+        _headerStatusPill.Child = _headerStatusText;
+        Grid.SetColumn(_headerStatusPill, 2);
+
+        headerGrid.Children.Add(iconBadge);
+        headerGrid.Children.Add(titleSp);
+        headerGrid.Children.Add(_headerStatusPill);
+        headerCard.Child = headerGrid;
+
+        headerCard.MouseEnter += (_, _) =>
+        {
+            headerCard.Background = new System.Windows.Media.LinearGradientBrush(
+                System.Windows.Media.Color.FromRgb(30, 41, 59),
+                System.Windows.Media.Color.FromRgb(21, 27, 40),
+                new System.Windows.Point(0, 0),
+                new System.Windows.Point(1, 1));
+            headerCard.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(59, 130, 246));
+        };
+        headerCard.MouseLeave += (_, _) =>
+        {
+            headerCard.Background = new System.Windows.Media.LinearGradientBrush(
+                System.Windows.Media.Color.FromRgb(21, 27, 40),
+                System.Windows.Media.Color.FromRgb(15, 23, 42),
+                new System.Windows.Point(0, 0),
+                new System.Windows.Point(1, 1));
+            headerCard.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 43, 61));
+        };
+        headerCard.MouseLeftButtonUp += (_, _) =>
+        {
+            menu.IsOpen = false;
+            Log.Information("Tray menu: Clicked header banner -> Open Dashboard");
+            OnOpenDashboard?.Invoke(this, EventArgs.Empty);
+        };
+        menu.Items.Add(headerCard);
+
+        // --- 2. Open All Tools Dashboard Action ---
+        var openDashboardItem = MakeItem("⚡", "Open All Tools Dashboard", (_, _) =>
         {
             Log.Information("Tray menu: Open Dashboard");
             OnOpenDashboard?.Invoke(this, EventArgs.Empty);
@@ -210,161 +461,193 @@ public sealed class TrayIconService : IDisposable
 
         menu.Items.Add(MakeSep());
 
-        // Print Counter & Billing Studio
-        var openPrintCounterItem = MakeItem("🖨️   Print Counter & Billing Studio...", (_, _) =>
+        // --- 3. DAILY CAFE STUDIOS & COUNTER ---
+        menu.Items.Add(MakeSectionHeader("DAILY CAFE STUDIOS & COUNTER"));
+
+        menu.Items.Add(MakeItem("🖨️", "Print Counter & Billing Studio...", (_, _) =>
         {
             Log.Information("Tray menu: Open Print Counter & Billing Studio");
             OnOpenPrintCounter?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openPrintCounterItem);
+        }));
 
-        // A4 Document Stacker
-        var openStackerItem = MakeItem("🖨   A4 Document Stacker", (_, _) =>
+        menu.Items.Add(MakeItem("📑", "A4 Document Stacker", (_, _) =>
         {
             Log.Information("Tray menu: Open Stacker");
             OnOpenStacker?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openStackerItem);
+        }));
 
-        // Ration / Aadhaar A4 Print
-        var openCardPrintItem = MakeItem("💳   Ration / Aadhaar A4 Print...", (_, _) =>
+        menu.Items.Add(MakeItem("💳", "Ration / Aadhaar A4 Print...", (_, _) =>
         {
             Log.Information("Tray menu: Open Ration / Aadhaar A4 Print");
             OnOpenGovtCardPrint?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openCardPrintItem);
+        }));
 
-        // Merge PDF Files
-        var openMergeItem = MakeItem("📑   Merge PDF Files...", (_, _) =>
-        {
-            Log.Information("Tray menu: Open Merge PDFs");
-            OnOpenMerge?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openMergeItem);
-
-        // Split / Extract PDF
-        var openSplitItem = MakeItem("✂️   Split / Extract PDF...", (_, _) =>
-        {
-            Log.Information("Tray menu: Open Split PDF");
-            OnOpenSplit?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openSplitItem);
-
-        // Convert Images to PDF (A4)
-        var openImg2PdfItem = MakeItem("🖼️   Convert Images to PDF (A4)...", (_, _) =>
-        {
-            Log.Information("Tray menu: Open Images to PDF");
-            OnOpenImg2Pdf?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openImg2PdfItem);
-
-        // Convert PDF to Images
-        var openPdf2ImgItem = MakeItem("📄   Convert PDF to JPG Images...", (_, _) =>
-        {
-            Log.Information("Tray menu: Open PDF to Images");
-            OnOpenPdf2Img?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openPdf2ImgItem);
-
-        // Enhance Document Scan
-        var openEnhanceItem = MakeItem("✨   Enhance Phone Scan (Magic White)...", (_, _) =>
-        {
-            Log.Information("Tray menu: Open Scan Enhancer");
-            OnOpenEnhance?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openEnhanceItem);
-
-        // Candidate Photo Stamp
-        var openStampItem = MakeItem("🏷️   Add Name & Date Stamp (SSC Photo)...", (_, _) =>
-        {
-            Log.Information("Tray menu: Open Photo Stamp");
-            OnOpenStamp?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openStampItem);
-
-        // Resize Signature & Photo (Pi7 Resizer)
-        var openSignatureItem = MakeItem("✍️   Resize Signature & Photo (Exact px/cm)...", (_, _) =>
-        {
-            Log.Information("Tray menu: Open Resize Signature");
-            OnOpenSignatureResize?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openSignatureItem);
-
-        // PDF Editor Studio (In-Place Vector Modification)
-        var openPdfEditorItem = MakeItem("📝   PDF Editor Studio (In-Place Edit)...", (_, _) =>
+        menu.Items.Add(MakeItem("📝", "PDF Editor Studio (In-Place Edit)...", (_, _) =>
         {
             Log.Information("Tray menu: Open PDF Editor Studio");
             OnOpenPdfEditor?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openPdfEditorItem);
+        }));
 
-        // Today's Output History Hub
-        var openHistoryItem = MakeItem("🕒   Today's Output History...", (_, _) =>
+        menu.Items.Add(MakeSep());
+
+        // --- 4. DOCUMENT & CONVERSION UTILITIES ---
+        menu.Items.Add(MakeSectionHeader("DOCUMENT & CONVERSION UTILITIES"));
+
+        menu.Items.Add(MakeItem("✨", "Enhance Phone Scan (Magic White)...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open Scan Enhancer");
+            OnOpenEnhance?.Invoke(this, EventArgs.Empty);
+        }));
+
+        menu.Items.Add(MakeItem("✍️", "Resize Signature & Photo (Exact px/cm)...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open Resize Signature");
+            OnOpenSignatureResize?.Invoke(this, EventArgs.Empty);
+        }));
+
+        menu.Items.Add(MakeItem("🏷️", "Add Name & Date Stamp (SSC Photo)...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open Photo Stamp");
+            OnOpenStamp?.Invoke(this, EventArgs.Empty);
+        }));
+
+        menu.Items.Add(MakeItem("📂", "Merge PDF Files...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open Merge PDFs");
+            OnOpenMerge?.Invoke(this, EventArgs.Empty);
+        }));
+
+        menu.Items.Add(MakeItem("✂️", "Split / Extract PDF...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open Split PDF");
+            OnOpenSplit?.Invoke(this, EventArgs.Empty);
+        }));
+
+        menu.Items.Add(MakeItem("🖼️", "Convert Images to PDF (A4)...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open Images to PDF");
+            OnOpenImg2Pdf?.Invoke(this, EventArgs.Empty);
+        }));
+
+        menu.Items.Add(MakeItem("📄", "Convert PDF to JPG Images...", (_, _) =>
+        {
+            Log.Information("Tray menu: Open PDF to Images");
+            OnOpenPdf2Img?.Invoke(this, EventArgs.Empty);
+        }));
+
+        menu.Items.Add(MakeSep());
+
+        // --- 5. SYSTEM & PREFERENCES ---
+        menu.Items.Add(MakeSectionHeader("SYSTEM & PREFERENCES"));
+
+        menu.Items.Add(MakeItem("🕒", "Today's Output History Hub...", (_, _) =>
         {
             Log.Information("Tray menu: Open Output History");
             OnOpenHistory?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openHistoryItem);
+        }));
 
-        menu.Items.Add(MakeSep());
-
-        // Open Settings
-        var openSettingsItem = MakeItem("⚙   Open Settings", (_, _) =>
+        menu.Items.Add(MakeItem("⚙️", "Open Settings & Folders", (_, _) =>
         {
             Log.Information("Tray menu: Open Settings");
             OnOpenSettings?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(openSettingsItem);
+        }));
 
-        menu.Items.Add(MakeSep());
+        // Pause / Resume Item with Dynamic Typography
+        var pauseGrid = new Grid { SnapsToDevicePixels = true };
+        pauseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+        pauseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // Pause / Resume
-        _pauseMenuItem = MakeItem("||   Pause", (_, _) =>
+        _pauseIconTb = new TextBlock
+        {
+            Text = _isPaused ? "▶️" : "⏸️",
+            FontSize = 13.5,
+            FontFamily = new System.Windows.Media.FontFamily("Segoe UI Emoji, Segoe UI"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(_pauseIconTb, 0);
+
+        _pauseTitleTb = new TextBlock
+        {
+            Text = _isPaused ? "Resume Auto-Compression" : "Pause Auto-Compression",
+            FontSize = 12.5,
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 8, 0)
+        };
+        Grid.SetColumn(_pauseTitleTb, 1);
+
+        pauseGrid.Children.Add(_pauseIconTb);
+        pauseGrid.Children.Add(_pauseTitleTb);
+
+        _pauseMenuItem = new MenuItem
+        {
+            Header = pauseGrid,
+            Template = TrayMenuItemTemplate,
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 245, 249)),
+            Padding = new Thickness(8, 6, 10, 6),
+            Cursor = Cursors.Hand
+        };
+        _pauseMenuItem.Click += (_, _) =>
         {
             TogglePause();
             Log.Debug("Tray menu: {Action}", _isPaused ? "Paused" : "Resumed");
-        });
+        };
         menu.Items.Add(_pauseMenuItem);
 
-        menu.Items.Add(MakeSep());
-
-        // View Log
-        var viewLogItem = MakeItem("=   View Log", (_, _) =>
+        menu.Items.Add(MakeItem("📋", "View Activity Log", (_, _) =>
         {
             Log.Debug("Tray menu: View Log");
             OnViewLog?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(viewLogItem);
+        }));
 
         menu.Items.Add(MakeSep());
 
-        // Exit
-        var exitItem = MakeItem("X   Exit", (_, _) =>
+        // --- 6. Exit Action (Red Alert Hover) ---
+        menu.Items.Add(MakeItem("🚪", "Exit DASMO Tools", (_, _) =>
         {
             Log.Debug("Tray menu: Exit");
             OnExit?.Invoke(this, EventArgs.Empty);
-        });
-        menu.Items.Add(exitItem);
+        }, isExit: true));
 
         return menu;
     }
 
     private void UpdatePauseState()
     {
-        if (_pauseMenuItem is not null)
+        if (_pauseIconTb != null && _pauseTitleTb != null)
         {
-            _pauseMenuItem.Header = _isPaused ? "▶   Resume" : "⏸   Pause";
+            _pauseIconTb.Text = _isPaused ? "▶️" : "⏸️";
+            _pauseTitleTb.Text = _isPaused ? "Resume Auto-Compression" : "Pause Auto-Compression";
+        }
+
+        if (_headerStatusText != null && _headerStatusPill != null)
+        {
+            if (_isPaused)
+            {
+                _headerStatusText.Text = "⏸ PAUSED";
+                _headerStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 191, 36));
+                _headerStatusPill.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(69, 26, 3));
+                _headerStatusPill.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(217, 119, 6));
+            }
+            else
+            {
+                _headerStatusText.Text = "● ACTIVE";
+                _headerStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(52, 211, 153));
+                _headerStatusPill.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(6, 78, 59));
+                _headerStatusPill.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(5, 150, 105));
+            }
         }
 
         if (_taskbarIcon is not null)
         {
             _taskbarIcon.ToolTipText = _isPaused
-                ? "DASMO CYBER COMPRESSOR — PAUSED"
-                : "DASMO CYBER COMPRESSOR — Auto File Compressor";
+                ? "DASMO CYBER CAFE TOOLS — PAUSED"
+                : "DASMO CYBER CAFE TOOLS — Active Cyber Suite & Auto-Compressor";
         }
 
         SetIcon(_isPaused);
-        Log.Information("DASMO CYBER COMPRESSOR is now {State}", _isPaused ? "paused" : "active");
+        Log.Information("DASMO CYBER CAFE TOOLS is now {State}", _isPaused ? "paused" : "active");
     }
 
     private System.Drawing.Icon? _currentTrayIcon;
