@@ -1535,8 +1535,14 @@ public class SignatureResizeViewModel : ViewModelBase
                 {
                     File.WriteAllBytes(savePath, result.OutputBytes);
                     LastSavedPath = savePath;
-                    OutputHistoryService.Instance.Record(savePath, "Transparent Signature", result.OriginalSizeBytes, result.OutputSizeBytes);
-                    WpfMessageBox.Show($"✨ Transparent signature saved successfully!\n\nFile: {Path.GetFileName(savePath)}\nBackground: 100% Transparent (Zero white box)\nInk: Pitch-black enhanced ink\n\nPerfect for printing directly onto PAN cards, PVC cards, and certificates!", "Transparent Signature Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+                    string inkDesc = InkColorMode switch
+                    {
+                        "RoyalBlue" => "Royal Blue Pen Ink",
+                        "NavyBlue" => "Dark Navy Blue Pen Ink",
+                        "Original" => "Original Pen Ink",
+                        _ => "Pitch-black enhanced ink"
+                    };
+                    WpfMessageBox.Show($"✨ Transparent signature saved successfully!\n\nFile: {Path.GetFileName(savePath)}\nBackground: 100% Transparent (Zero white box)\nInk: {inkDesc}\n\nPerfect for printing directly onto PAN cards, PVC cards, and certificates!", "Transparent Signature Saved", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             else
